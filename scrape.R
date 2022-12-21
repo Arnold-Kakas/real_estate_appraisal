@@ -1,5 +1,6 @@
 library(tidyverse)
 library(rvest)
+<<<<<<< HEAD
 library(usethis)
 usethis::use_git_config(user.name= "Arnold-Kakas", user.email = "kakasarnold@gmail.com")
 
@@ -7,6 +8,8 @@ install.packages("gitcreds")
 library(gitcreds)
 
 gitcreds::gitcreds_set()
+=======
+>>>>>>> 41aa73f4a8a93eb1d07931f7d9614132b76c7ded
 
 site <- "https://www.nehnutelnosti.sk/predaj/?p[categories][ids]=1.2&p[page]="
 
@@ -18,7 +21,10 @@ number_of_pages <- read_html(paste0(site, 1)) %>%
   discard(is.na) %>%
   max()
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 41aa73f4a8a93eb1d07931f7d9614132b76c7ded
 advertisements <- data.frame()
 
 for (i in 1:number_of_pages) {
@@ -52,7 +58,10 @@ advertisements_cleaned <- advertisements %>%
   unite("address",c(6, 5, 4), sep = ", ", na.rm = TRUE, remove = TRUE) %>% 
   separate(address, c("district", "municipality", "street"), sep = ", ") %>% 
   filter(price != "Cena dohodou", str_detect(district, "okres"))
+<<<<<<< HEAD
 
 
 
 
+=======
+>>>>>>> 41aa73f4a8a93eb1d07931f7d9614132b76c7ded
