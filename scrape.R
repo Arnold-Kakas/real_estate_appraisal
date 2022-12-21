@@ -1,12 +1,12 @@
 library(tidyverse)
 library(rvest)
-# library(usethis)
-# usethis::use_git_config(user.name= "Arnold-Kakas", user.email = "kakasarnold@gmail.com")
-# 
-# install.packages("gitcreds")
-# library(gitcreds)
-# 
-# gitcreds::gitcreds_set()
+library(usethis)
+usethis::use_git_config(user.name= "Arnold-Kakas", user.email = "kakasarnold@gmail.com")
+
+install.packages("gitcreds")
+library(gitcreds)
+
+gitcreds::gitcreds_set()
 
 site <- "https://www.nehnutelnosti.sk/predaj/?p[categories][ids]=1.2&p[page]="
 
@@ -17,6 +17,7 @@ number_of_pages <- read_html(paste0(site, 1)) %>%
   as.numeric() %>%
   discard(is.na) %>%
   max()
+
 
 advertisements <- data.frame()
 
