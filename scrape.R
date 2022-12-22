@@ -73,7 +73,7 @@ for (i in 1:nrow(advertisements)){
 
 advertisements <- cbind(advertisements, additional_info_df)
 
-advertisements_cleaned <- advertisements %>%
+advertisements <- advertisements %>%
   separate(type_of_real_estate, c("type", "area"), sep = " • ") %>%
   separate(address, c("a", "b", "c"), sep = ", ") %>%
   mutate(
@@ -83,11 +83,10 @@ advertisements_cleaned <- advertisements %>%
       str_detect(type, "Dvojgarsónka") ~ "2,5"
     ),
     price = str_replace(price, " €", ""),
-    usable_area = str_replace(usable_area, " m²", ""),
-    built_up_area = str_replace(built_up_area, " m²", ""),
-    land_area = str_replace(land_area, " m²", ""),
-    commision_in_price = str_replace(commision_in_price, "Áno", "yes"),
-    commision_in_price = str_replace(commision_in_price, NA, "no"),
+    usable_area = str_replace(usable_area, " m2", ""),
+    built_up_area = str_replace(built_up_area, " m2", ""),
+    land_area = str_replace(land_area, " m2", ""),
+    commission_in_price = ifelse(is.na(commission_in_price) == TRUE, "no", "yes"),
     type = case_when(
       !str_detect(type, "byt") ~ type,
       str_detect(type, "byt") ~ "Byt"
@@ -95,5 +94,6 @@ advertisements_cleaned <- advertisements %>%
   ) %>%
   unite("address", c(6, 5, 4), sep = ", ", na.rm = TRUE, remove = TRUE) %>%
   separate(address, c("district", "municipality", "street"), sep = ", ") %>%
-  filter(price != "Cena dohodou", str_detect(district, "okres"))
+  filter(price != "Cena dohodou", str_detect(district, "okres")) %>% 
+  select(-area)
 
