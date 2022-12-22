@@ -9,6 +9,7 @@ library(gitcreds)
 
 gitcreds::gitcreds_set()
 
+gitcreds::gitcreds_get()
 
 site <- "https://www.nehnutelnosti.sk/predaj/?p[categories][ids]=1.2&p[page]="
 
@@ -20,29 +21,57 @@ number_of_pages <- read_html(paste0(site, 1)) %>%
   discard(is.na) %>%
   max()
 
+info_names <- c("Stav", "Úžit. plocha", "Zast. plocha", "Plocha pozemku", "Provízia zahrnutá v cene")
+
+
+advertisements <- data.frame()
 
 for (i in 1:1) {
   page_content <- read_html(paste0(site, i))
   price <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__price col-auto pl-0 pl-md-3 pr-0 text-right mt-2 mt-md-0 align-self-end"]') %>%
     html_attr("data-adv-price")
+  
   type_of_real_estate <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__info"]') %>%
     html_text2()
+  
   address <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__info d-block text-truncate"]') %>%
     html_text2()
+  
   link <- page_content %>%
     html_nodes(xpath = '//*[@class="mb-0 d-none d-md-block"]') %>%
     html_nodes("a") %>%
     html_attr("href")
-  temp <- read_html(link) %>%
+  
+  advertisements <- rbind(advertisements, data.frame(price, type_of_real_estate, address, link, stringsAsFactors = FALSE))
+}
+
+additional_info_df <- data.frame()
+
+for (i in 1:nrow(advertisements)){
+  temp <- read_html(advertisements[i, 4]) %>%
     html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "col-md-4", " " ))]//div') %>%
     html_text2()
-  info <- as.data.frame(temp) %>% separate(temp, sep = ': ', c("info", "status")) %>% filter(info %in% c("Stav", "Úžit. plocha", "Zast. plocha", "Plocha pozemku", "Provízia zahrnutá v cene")) %>% pivot_wider(names_from = "info", values_from = "status")
   
-  advertisements <- rbind(advertisements, data.frame(price, type_of_real_estate, address, info, stringsAsFactors = FALSE))
+  info <- as.data.frame(temp) %>%
+    separate(temp, sep = ": ", c("info", "status")) %>%
+    filter(info %in% info_names) %>%
+    pivot_wider(names_from = "info", values_from = "status")
+  
+  temp_col_names <- colnames(info)
+  
+  condition <- ifelse("Stav" %in% temp_col_names, info$Stav, NA)
+  usable_area <- ifelse("Úžit. plocha" %in% temp_col_names, info$"Úžit. plocha", NA)
+  built_up_area <- ifelse("Zast. plocha" %in% temp_col_names, info$"Zast. plocha", NA)
+  land_area <- ifelse("Plocha pozemku" %in% temp_col_names, info$"Plocha pozemku", NA)
+  commission_in_price <- ifelse("Provízia zahrnutá v cene" %in% temp_col_names, info$"Provízia zahrnutá v cene", NA)
+  
+  additional_info_df <- rbind(additional_info_df, data.frame(condition, usable_area, built_up_area, land_area, commission_in_price, stringsAsFactors = FALSE))
 }
+
+advertisements <- cbind(advertisements, additional_info_df)
 
 advertisements_cleaned <- advertisements %>%
   separate(type_of_real_estate, c("type", "area"), sep = " • ") %>%
@@ -54,7 +83,11 @@ advertisements_cleaned <- advertisements %>%
       str_detect(type, "Dvojgarsónka") ~ "2,5"
     ),
     price = str_replace(price, " €", ""),
-    area = str_replace(area, " m²", ""),
+    usable_area = str_replace(usable_area, " m²", ""),
+    built_up_area = str_replace(built_up_area, " m²", ""),
+    land_area = str_replace(land_area, " m²", ""),
+    commision_in_price = str_replace(commision_in_price, "Áno", "yes"),
+    commision_in_price = str_replace(commision_in_price, NA, "no"),
     type = case_when(
       !str_detect(type, "byt") ~ type,
       str_detect(type, "byt") ~ "Byt"
@@ -64,9 +97,3 @@ advertisements_cleaned <- advertisements %>%
   separate(address, c("district", "municipality", "street"), sep = ", ") %>%
   filter(price != "Cena dohodou", str_detect(district, "okres"))
 
-# 
-# test <- read_html("https://www.nehnutelnosti.sk/4902733/bungalov-v-malinove-na-predaj/") %>%
-#   html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "col-md-4", " " ))]//div') %>%
-#   html_text2()
-# 
-# tolist <- as.data.frame(test) %>% separate(test, sep = ': ', c("info", "status")) %>% filter(info %in% c("Stav", "Úžit. plocha", "Zast. plocha", "Plocha pozemku", "Provízia zahrnutá v cene")) %>% pivot_wider(names_from = "info", values_from = "status")
