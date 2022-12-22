@@ -112,3 +112,4 @@ advertisements <- advertisements %>%
   filter(price != "Cena dohodou", str_detect(district, "okres")) %>% 
   select(-area)
 
+write.csv2(advertisements, "data/advertisements.csv")
