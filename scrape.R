@@ -11,6 +11,8 @@ library(rvest)
 # 
 # gitcreds::gitcreds_get()
 
+# scrape through nehnutelnosti web page and retrieve data advertisements for the sale of apartments and houses
+
 site <- "https://www.nehnutelnosti.sk/predaj/?p[categories][ids]=1.2&p[page]="
 
 number_of_pages <- read_html(paste0(site, 1)) %>%
@@ -21,10 +23,15 @@ number_of_pages <- read_html(paste0(site, 1)) %>%
   discard(is.na) %>%
   max()
 
+# list of additional info we want to retrieve later on
+
 info_names <- c("Stav", "Úžit. plocha", "Zast. plocha", "Plocha pozemku", "Provízia zahrnutá v cene")
 
+# create empty dataframe for ads
 
 advertisements <- data.frame()
+
+# feed empty dataframe
 
 for (i in 1:1) {
   page_content <- read_html(paste0(site, i))
@@ -48,7 +55,11 @@ for (i in 1:1) {
   advertisements <- rbind(advertisements, data.frame(price, type_of_real_estate, address, link, stringsAsFactors = FALSE))
 }
 
+# create empty dataframe for additional ads info
+
 additional_info_df <- data.frame()
+
+# feed empty dataframe
 
 for (i in 1:nrow(advertisements)){
   temp <- read_html(advertisements[i, 4]) %>%
@@ -71,7 +82,11 @@ for (i in 1:nrow(advertisements)){
   additional_info_df <- rbind(additional_info_df, data.frame(condition, usable_area, built_up_area, land_area, commission_in_price, stringsAsFactors = FALSE))
 }
 
+# bind ads and additional info dataframes
+
 advertisements <- cbind(advertisements, additional_info_df)
+
+# adjust data
 
 advertisements <- advertisements %>%
   separate(type_of_real_estate, c("type", "area"), sep = " • ") %>%
