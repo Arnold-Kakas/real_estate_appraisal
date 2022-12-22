@@ -1,15 +1,15 @@
 library(tidyverse)
 library(rvest)
 
-library(usethis)
-usethis::use_git_config(user.name = "Arnold-Kakas", user.email = "kakasarnold@gmail.com")
-
-install.packages("gitcreds")
-library(gitcreds)
-
-gitcreds::gitcreds_set()
-
-gitcreds::gitcreds_get()
+# library(usethis)
+# usethis::use_git_config(user.name = "Arnold-Kakas", user.email = "kakasarnold@gmail.com")
+# 
+# install.packages("gitcreds")
+# library(gitcreds)
+# 
+# gitcreds::gitcreds_set()
+# 
+# gitcreds::gitcreds_get()
 
 site <- "https://www.nehnutelnosti.sk/predaj/?p[categories][ids]=1.2&p[page]="
 
