@@ -21,7 +21,7 @@ number_of_pages <- read_html(paste0(site, 1)) %>%
   max()
 
 
-for (i in 1:number_of_pages) {
+for (i in 1:1) {
   page_content <- read_html(paste0(site, i))
   price <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__price col-auto pl-0 pl-md-3 pr-0 text-right mt-2 mt-md-0 align-self-end"]') %>%
@@ -36,7 +36,12 @@ for (i in 1:number_of_pages) {
     html_nodes(xpath = '//*[@class="mb-0 d-none d-md-block"]') %>%
     html_nodes("a") %>%
     html_attr("href")
-  advertisements <- rbind(advertisements, data.frame(price, type_of_real_estate, address, link, stringsAsFactors = FALSE))
+  temp <- read_html(link) %>%
+    html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "col-md-4", " " ))]//div') %>%
+    html_text2()
+  info <- as.data.frame(temp) %>% separate(temp, sep = ': ', c("info", "status")) %>% filter(info %in% c("Stav", "Úžit. plocha", "Zast. plocha", "Plocha pozemku", "Provízia zahrnutá v cene")) %>% pivot_wider(names_from = "info", values_from = "status")
+  
+  advertisements <- rbind(advertisements, data.frame(price, type_of_real_estate, address, info, stringsAsFactors = FALSE))
 }
 
 advertisements_cleaned <- advertisements %>%
@@ -58,3 +63,10 @@ advertisements_cleaned <- advertisements %>%
   unite("address", c(6, 5, 4), sep = ", ", na.rm = TRUE, remove = TRUE) %>%
   separate(address, c("district", "municipality", "street"), sep = ", ") %>%
   filter(price != "Cena dohodou", str_detect(district, "okres"))
+
+# 
+# test <- read_html("https://www.nehnutelnosti.sk/4902733/bungalov-v-malinove-na-predaj/") %>%
+#   html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "col-md-4", " " ))]//div') %>%
+#   html_text2()
+# 
+# tolist <- as.data.frame(test) %>% separate(test, sep = ': ', c("info", "status")) %>% filter(info %in% c("Stav", "Úžit. plocha", "Zast. plocha", "Plocha pozemku", "Provízia zahrnutá v cene")) %>% pivot_wider(names_from = "info", values_from = "status")
