@@ -3,12 +3,12 @@ library(rvest)
 
 # library(usethis)
 # usethis::use_git_config(user.name = "Arnold-Kakas", user.email = "kakasarnold@gmail.com")
-# 
+#
 # install.packages("gitcreds")
 # library(gitcreds)
-# 
+#
 # gitcreds::gitcreds_set()
-# 
+#
 # gitcreds::gitcreds_get()
 
 # scrape through nehnutelnosti web page and retrieve data advertisements for the sale of apartments and houses
@@ -38,20 +38,20 @@ for (i in 1:1) {
   price <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__price col-auto pl-0 pl-md-3 pr-0 text-right mt-2 mt-md-0 align-self-end"]') %>%
     html_attr("data-adv-price")
-  
+
   type_of_real_estate <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__info"]') %>%
     html_text2()
-  
+
   address <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__info d-block text-truncate"]') %>%
     html_text2()
-  
+
   link <- page_content %>%
     html_nodes(xpath = '//*[@class="mb-0 d-none d-md-block"]') %>%
     html_nodes("a") %>%
     html_attr("href")
-  
+
   advertisements <- rbind(advertisements, data.frame(price, type_of_real_estate, address, link, stringsAsFactors = FALSE))
 }
 
@@ -61,24 +61,24 @@ additional_info_df <- data.frame()
 
 # feed empty dataframe
 
-for (i in 1:nrow(advertisements)){
+for (i in 1:nrow(advertisements)) {
   temp <- read_html(advertisements[i, 4]) %>%
     html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "col-md-4", " " ))]//div') %>%
     html_text2()
-  
+
   info <- as.data.frame(temp) %>%
     separate(temp, sep = ": ", c("info", "status")) %>%
     filter(info %in% info_names) %>%
     pivot_wider(names_from = "info", values_from = "status")
-  
+
   temp_col_names <- colnames(info)
-  
+
   condition <- ifelse("Stav" %in% temp_col_names, info$Stav, NA)
   usable_area <- ifelse("Úžit. plocha" %in% temp_col_names, info$"Úžit. plocha", NA)
   built_up_area <- ifelse("Zast. plocha" %in% temp_col_names, info$"Zast. plocha", NA)
   land_area <- ifelse("Plocha pozemku" %in% temp_col_names, info$"Plocha pozemku", NA)
   commission_in_price <- ifelse("Provízia zahrnutá v cene" %in% temp_col_names, info$"Provízia zahrnutá v cene", NA)
-  
+
   additional_info_df <- rbind(additional_info_df, data.frame(condition, usable_area, built_up_area, land_area, commission_in_price, stringsAsFactors = FALSE))
 }
 
@@ -109,7 +109,7 @@ advertisements <- advertisements %>%
   ) %>%
   unite("address", c(6, 5, 4), sep = ", ", na.rm = TRUE, remove = TRUE) %>%
   separate(address, c("district", "municipality", "street"), sep = ", ") %>%
-  filter(price != "Cena dohodou", str_detect(district, "okres")) %>% 
+  filter(price != "Cena dohodou", str_detect(district, "okres")) %>%
   select(-area)
 
 write.csv2(advertisements, "data/advertisements.csv")
