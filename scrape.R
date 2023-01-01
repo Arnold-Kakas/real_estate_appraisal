@@ -13,6 +13,8 @@ library(rvest)
 
 # scrape through nehnutelnosti web page and retrieve data advertisements for the sale of apartments and houses
 
+start_time <- Sys.time()
+
 site <- "https://www.nehnutelnosti.sk/predaj/?p[categories][ids]=1.2&p[page]="
 
 number_of_pages <- read_html(paste0(site, 1)) %>%
@@ -33,7 +35,7 @@ advertisements <- data.frame()
 
 # feed empty dataframe
 
-for (i in 1:1) {
+for (i in 1:number_of_pages) {
   page_content <- read_html(paste0(site, i))
   price <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__price col-auto pl-0 pl-md-3 pr-0 text-right mt-2 mt-md-0 align-self-end"]') %>%
@@ -113,3 +115,6 @@ advertisements <- advertisements %>%
   select(-area)
 
 write.csv2(advertisements, "data/advertisements.csv")
+
+end_time <- Sys.time()
+running_time <- end_time - start_time
