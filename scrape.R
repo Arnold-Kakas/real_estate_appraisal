@@ -48,3 +48,4 @@ advertisements_cleaned <- advertisements %>%
          area = as.numeric(area),
          rooms = as.numeric(rooms))
 
+
