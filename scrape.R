@@ -43,4 +43,8 @@ advertisements_cleaned <- advertisements %>%
                           str_detect(type, "byt") ~ "Byt")) %>% 
   unite("address",c(6, 5, 4), sep = ", ", na.rm = TRUE, remove = TRUE) %>% 
   separate(address, c("district", "municipality", "street"), sep = ", ") %>% 
-  filter(price != "Cena dohodou", str_detect(district, "okres"))
+  filter(price != "Cena dohodou", str_detect(district, "okres")) %>% 
+  mutate(price = as.numeric(str_replace_all(price, " ", "")),
+         area = as.numeric(area),
+         rooms = as.numeric(rooms))
+
