@@ -15,7 +15,7 @@ library(rvest)
 
 start_time <- Sys.time()
 
-site <- "https://www.nehnutelnosti.sk/predaj/?p[categories][ids]=1.2&p[page]="
+site <- "https://www.nehnutelnosti.sk/predaj/?p[categories][ids]=1.2&p[order]=1&p[page]="
 
 number_of_pages <- read_html(paste0(site, 1)) %>%
   html_nodes(xpath = '//*[@class="component-pagination__items d-flex align-items-center"]') %>%
@@ -64,6 +64,7 @@ additional_info_df <- data.frame()
 # feed empty dataframe
 
 for (i in 1:nrow(advertisements)) {
+  # //*[contains(concat( " ", @class, " " ), concat( " ", "date", " " ))]  use this xpath to retrieve date of update and keep only last 6 months
   temp <- read_html(advertisements[i, 4]) %>%
     html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "col-md-4", " " ))]//div') %>%
     html_text2()
