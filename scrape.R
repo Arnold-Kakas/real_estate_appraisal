@@ -75,7 +75,7 @@ advertisements <- cbind(advertisements, additional_info_df)
 # clean data
 advertisements_cleaned <- advertisements %>%
   separate(type_of_real_estate, c("type", "area"), sep = " • ") %>%
-  separate(address, c("a", "b", "c"), sep = ", ", remove = FALSE) %>%
+  separate(address, c("a", "b", "c"), sep = ", ", remove = TRUE) %>%
   mutate(
     rooms = case_when(
       str_detect(type, "byt") ~ substr(type, 1, 1),
@@ -92,18 +92,22 @@ advertisements_cleaned <- advertisements %>%
       str_detect(type, "byt") ~ "Byt"
     )
   ) %>%
-  unite("address0", c(7, 6, 5), sep = ", ", na.rm = TRUE, remove = TRUE) %>% # reordering to keep all districts in first column
+  unite("address", c(5, 4), sep = ", ", na.rm = TRUE, remove = FALSE) %>% # new address for geocoding
+  unite("address0", c(6, 5, 4), sep = ", ", na.rm = TRUE, remove = TRUE) %>% # reordering to keep all districts in first column
   separate(address0, c("district", "municipality", "street"), sep = ", ") %>%
   filter(price != "Cena dohodou", str_detect(district, "okres")) %>%
   select(-area)
 
+#add condition if file with codes does not exist then run geocoding. Save budget. join to advertisment cleaned df and for NA impute based on municipality
 # geocode address
-api_key <- "AIzaSyCDWUgz8htt-DlNGH__ek1p1ycAaxrau6w"
+api_key <- ""
 register_google(key = api_key)
 addresses <- tibble(unique(advertisements_cleaned$address))
 geocodes <- geocode(advertisements_cleaned$address, output = "latlon", source = "google")
-address <- cbind(address, geocodes)
+addresses <- cbind(address, geocodes)
 
+bbox <- c(bottom = 47.3, top = 50 , right = 23, left = 16.5)
+get_stamenmap(bbox, zoom = 6, maptype = "toner-lite") %>% ggmap() 
 
 write.csv2(advertisements_cleaned, "data/advertisements.csv")
 
