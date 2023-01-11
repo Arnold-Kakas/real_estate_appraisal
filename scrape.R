@@ -108,6 +108,7 @@ addresses <- cbind(address, geocodes)
 
 bbox <- c(bottom = 47.3, top = 50 , right = 23, left = 16.5)
 get_stamenmap(bbox, zoom = 6, maptype = "toner-lite") %>% ggmap() 
+# https://jtr13.github.io/cc19/stamen-maps-with-ggmap.html
 
 write.csv2(advertisements_cleaned, "data/advertisements.csv")
 
