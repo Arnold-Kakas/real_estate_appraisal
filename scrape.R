@@ -17,6 +17,7 @@ start_time <- Sys.time()
 
 site <- "https://www.nehnutelnosti.sk/predaj/?p[categories][ids]=1.2&p[order]=1&p[page]="
 
+# scrape the number of pages
 number_of_pages <- read_html(paste0(site, 1)) %>%
   html_nodes(xpath = '//*[@class="component-pagination__items d-flex align-items-center"]') %>%
   html_elements("li") %>%
@@ -29,33 +30,25 @@ number_of_pages <- read_html(paste0(site, 1)) %>%
 
 info_names <- c("Stav", "Úžit. plocha", "Zast. plocha", "Plocha pozemku", "Provízia zahrnutá v cene")
 
-# create empty dataframe for ads
-
-advertisements <- data.frame()
-
-# feed empty dataframe
-
-for (i in 1:number_of_pages) {
+start_time <- Sys.time()
+advertisements <- map_dfr(1:number_of_pages, function(i) {
   page_content <- read_html(paste0(site, i))
   price <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__price col-auto pl-0 pl-md-3 pr-0 text-right mt-2 mt-md-0 align-self-end"]') %>%
     html_attr("data-adv-price")
-
   type_of_real_estate <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__info"]') %>%
     html_text2()
-
   address <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__info d-block text-truncate"]') %>%
     html_text2()
-
   link <- page_content %>%
     html_nodes(xpath = '//*[@class="mb-0 d-none d-md-block"]') %>%
     html_nodes("a") %>%
     html_attr("href")
-
-  advertisements <- rbind(advertisements, data.frame(price, type_of_real_estate, address, link, stringsAsFactors = FALSE))
+  tibble(price = price, type_of_real_estate = type_of_real_estate, address = address, link = link)
 }
+)
 
 # create empty dataframe for additional ads info
 
@@ -117,5 +110,7 @@ advertisements <- advertisements %>%
 
 write.csv2(advertisements, "data/advertisements.csv")
 
-end_time <- Sys.time()
-running_time <- end_time - start_time
+# for empty values could use coalesce() function
+# Use the rbindlist() function from the data.table package to bind rows instead of rbind(). This can significantly speed up performance for large datasets.
+# COnsider parallel or future packages for multithreading
+# In general, web scraping is an I/O bound task, which means that it is limited by the speed of reading and writing to and from a network or disk. In this case, the bottleneck is typically the web server and the network connection, rather than the CPU.
