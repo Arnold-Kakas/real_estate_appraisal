@@ -1,6 +1,6 @@
 library(pacman)
 
-p_load(tidyverse, rvest)
+p_load(tidyverse, rvest, ggmap)
 
 # library(usethis)
 # usethis::use_git_config(user.name = "Arnold-Kakas", user.email = "kakasarnold@gmail.com")
@@ -13,7 +13,7 @@ p_load(tidyverse, rvest)
 # gitcreds::gitcreds_get()
 
 # scrape through nehnutelnosti web page and retrieve data advertisements for the sale of apartments and houses
-site <- "https://www.nehnutelnosti.sk/predaj/?p[categories][ids]=1.2&p[order]=1&p[page]="
+site <- "https://www.nehnutelnosti.sk/slovensko/predaj/?p[categories][ids]=1.2&p[order]=1&p[page]="
 
 # scrape the number of pages
 number_of_pages <- read_html(paste0(site, 1)) %>%
@@ -28,7 +28,7 @@ number_of_pages <- read_html(paste0(site, 1)) %>%
 
 info_names <- c("Stav", "Úžit. plocha", "Zast. plocha", "Plocha pozemku", "Provízia zahrnutá v cene")
 
-advertisements <- map_dfr(1:number_of_pages, function(i) {
+advertisements <- map_dfr(1:2, function(i) {
   page_content <- read_html(paste0(site, i))
   price <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__price col-auto pl-0 pl-md-3 pr-0 text-right mt-2 mt-md-0 align-self-end"]') %>%
@@ -44,11 +44,10 @@ advertisements <- map_dfr(1:number_of_pages, function(i) {
     html_nodes("a") %>%
     html_attr("href")
   tibble(price = price, type_of_real_estate = type_of_real_estate, address = address, link = link)
-}
-)
+})
 
-# feed empty dataframe
-additional_info_df <- map_dfr(advertisements$link, function(i){
+# Additional info from web
+additional_info_df <- map_dfr(advertisements$link, function(i) {
   temp <- read_html(i) %>%
     html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "col-md-4", " " ))]//div') %>%
     html_text2()
@@ -65,10 +64,9 @@ additional_info_df <- map_dfr(advertisements$link, function(i){
   built_up_area <- ifelse("Zast. plocha" %in% temp_col_names, info$"Zast. plocha", NA)
   land_area <- ifelse("Plocha pozemku" %in% temp_col_names, info$"Plocha pozemku", NA)
   commission_in_price <- ifelse("Provízia zahrnutá v cene" %in% temp_col_names, info$"Provízia zahrnutá v cene", NA)
-  
+
   tibble(condition = condition, usable_area = usable_area, built_up_area = built_up_area, land_area = land_area, commission_in_price = commission_in_price)
-}
-)
+})
 
 
 # bind ads and additional info dataframes
@@ -77,7 +75,7 @@ advertisements <- cbind(advertisements, additional_info_df)
 # clean data
 advertisements_cleaned <- advertisements %>%
   separate(type_of_real_estate, c("type", "area"), sep = " • ") %>%
-  separate(address, c("a", "b", "c"), sep = ", ") %>%
+  separate(address, c("a", "b", "c"), sep = ", ", remove = FALSE) %>%
   mutate(
     rooms = case_when(
       str_detect(type, "byt") ~ substr(type, 1, 1),
@@ -94,14 +92,21 @@ advertisements_cleaned <- advertisements %>%
       str_detect(type, "byt") ~ "Byt"
     )
   ) %>%
-  unite("address", c(6, 5, 4), sep = ", ", na.rm = TRUE, remove = TRUE) %>%
-  separate(address, c("district", "municipality", "street"), sep = ", ") %>%
+  unite("address0", c(7, 6, 5), sep = ", ", na.rm = TRUE, remove = TRUE) %>% # reordering to keep all districts in first column
+  separate(address0, c("district", "municipality", "street"), sep = ", ") %>%
   filter(price != "Cena dohodou", str_detect(district, "okres")) %>%
   select(-area)
 
+# geocode address
+api_key <- "AIzaSyCDWUgz8htt-DlNGH__ek1p1ycAaxrau6w"
+register_google(key = api_key)
+addresses <- tibble(unique(advertisements_cleaned$address))
+geocodes <- geocode(advertisements_cleaned$address, output = "latlon", source = "google")
+address <- cbind(address, geocodes)
+
+
 write.csv2(advertisements_cleaned, "data/advertisements.csv")
 
-# for empty values could use coalesce() function
-# Use the rbindlist() function from the data.table package to bind rows instead of rbind(). This can significantly speed up performance for large datasets.
+# geocode distinct addresses
 # COnsider parallel or future packages for multithreading
 # In general, web scraping is an I/O bound task, which means that it is limited by the speed of reading and writing to and from a network or disk. In this case, the bottleneck is typically the web server and the network connection, rather than the CPU.
