@@ -1,5 +1,6 @@
-library(tidyverse)
-library(rvest)
+library(pacman)
+
+p_load(tidyverse, rvest)
 
 # library(usethis)
 # usethis::use_git_config(user.name = "Arnold-Kakas", user.email = "kakasarnold@gmail.com")
@@ -12,9 +13,6 @@ library(rvest)
 # gitcreds::gitcreds_get()
 
 # scrape through nehnutelnosti web page and retrieve data advertisements for the sale of apartments and houses
-
-start_time <- Sys.time()
-
 site <- "https://www.nehnutelnosti.sk/predaj/?p[categories][ids]=1.2&p[order]=1&p[page]="
 
 # scrape the number of pages
@@ -30,7 +28,6 @@ number_of_pages <- read_html(paste0(site, 1)) %>%
 
 info_names <- c("Stav", "Úžit. plocha", "Zast. plocha", "Plocha pozemku", "Provízia zahrnutá v cene")
 
-start_time <- Sys.time()
 advertisements <- map_dfr(1:number_of_pages, function(i) {
   page_content <- read_html(paste0(site, i))
   price <- page_content %>%
@@ -50,15 +47,9 @@ advertisements <- map_dfr(1:number_of_pages, function(i) {
 }
 )
 
-# create empty dataframe for additional ads info
-
-additional_info_df <- data.frame()
-
 # feed empty dataframe
-
-for (i in 1:nrow(advertisements)) {
-  # //*[contains(concat( " ", @class, " " ), concat( " ", "date", " " ))]  use this xpath to retrieve date of update and keep only last 6 months
-  temp <- read_html(advertisements[i, 4]) %>%
+additional_info_df <- map_dfr(advertisements$link, function(i){
+  temp <- read_html(i) %>%
     html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "col-md-4", " " ))]//div') %>%
     html_text2()
 
@@ -74,17 +65,17 @@ for (i in 1:nrow(advertisements)) {
   built_up_area <- ifelse("Zast. plocha" %in% temp_col_names, info$"Zast. plocha", NA)
   land_area <- ifelse("Plocha pozemku" %in% temp_col_names, info$"Plocha pozemku", NA)
   commission_in_price <- ifelse("Provízia zahrnutá v cene" %in% temp_col_names, info$"Provízia zahrnutá v cene", NA)
-
-  additional_info_df <- rbind(additional_info_df, data.frame(condition, usable_area, built_up_area, land_area, commission_in_price, stringsAsFactors = FALSE))
+  
+  tibble(condition = condition, usable_area = usable_area, built_up_area = built_up_area, land_area = land_area, commission_in_price = commission_in_price)
 }
+)
+
 
 # bind ads and additional info dataframes
-
 advertisements <- cbind(advertisements, additional_info_df)
 
-# adjust data
-
-advertisements <- advertisements %>%
+# clean data
+advertisements_cleaned <- advertisements %>%
   separate(type_of_real_estate, c("type", "area"), sep = " • ") %>%
   separate(address, c("a", "b", "c"), sep = ", ") %>%
   mutate(
@@ -108,7 +99,7 @@ advertisements <- advertisements %>%
   filter(price != "Cena dohodou", str_detect(district, "okres")) %>%
   select(-area)
 
-write.csv2(advertisements, "data/advertisements.csv")
+write.csv2(advertisements_cleaned, "data/advertisements.csv")
 
 # for empty values could use coalesce() function
 # Use the rbindlist() function from the data.table package to bind rows instead of rbind(). This can significantly speed up performance for large datasets.
