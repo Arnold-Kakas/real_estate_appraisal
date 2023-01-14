@@ -8,7 +8,7 @@ municipalities <- municipalities %>%
   mutate(address = paste(Municipality, District, "Slovakia", sep = ", "))
 
 # geocode
-api_key <- "AIzaSyCDWUgz8htt-DlNGH__ek1p1ycAaxrau6w"
+api_key <- ""
 register_google(key = api_key)
 places <- tibble(municipalities$address)
 geocodes <- geocode(municipalities$address, output = "latlon", source = "google")
