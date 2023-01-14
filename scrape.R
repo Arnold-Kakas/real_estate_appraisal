@@ -98,20 +98,9 @@ advertisements_cleaned <- advertisements %>%
   filter(price != "Cena dohodou", str_detect(district, "okres")) %>%
   select(-area)
 
-#add condition if file with codes does not exist then run geocoding. Save budget. join to advertisment cleaned df and for NA impute based on municipality
-# geocode address
-api_key <- ""
-register_google(key = api_key)
-addresses <- tibble(unique(advertisements_cleaned$address))
-geocodes <- geocode(advertisements_cleaned$address, output = "latlon", source = "google")
-addresses <- cbind(address, geocodes)
 
-bbox <- c(bottom = 47.3, top = 50 , right = 23, left = 16.5)
-get_stamenmap(bbox, zoom = 6, maptype = "toner-lite") %>% ggmap() 
-# https://jtr13.github.io/cc19/stamen-maps-with-ggmap.html
 
 write.csv2(advertisements_cleaned, "data/advertisements.csv")
 
-# geocode distinct addresses
 # COnsider parallel or future packages for multithreading
 # In general, web scraping is an I/O bound task, which means that it is limited by the speed of reading and writing to and from a network or disk. In this case, the bottleneck is typically the web server and the network connection, rather than the CPU.
