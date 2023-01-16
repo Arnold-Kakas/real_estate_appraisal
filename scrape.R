@@ -28,7 +28,7 @@ number_of_pages <- read_html(paste0(site, 1)) %>%
 
 info_names <- c("Stav", "Úžit. plocha", "Zast. plocha", "Plocha pozemku", "Provízia zahrnutá v cene")
 
-advertisements <- map_dfr(1:2, function(i) {
+advertisements <- map_dfr(1:number_of_pages, function(i) {
   page_content <- read_html(paste0(site, i))
   price <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__price col-auto pl-0 pl-md-3 pr-0 text-right mt-2 mt-md-0 align-self-end"]') %>%
@@ -97,8 +97,6 @@ advertisements_cleaned <- advertisements %>%
   separate(address0, c("district", "municipality", "street"), sep = ", ") %>%
   filter(price != "Cena dohodou", str_detect(district, "okres")) %>%
   select(-area)
-
-
 
 write.csv2(advertisements_cleaned, "data/advertisements.csv")
 

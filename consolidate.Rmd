@@ -1,0 +1,29 @@
+---
+title: "consolidate"
+author: "Arnold Kakaš"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Consolidate data scraped from web and geospatial data
+
+```{r}
+# import libraries
+library(pacman)
+p_load(
+  tidyverse,
+  rio,
+  sf
+)
+```
+
+```{r}
+# load data
+scraped_data <- import("data/advertisements.csv")
+geocoded_data <- import("data/geospatial_data/geocodes.csv")
+```
+
