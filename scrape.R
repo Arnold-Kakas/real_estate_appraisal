@@ -2,16 +2,6 @@ library(pacman)
 
 p_load(tidyverse, rvest, ggmap)
 
-# library(usethis)
-# usethis::use_git_config(user.name = "Arnold-Kakas", user.email = "kakasarnold@gmail.com")
-#
-# install.packages("gitcreds")
-# library(gitcreds)
-#
-# gitcreds::gitcreds_set()
-#
-# gitcreds::gitcreds_get()
-
 # scrape through nehnutelnosti web page and retrieve data advertisements for the sale of apartments and houses
 site <- "https://www.nehnutelnosti.sk/slovensko/predaj/?p[categories][ids]=1.2&p[order]=1&p[page]="
 
