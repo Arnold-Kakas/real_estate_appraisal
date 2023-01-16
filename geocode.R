@@ -3,7 +3,7 @@ library(pacman)
 p_load(tidyverse, ggmap, rio)
 
 # load csv with municipalities
-municipalities <- import("data/municipalities.csv")
+municipalities <- import("data/geospatial_data/municipalities.csv")
 municipalities <- municipalities %>% 
   mutate(address = paste(Municipality, District, "Slovakia", sep = ", "))
 
@@ -17,7 +17,7 @@ geocodes <- cbind(places, geocodes)
 rm(api_key, places)
 
 # write csv with geocodes
-write.csv2(geocodes, "data/geocodes.csv")
+write.csv2(geocodes, "data/geospatial_data/geocodes.csv")
 # try map()
 # bbox <- c(bottom = 47.3, top = 50 , right = 23, left = 16.5)
 # get_stamenmap(bbox, zoom = 6, maptype = "toner-lite") %>% ggmap() 
