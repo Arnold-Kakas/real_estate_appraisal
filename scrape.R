@@ -96,5 +96,3 @@ advertisements_cleaned <- advertisements %>%
 
 write.csv2(advertisements_cleaned, "data/advertisements.csv")
 saveRDS(advertisements_cleaned, file = "data/advertisements.rds")
-# COnsider parallel or future packages for multithreading
-# In general, web scraping is an I/O bound task, which means that it is limited by the speed of reading and writing to and from a network or disk. In this case, the bottleneck is typically the web server and the network connection, rather than the CPU.
