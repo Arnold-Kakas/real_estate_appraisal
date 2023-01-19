@@ -1,6 +1,6 @@
 library(pacman)
 
-p_load(tidyverse, rvest, ggmap)
+p_load(tidyverse, rvest, httr, doParallel, furrr)
 
 # scrape through nehnutelnosti web page and retrieve data advertisements for the sale of apartments and houses
 site <- "https://www.nehnutelnosti.sk/slovensko/predaj/?p[categories][ids]=1.2&p[order]=1&p[page]="
@@ -18,7 +18,10 @@ number_of_pages <- read_html(paste0(site, 1)) %>%
 
 info_names <- c("Stav", "Úžit. plocha", "Zast. plocha", "Plocha pozemku", "Provízia zahrnutá v cene")
 
-advertisements <- map_dfr(1:number_of_pages, function(i) {
+# create a cluster of worker processes (cores)
+plan(multiprocess, workers = 4)
+
+advertisements <- future_map_dfr(1:number_of_pages, function(i) {
   page_content <- read_html(paste0(site, i))
   price <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__price col-auto pl-0 pl-md-3 pr-0 text-right mt-2 mt-md-0 align-self-end"]') %>%
@@ -37,8 +40,9 @@ advertisements <- map_dfr(1:number_of_pages, function(i) {
 })
 
 # Additional info from web
+
 additional_info_df <- map_dfr(advertisements$link, function(i) {
-  temp <- read_html(i) %>%
+  temp <- read_html(GET(i, timeout(30))) %>%
     html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "col-md-4", " " ))]//div') %>%
     html_text2()
 
@@ -57,7 +61,6 @@ additional_info_df <- map_dfr(advertisements$link, function(i) {
 
   tibble(condition = condition, usable_area = usable_area, built_up_area = built_up_area, land_area = land_area, commission_in_price = commission_in_price)
 })
-
 
 # bind ads and additional info dataframes
 advertisements <- cbind(advertisements, additional_info_df)
@@ -87,6 +90,9 @@ advertisements_cleaned <- advertisements %>%
   separate(address0, c("district", "municipality", "street"), sep = ", ") %>%
   filter(price != "Cena dohodou", str_detect(district, "okres")) %>%
   select(-area)
+
+# stop multithreading
+stop_plan()
 
 write.csv2(advertisements_cleaned, "data/advertisements.csv")
 
