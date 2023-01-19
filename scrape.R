@@ -91,8 +91,8 @@ advertisements_cleaned <- advertisements %>%
   filter(price != "Cena dohodou", str_detect(district, "okres")) %>%
   select(-area)
 
-# stop multithreading
-
-
 write.csv2(advertisements_cleaned, "data/advertisements.csv")
 saveRDS(advertisements_cleaned, file = "data/advertisements.rds")
+
+
+# check for older files and create historical data
