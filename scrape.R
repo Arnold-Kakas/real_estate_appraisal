@@ -19,7 +19,7 @@ number_of_pages <- read_html(paste0(site, 1)) %>%
 info_names <- c("Stav", "Úžit. plocha", "Zast. plocha", "Plocha pozemku", "Provízia zahrnutá v cene")
 
 # create a cluster of worker processes (cores)
-plan(multiprocess, workers = 4)
+plan(multisession, workers = 4)
 
 advertisements <- future_map_dfr(1:number_of_pages, function(i) {
   page_content <- read_html(paste0(site, i))
@@ -92,9 +92,9 @@ advertisements_cleaned <- advertisements %>%
   select(-area)
 
 # stop multithreading
-stop_plan()
+
 
 write.csv2(advertisements_cleaned, "data/advertisements.csv")
-
+saveRDS(advertisements_cleaned, file = "data/advertisements.rds")
 # COnsider parallel or future packages for multithreading
 # In general, web scraping is an I/O bound task, which means that it is limited by the speed of reading and writing to and from a network or disk. In this case, the bottleneck is typically the web server and the network connection, rather than the CPU.
