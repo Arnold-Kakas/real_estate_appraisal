@@ -42,12 +42,17 @@ advertisements <- future_map_dfr(1:number_of_pages, function(i) {
 # Additional info from web
 
 additional_info_df <- map_dfr(advertisements$link, function(i) {
-  temp <- read_html(GET(i, timeout(30))) %>%
+  temp <- read_html(GET(i, timeout(60)))
+
+  info_details <- temp %>%
     html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "col-md-4", " " ))]//div') %>%
     html_text2()
+  info_text <- temp %>%
+    html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "text-inner", " " ))]') %>%
+    html_text2()
 
-  info <- as.data.frame(temp) %>%
-    separate(temp, sep = ": ", c("info", "status")) %>%
+  info <- as.data.frame(info_details) %>%
+    separate(info_details, sep = ": ", c("info", "status")) %>%
     filter(info %in% info_names) %>%
     pivot_wider(names_from = "info", values_from = "status")
 
@@ -59,7 +64,7 @@ additional_info_df <- map_dfr(advertisements$link, function(i) {
   land_area <- ifelse("Plocha pozemku" %in% temp_col_names, info$"Plocha pozemku", NA)
   commission_in_price <- ifelse("Provízia zahrnutá v cene" %in% temp_col_names, info$"Provízia zahrnutá v cene", NA)
 
-  tibble(condition = condition, usable_area = usable_area, built_up_area = built_up_area, land_area = land_area, commission_in_price = commission_in_price)
+  tibble(condition = condition, usable_area = usable_area, built_up_area = built_up_area, land_area = land_area, commission_in_price = commission_in_price, info_text = info_text)
 })
 
 # bind ads and additional info dataframes
