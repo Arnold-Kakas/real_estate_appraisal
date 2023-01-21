@@ -21,7 +21,7 @@ info_names <- c("Stav", "Úžit. plocha", "Zast. plocha", "Plocha pozemku", "Pro
 # create a cluster of worker processes (cores)
 plan(multisession, workers = 4)
 
-advertisements <- future_map_dfr(1:number_of_pages, function(i) {
+advertisements <- future_map_dfr(1:2, function(i) {
   page_content <- read_html(paste0(site, i))
   price <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__price col-auto pl-0 pl-md-3 pr-0 text-right mt-2 mt-md-0 align-self-end"]') %>%
@@ -47,9 +47,9 @@ additional_info_df <- map_dfr(advertisements$link, function(i) {
   info_details <- temp %>%
     html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "col-md-4", " " ))]//div') %>%
     html_text2()
-  info_text <- temp %>%
-    html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "text-inner", " " ))]') %>%
-    html_text2()
+  #info_text <- temp %>%
+  #  html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "text-inner", " " ))]') %>%
+  #  html_text2()
 
   info <- as.data.frame(info_details) %>%
     separate(info_details, sep = ": ", c("info", "status")) %>%
@@ -64,7 +64,7 @@ additional_info_df <- map_dfr(advertisements$link, function(i) {
   land_area <- ifelse("Plocha pozemku" %in% temp_col_names, info$"Plocha pozemku", NA)
   commission_in_price <- ifelse("Provízia zahrnutá v cene" %in% temp_col_names, info$"Provízia zahrnutá v cene", NA)
 
-  tibble(condition = condition, usable_area = usable_area, built_up_area = built_up_area, land_area = land_area, commission_in_price = commission_in_price, info_text = info_text)
+  tibble(condition = condition, usable_area = usable_area, built_up_area = built_up_area, land_area = land_area, commission_in_price = commission_in_price) # , info_text = info_text
 })
 
 # bind ads and additional info dataframes
