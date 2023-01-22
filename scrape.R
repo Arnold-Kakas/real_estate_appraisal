@@ -21,7 +21,7 @@ info_names <- c("Stav", "Úžit. plocha", "Zast. plocha", "Plocha pozemku", "Pro
 # create a cluster of worker processes (cores)
 plan(multisession, workers = 4)
 
-advertisements <- future_map_dfr(1:2, function(i) {
+advertisements <- future_map_dfr(1:number_of_pages, function(i) {
   page_content <- read_html(paste0(site, i))
   price <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__price col-auto pl-0 pl-md-3 pr-0 text-right mt-2 mt-md-0 align-self-end"]') %>%
