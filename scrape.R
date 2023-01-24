@@ -21,7 +21,7 @@ info_names <- c("Stav", "Úžit. plocha", "Zast. plocha", "Plocha pozemku", "Pro
 # create a cluster of worker processes (cores)
 plan(multisession, workers = 6)
 
-advertisements <- future_map_dfr(1:3, function(i) {
+advertisements <- future_map_dfr(1:number_of_pages, function(i) {
   page_content <- read_html(paste0(site, i))
   price <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__price col-auto pl-0 pl-md-3 pr-0 text-right mt-2 mt-md-0 align-self-end"]') %>%
@@ -47,12 +47,6 @@ additional_info_df <- map_dfr(advertisements$link, function(i) {
   info_details <- temp %>%
     html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "col-md-4", " " ))]//div') %>%
     html_text2()
-  info_text <- temp %>%
-    html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "text-inner", " " ))]') %>%
-    html_text2() %>%
-    as.character() %>%
-    str_trim() %>% 
-    str_squish()
 
   info <- as.data.frame(info_details) %>%
     separate(info_details, sep = ": ", c("info", "status")) %>%
@@ -67,7 +61,20 @@ additional_info_df <- map_dfr(advertisements$link, function(i) {
   land_area <- ifelse("Plocha pozemku" %in% temp_col_names, info$"Plocha pozemku", NA)
   commission_in_price <- ifelse("Provízia zahrnutá v cene" %in% temp_col_names, info$"Provízia zahrnutá v cene", NA)
 
-  tibble(condition = condition, usable_area = usable_area, built_up_area = built_up_area, land_area = land_area, commission_in_price = commission_in_price, info_text = info_text)
+  tibble(condition = condition, usable_area = usable_area, built_up_area = built_up_area, land_area = land_area, commission_in_price = commission_in_price)
+})
+
+text_long <- map_dfr(advertisements$link, function(i) {
+  temp <- read_html(GET(i, timeout(60)))
+  
+  info_text <- temp %>%
+    html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "text-inner", " " ))]') %>%
+    html_text2() %>%
+    as.character() %>%
+    str_trim() %>% 
+    str_squish()
+  
+  tibble(info_text = info_text)
 })
 
 # bind ads and additional info dataframes
@@ -99,8 +106,14 @@ advertisements_cleaned <- advertisements %>%
   filter(price != "Cena dohodou", str_detect(district, "okres")) %>%
   select(-area)
 
+# save the old file to histo folder for further use in predictive analyses
+
+if_else(file.exists("data/advertisements.csv"),
+   histo_csv <- read.csv2("data/advertisements.csv"))
+histo_date <- file.info("data/advertisements.csv")$ctime %>% as.Date() %>% as.character() %>% str_replace("-", "_")
+write.csv2(histo_csv, paste0("data/histo/advertisements", histo_date, ".csv"))
+
+# save scraped data
+
 write.csv2(advertisements_cleaned, "data/advertisements.csv")
 saveRDS(advertisements_cleaned, file = "data/advertisements.rds")
-
-
-# check for older files and create historical data
