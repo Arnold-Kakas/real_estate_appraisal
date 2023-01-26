@@ -74,7 +74,7 @@ text_long <- map_dfr(advertisements$link, function(i) {
     str_trim() %>% 
     str_squish()
   
-  tibble(info_text = info_text)
+  tibble(url = i, info_text = info_text)
 })
 
 # bind ads and additional info dataframes
@@ -114,6 +114,8 @@ histo_date <- file.info("data/advertisements.csv")$ctime %>% as.Date() %>% as.ch
 write.csv2(histo_csv, paste0("data/histo/advertisements", histo_date, ".csv"))
 
 # save scraped data
+write.csv2(text_long, "data/texts.csv")
+saveRDS(text_long, file = "data/texts.rds")
 
 write.csv2(advertisements_cleaned, "data/advertisements.csv")
 saveRDS(advertisements_cleaned, file = "data/advertisements.rds")
