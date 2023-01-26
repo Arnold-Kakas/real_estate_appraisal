@@ -103,8 +103,10 @@ advertisements_cleaned <- advertisements %>%
   unite("address", c(5, 4), sep = ", ", na.rm = TRUE, remove = FALSE) %>% # new address for geocoding
   unite("address0", c(6, 5, 4), sep = ", ", na.rm = TRUE, remove = TRUE) %>% # reordering to keep all districts in first column
   separate(address0, c("district", "municipality", "street"), sep = ", ") %>%
-  filter(price != "Cena dohodou", str_detect(district, "okres")) %>%
+  filter(str_detect(district, "okres")) %>%
+  mutate(price = as.numeric(str_replace_all(price, " ",""))) %>% 
   select(-area)
+
 
 # save the old file to histo folder for further use in predictive analyses
 
