@@ -110,14 +110,14 @@ advertisements_cleaned <- advertisements %>%
 
 # save the old file to histo folder for further use in predictive analyses
 
-if_else(file.exists("data/advertisements.csv"),
-   histo_csv <- read.csv2("data/advertisements.csv"))
-histo_date <- file.info("data/advertisements.csv")$ctime %>% as.Date() %>% as.character() %>% str_replace("-", "_")
-write.csv2(histo_csv, paste0("data/histo/advertisements", histo_date, ".csv"))
+if_else(file.exists("data/advertisements.rds"),
+   histo_csv <- read.csv2("data/advertisements.rds"))
+histo_date <- file.info("data/advertisements.rds")$ctime %>% as.Date() %>% as.character() %>% str_replace("-", "_")
+write.csv2(histo_csv, paste0("data/histo/advertisements", histo_date, ".rds"))
 
 # save scraped data
-write.csv2(text_long, "data/texts.csv")
-saveRDS(text_long, file = "data/texts.rds")
+# write.csv2(text_long, "data/texts.csv") 
+saveRDS(text_long, file = "data/texts.rds") # instead of csv due to size reduction
 
-write.csv2(advertisements_cleaned, "data/advertisements.csv")
-saveRDS(advertisements_cleaned, file = "data/advertisements.rds")
+# write.csv2(advertisements_cleaned, "data/advertisements.csv")
+saveRDS(advertisements_cleaned, file = "data/advertisements.rds") # instead of csv due to size reduction
