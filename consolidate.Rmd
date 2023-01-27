@@ -68,7 +68,7 @@ is_missing <- length(missing_geocodes) > 0
 
 ```{r conditional, eval = is_missing}
 # if there are missing geocodes, this code will be executed
-api_key <- "AIzaSyCDWUgz8htt-DlNGH__ek1p1ycAaxrau6w"
+api_key <- ""
 register_google(key = api_key)
 geocodes <- geocode(missing_geocodes$address, output = "latlon", source = "google")
 missing_geocodes <- cbind(missing_geocodes, geocodes)
