@@ -1,6 +1,6 @@
 library(pacman)
 
-p_load(tidyverse, rio)
+p_load(tidyverse, rio, ggmap)
 
 # load csv with municipalities
 municipalities <- import("data/geospatial_data/municipalities.csv")

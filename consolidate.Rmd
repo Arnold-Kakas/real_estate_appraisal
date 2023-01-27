@@ -13,11 +13,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 # import libraries
+
 library(pacman)
 p_load(
   tidyverse,
   rio,
-  sf
+  sf,
+  ggmap
 )
 ```
 
@@ -27,3 +29,55 @@ scraped_data <- import("data/advertisements.csv")
 geocoded_data <- import("data/geospatial_data/geocodes.csv")
 ```
 
+```{r}
+colnames(scraped_data)
+scraped_data <- scraped_data %>%
+  mutate(
+    district = str_replace_all(district, "okres ", ""),
+    address = paste(municipality, district, "Slovakia", sep = ", ")
+  ) %>%
+  select(-c(V1, c))
+# check what is c column and correct in scraping code
+```
+
+```{r}
+# tidy geocoded data
+geocoded_data <- geocoded_data %>%
+  transmute(
+    address = V2,
+    lon = V3,
+    lat = V4
+  ) %>%
+  slice(-1)
+```
+
+```{r}
+merged_data <- scraped_data %>%
+  left_join(geocoded_data, by = "address")
+```
+
+```{r label}
+# check for missing geocodes
+missing_geocodes <- merged_data %>%
+  filter(is.na(lat)) %>%
+  select(c(address)) %>%
+  distinct()
+is_missing <- length(missing_geocodes) > 0
+```
+
+```{r conditional, eval = is_missing}
+# if there are missing geocodes, this code will be executed
+api_key <- ""
+register_google(key = api_key)
+geocodes <- geocode(missing_geocodes$address, output = "latlon", source = "google")
+missing_geocodes <- cbind(missing_geocodes, geocodes)
+rm(api_key, geocodes)
+
+merged_data <- merged_data %>%
+  left_join(missing_geocodes, by = "address") %>%
+  mutate(
+    lat = coalesce(lat.x, as.character(lat.y)),
+    lon = coalesce(lon.x, as.character(lon.y))
+  ) %>%
+  select(-c(lat.x, lat.y, lon.x, lon.y))
+```
