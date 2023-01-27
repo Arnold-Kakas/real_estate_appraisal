@@ -25,18 +25,17 @@ p_load(
 
 ```{r}
 # load data
-scraped_data <- import("data/advertisements.csv")
+scraped_data <- import("data/advertisements.rds")
 geocoded_data <- import("data/geospatial_data/geocodes.csv")
 ```
 
 ```{r}
-colnames(scraped_data)
 scraped_data <- scraped_data %>%
   mutate(
     district = str_replace_all(district, "okres ", ""),
     address = paste(municipality, district, "Slovakia", sep = ", ")
   ) %>%
-  select(-c(V1, c))
+  select(-c(c))
 # check what is c column and correct in scraping code
 ```
 
@@ -48,7 +47,9 @@ geocoded_data <- geocoded_data %>%
     lon = V3,
     lat = V4
   ) %>%
-  slice(-1)
+  slice(-1) %>% 
+  mutate(lon = as.numeric(str_replace_all(lon, ",", ".")),
+         lat = as.numeric(str_replace_all(lat, ",", ".")))
 ```
 
 ```{r}
@@ -67,7 +68,7 @@ is_missing <- length(missing_geocodes) > 0
 
 ```{r conditional, eval = is_missing}
 # if there are missing geocodes, this code will be executed
-api_key <- ""
+api_key <- "AIzaSyCDWUgz8htt-DlNGH__ek1p1ycAaxrau6w"
 register_google(key = api_key)
 geocodes <- geocode(missing_geocodes$address, output = "latlon", source = "google")
 missing_geocodes <- cbind(missing_geocodes, geocodes)
@@ -76,8 +77,18 @@ rm(api_key, geocodes)
 merged_data <- merged_data %>%
   left_join(missing_geocodes, by = "address") %>%
   mutate(
-    lat = coalesce(lat.x, as.character(lat.y)),
-    lon = coalesce(lon.x, as.character(lon.y))
+    lat = coalesce(lat.x, lat.y),
+    lon = coalesce(lon.x, lon.y)
   ) %>%
   select(-c(lat.x, lat.y, lon.x, lon.y))
 ```
+
+
+
+```{r}
+my_sf <- st_as_sf(merged_data, coords = c('lon', 'lat'))
+my_sf <- st_set_crs(my_sf, 4326)
+ggplot(my_sf) + 
+  geom_sf(aes(color = mean(price)))
+```
+
