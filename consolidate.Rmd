@@ -18,8 +18,10 @@ library(pacman)
 p_load(
   tidyverse,
   rio,
+  skimr,
   sf,
-  ggmap
+  ggmap,
+  plotly
 )
 ```
 
@@ -31,11 +33,20 @@ geocoded_data <- import("data/geospatial_data/geocodes.csv")
 
 ```{r}
 scraped_data <- scraped_data %>%
+  filter(!is.na(price)) %>%
+  filter(if_all(
+    where(is.numeric),
+    ~ between(price, quantile(price, .02), quantile(price, .98))
+  )) %>%
   mutate(
     district = str_replace_all(district, "okres ", ""),
-    address = paste(municipality, district, "Slovakia", sep = ", ")
+    address = paste(municipality, district, "Slovakia", sep = ", "),
+    price = log(price + 1)
   ) %>%
   select(-c(c))
+
+ skim(scraped_data)
+
 # check what is c column and correct in scraping code
 ```
 
@@ -47,9 +58,11 @@ geocoded_data <- geocoded_data %>%
     lon = V3,
     lat = V4
   ) %>%
-  slice(-1) %>% 
-  mutate(lon = as.numeric(str_replace_all(lon, ",", ".")),
-         lat = as.numeric(str_replace_all(lat, ",", ".")))
+  slice(-1) %>%
+  mutate(
+    lon = as.numeric(str_replace_all(lon, ",", ".")),
+    lat = as.numeric(str_replace_all(lat, ",", "."))
+  )
 ```
 
 ```{r}
@@ -63,7 +76,7 @@ missing_geocodes <- merged_data %>%
   filter(is.na(lat)) %>%
   select(c(address)) %>%
   distinct()
-is_missing <- length(missing_geocodes) > 0
+is_missing <- length(missing_geocodes) > 1
 ```
 
 ```{r conditional, eval = is_missing}
@@ -74,6 +87,9 @@ geocodes <- geocode(missing_geocodes$address, output = "latlon", source = "googl
 missing_geocodes <- cbind(missing_geocodes, geocodes)
 rm(api_key, geocodes)
 
+geocoded_data <- bind_rows(geocoded_data, missing_geocodes)
+write.csv2(geocoded_data, "data/geospatial_data/geocodes.csv")
+
 merged_data <- merged_data %>%
   left_join(missing_geocodes, by = "address") %>%
   mutate(
@@ -83,12 +99,26 @@ merged_data <- merged_data %>%
   select(-c(lat.x, lat.y, lon.x, lon.y))
 ```
 
-
-
 ```{r}
-my_sf <- st_as_sf(merged_data, coords = c('lon', 'lat'))
-my_sf <- st_set_crs(my_sf, 4326)
-ggplot(my_sf) + 
-  geom_sf(aes(color = mean(price)))
+price_sf <- merged_data %>%
+  group_by(lat, lon) %>%
+  summarize(price = mean(price)) %>%
+  st_as_sf(coords = c("lon", "lat"))
+
+price_sf <- st_set_crs(price_sf, 4326)
+
+map <- ggplot(price_sf) +
+  geom_sf(aes(col = price)) +
+  scale_fill_brewer(palette = "YlOrRd")
+ggplotly(map)
 ```
 
+```{r}
+p_load(colorRamps)
+price_sf %>%
+  ggplot(aes(col = price)) +
+  geom_sf() +
+  scale_colour_stepsn(colours = colorRamps::green2red(10), )
+```
+next steps
+rotate coordinates

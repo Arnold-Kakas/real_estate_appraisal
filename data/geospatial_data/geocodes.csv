@@ -1,4 +1,4 @@
-"";"municipalities$address";"lon";"lat"
+"";"address";"lon";"lat"
 "1";"Abrahámovce, Bardejov, Slovakia";21,3434837;49,1614319
 "2";"Adamovské Kochanovce, Trenčín, Slovakia";17,9275991;48,8525988
 "3";"Andrejová, Bardejov, Slovakia";21,3326199;49,3342318
@@ -2926,3 +2926,65 @@
 "2925";"Zohor, Malacky, Slovakia";16,982887;48,3174603
 "2926";"Zubné, Humenné, Slovakia";22,0632405;49,0459393
 "2927";"Zvolen, Zvolen, Slovakia";19,1371155;48,5761806
+"2928";"Bratislava V - Petržalka, Bratislava, Slovakia";17,1115426;48,11087
+"2929";"Bratislava II - Ružinov, Bratislava, Slovakia";17,1627978;48,1575967
+"2930";"Bratislava III - Rača, Bratislava, Slovakia";17,1546065;48,2120284
+"2931";"Bratislava IV - Záhorská Bystrica, Bratislava, Slovakia";17,0387275;48,241632
+"2932";"Žilina - Hájik, Žilina, Slovakia";18,7126992;49,2138553
+"2933";"Bratislava IV - Dúbravka, Bratislava, Slovakia";17,0290285;48,1888276
+"2934";"Žilina - Závodie, Žilina, Slovakia";18,7206376;49,2125556
+"2935";"Košice III - Dargovských Hrdinov, Košice, Slovakia";21,2771429;48,7442344
+"2936";"Bratislava V - Jarovce, Bratislava, Slovakia";17,1140119;48,0650577
+"2937";"Bratislava III - Nové Mesto, Bratislava, Slovakia";17,1368492;48,1671515
+"2938";"Bratislava I - Staré Mesto, Bratislava, Slovakia";17,1077475;48,148598
+"2939";"Bratislava IV - Karlova Ves, Bratislava, Slovakia";17,0518443;48,1591643
+"2940";"Bratislava II - Vrakuňa, Bratislava, Slovakia";17,2129005;48,1421639
+"2941";"Bratislava II - Podunajské Biskupice, Bratislava, Slovakia";17,2107902;48,1251057
+"2942";"Bratislava III - Vajnory, Bratislava, Slovakia";17,2052549;48,2030662
+"2943";"Košice IV - Nad jazerom, Košice, Slovakia";21,2844607;48,6893403
+"2944";"Košice II - Západ, Košice, Slovakia";21,2345873;48,7143063
+"2945";"Žilina - Hliny, Žilina, Slovakia";18,7408001;49,2194498
+"2946";"Bratislava V - Rusovce, Bratislava, Slovakia";17,1450367;48,0560336
+"2947";"Bratislava IV - Lamač, Bratislava, Slovakia";17,0474565;48,1938879
+"2948";"Košice II - Pereš, Košice, Slovakia";21,211786;48,6888583
+"2949";"Košice I - Sídlisko Ťahanovce, Košice, Slovakia";21,2676675;48,7539765
+"2950";"Košice IV - Juh, Košice, Slovakia";21,2570841;48,7092508
+"2951";"Žilina - Solinky, Žilina, Slovakia";18,7379573;49,1964364
+"2952";"Žilina - Vlčince, Žilina, Slovakia";18,7619076;49,2103468
+"2953";"Žilina - Bôrik, Žilina, Slovakia";18,745336;49,208794
+"2954";"Žilina - Staré mesto, Žilina, Slovakia";18,7408001;49,2194498
+"2955";"Košice I - Staré Mesto, Košice, Slovakia";21,2570032;48,7223734
+"2956";"Košice III - Košická Nová Ves, Košice, Slovakia";21,2977631;48,7334389
+"2957";"Žilina - Žilinská Lehota, Žilina, Slovakia";18,6809756;49,2442407
+"2958";"Košice I - Sever, Košice, Slovakia";21,2461837;48,7366124
+"2959";"Kalnica, Nové Mesto nad Váhom, Slovakia";17,9313829;48,7626304
+"2960";"Žilina - Rosinky, Žilina, Slovakia";18,7733212;49,2113425
+"2961";"Bratislava IV - Devín, Bratislava, Slovakia";16,9844742;48,1737498
+"2962";"Bratislava IV - Devínska Nová Ves, Bratislava, Slovakia";16,9727781;48,2094434
+"2963";"Žilina - Bánová, Žilina, Slovakia";18,72174;49,20165
+"2964";"Košice IV - Barca, Košice, Slovakia";21,2653788;48,677026
+"2965";"Žilina - Bytčica, Žilina, Slovakia";18,73306;49,185
+"2966";"Žilina - Považský Chlmec, Žilina, Slovakia";18,7261445;49,2405111
+"2967";"Starý Smokovec, Poprad, Slovakia";20,2203821;49,1390462
+"2968";"Žilina - Zádubnie, Žilina, Slovakia";18,7710348;49,2400803
+"2969";"Košice IV - Krásna, Košice, Slovakia";21,3188165;48,6726061
+"2970";"Košice IV - Vyšné Opátske, Košice, Slovakia";21,2799977;48,7164117
+"2971";"Košice I - Ťahanovce, Košice, Slovakia";21,2551353;48,757492
+"2972";"Žilina - Budatín, Žilina, Slovakia";18,7377335;49,2362971
+"2973";"Košice II - Lorinčík, Košice, Slovakia";21,1923378;48,6894436
+"2974";"Košice II - Sídlisko KVP, Košice, Slovakia";21,2148908;48,7164151
+"2975";"Žilina - Trnové, Žilina, Slovakia";18,79889;49,18375
+"2976";"Košice I - Kavečany, Košice, Slovakia";21,2058968;48,7754724
+"2977";"Košice II - Šaca, Košice, Slovakia";21,1713844;48,6370535
+"2978";"Demänová, Liptovský Mikuláš, Slovakia";19,5844826;49,0629134
+"2979";"Nová Stráž, Komárno, Slovakia";18,0441986;47,7641821
+"2980";"Štrbské Pleso, Poprad, Slovakia";20,0630114;49,1193882
+"2981";"Košice II - Myslava, Košice, Slovakia";21,2045831;48,7091002
+"2982";"Tatranská Lomnica, Poprad, Slovakia";20,2822798;49,1644992
+"2983";"Podsuchá, Ružomberok, Slovakia";19,278073;48,9927839
+"2984";"Spišská Sobota, Poprad, Slovakia";20,3131942;49,064132
+"2985";"Iľanovo, Liptovský Mikuláš, Slovakia";19,6184603;49,0527233
+"2986";"Rakoľuby, Nové Mesto nad Váhom, Slovakia";17,8880017;48,7625285
+"2987";"Opatová, Trenčín, Slovakia";18,0931512;48,9137262
+"2988";"Bratislava, Bratislava, Slovakia";17,1077477;48,1485965
+"2989";"Bratislava V - Čunovo, Bratislava, Slovakia";17,1994899;48,0307363
