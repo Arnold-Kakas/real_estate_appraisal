@@ -1,6 +1,6 @@
 library(pacman)
 
-p_load(tidyverse, rvest, httr, doParallel, furrr)
+p_load(rio, tidyverse, rvest, httr, doParallel, furrr)
 
 # scrape through nehnutelnosti web page and retrieve data advertisements for the sale of apartments and houses
 site <- "https://www.nehnutelnosti.sk/slovensko/predaj/?p[categories][ids]=1.2&p[order]=1&p[page]="
@@ -110,10 +110,12 @@ advertisements_cleaned <- advertisements %>%
 
 # save the old file to histo folder for further use in predictive analyses
 
-if_else(file.exists("data/advertisements.rds"),
-   histo_csv <- read.csv2("data/advertisements.rds"))
-histo_date <- file.info("data/advertisements.rds")$ctime %>% as.Date() %>% as.character() %>% str_replace("-", "_")
-write.csv2(histo_csv, paste0("data/histo/advertisements", histo_date, ".rds"))
+if (file.exists("data/advertisements.rds")) {
+   histo_rds <- import("data/advertisements.rds") %>% 
+  mutate(timestamp = as.Date(file.info("data/advertisements.rds")$ctime))
+  histo_date <- file.info("data/advertisements.rds")$ctime %>% as.Date() %>% as.character() %>% str_replace_all("-", "_")
+  saveRDS(histo_rds, paste0("data/histo/advertisements", histo_date, ".rds"))
+}
 
 # save scraped data
 # write.csv2(text_long, "data/texts.csv") 
