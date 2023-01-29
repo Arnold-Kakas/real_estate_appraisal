@@ -10,15 +10,25 @@ apartments <- import("data/apartments.rds")
 houses_cleaned <- houses %>% 
   mutate(usable_area = as.numeric(usable_area),
          built_up_area = as.numeric(built_up_area),
-         land_area = as.numeric(land_area)
+         land_area = as.numeric(land_area),
+         district = as_factor(district),
+         municipality = as_factor(municipality),
+         type = as_factor(type),
+         commission_in_price = as_factor(commission_in_price)
   )
 
 apartments_cleaned <- apartments %>% 
   mutate(usable_area = as.numeric(usable_area),
-         rooms = as.numeric(rooms)
+         rooms = as.numeric(rooms),
+         district = as_factor(district),
+         municipality = as_factor(municipality),
+         condition = as_factor(condition),
+         type = as_factor(type),
+         commission_in_price = as_factor(commission_in_price)
   )
 
 summary(apartments_cleaned)
+
 # impute missing values
 set.seed(123)
 houses_cleaned <- 
@@ -125,5 +135,65 @@ apartments_xgboost_tune <-
 
 autoplot(apartments_xgboost_tune)
 
+
+houses_best_model <- select_best(houses_xgboost_tune, "rmse")
+apartments_best_model <- select_best(apartments_xgboost_tune, "rmse")
+
+# finalize models
+houses_final_model <- finalize_model(xgb_model, houses_best_model)
+houses_workflow    <- houses_workflow %>% update_model(houses_final_model)
+houses_xgb_fit     <- fit(houses_workflow, data = houses_train)
+
+apartments_final_model <- finalize_model(xgb_model, apartments_best_model)
+apartments_workflow    <- apartments_workflow %>% update_model(apartments_final_model)
+apartments_xgb_fit     <- fit(apartments_workflow, data = apartments_train)
+
+# evaluate
+houses_pred <- 
+  predict(houses_xgb_fit, houses_test) %>% 
+  mutate(modelo = "XGBoost",
+         .pred = exp(.pred)) %>% 
+  bind_cols(houses_test)
+
+houses_plot1 <- 
+  houses_pred %>% 
+  ggplot(aes(x = .pred, y = price))+
+  geom_point() + 
+  geom_abline(intercept = 0, col = "red")
+
+
+houses_plot2 <- 
+  houses_pred %>% 
+  select(.pred, price) %>% 
+  gather(key, value) %>% 
+  ggplot(aes(x = value, volor = key, fill = key)) + 
+  geom_density(alpha = .2) + 
+  labs(x = "", y = "")
+
+houses_plot1 / houses_plot2
+
+apartments_pred <- 
+  predict(apartments_xgb_fit, apartments_test) %>% 
+  mutate(modelo = "XGBoost",
+         .pred = exp(.pred)) %>% 
+  bind_cols(houses_test)
+
+apartments_plot1 <- 
+  apartments_pred %>% 
+  ggplot(aes(x = .pred, y = price))+
+  geom_point() + 
+  geom_abline(intercept = 0, col = "red")
+
+
+apartments_plot2 <- 
+  apartments_pred %>% 
+  select(.pred, price) %>% 
+  gather(key, value) %>% 
+  ggplot(aes(x = value, volor = key, fill = key)) + 
+  geom_density(alpha = .2) + 
+  labs(x = "", y = "")
+
+house_plot1 / house_plot2
+
 # to do
-# factor character vectors, repalce NA with not provided
+# check for julia silge video on many factor levels
