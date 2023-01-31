@@ -1,21 +1,21 @@
 # create and evaluate models
 # import libs and data
 library(pacman)
-p_load(rio, tidyverse, tidymodels, GGally, mice, patchwork)
+p_load(rio, tidyverse, tidymodels, GGally, mice, patchwork, vip)
 
 houses <- import("data/houses.rds")
 apartments <- import("data/apartments.rds")
 
 # clean data
 houses_cleaned <- houses %>% 
-  mutate(price = log10(price+1),
+  mutate(#price = log10(price+1),
          usable_area = as.numeric(usable_area),
          built_up_area = as.numeric(built_up_area),
          land_area = as.numeric(land_area)
   )
 
 apartments_cleaned <- apartments %>% 
-  mutate(price = log10(price),
+  mutate(#price = log10(price),
          usable_area = as.numeric(usable_area),
          rooms = as.numeric(rooms)
   )
@@ -54,6 +54,81 @@ apartments_cleaned <- apartments_cleaned %>%
          commission_in_price = as_factor(commission_in_price)
   )
 
+# EDA
+houses_BoxCox <- recipe(houses_train, price ~ .) %>%
+  step_rm(lon, lat, lon_rotated, lat_rotated) %>% 
+  step_BoxCox(all_numeric_predictors()) %>% 
+  prep() %>% 
+  bake(new_data = NULL)
+
+houses_log <- recipe(houses_train, price ~ .) %>%
+  step_rm(lon, lat, lon_rotated, lat_rotated) %>% 
+  step_log(all_numeric_predictors()) %>% 
+  prep() %>% 
+  bake(new_data = NULL)
+
+houses_norm <- recipe(houses_train, price ~ .) %>%
+  step_rm(lon, lat, lon_rotated, lat_rotated) %>% 
+  step_normalize(all_numeric_predictors()) %>% 
+  prep() %>% 
+  bake(new_data = NULL)
+
+# Plot distribution of price before and after transformations
+p1 <- ggplot(data = houses_cleaned, aes(x = price)) + 
+  geom_density() + 
+  ggtitle("price before transformations")
+
+p2 <- ggplot(data = houses_BoxCox, aes(x = price)) + 
+  geom_density() + 
+  ggtitle("price after Box-Cox transform")
+
+p3 <- ggplot(data = houses_norm, aes(x = price)) + 
+  geom_density() + 
+  ggtitle("price after normalization")
+
+p4 <- ggplot(data = houses_log, aes(x = price)) + 
+  geom_density() + 
+  ggtitle("price after log transform")
+
+(p1 + p2)/ (p3 + p4)
+
+apartments_BoxCox <- recipe(apartments_train, price ~ .) %>%
+  step_rm(lon, lat, lon_rotated, lat_rotated) %>% 
+  step_BoxCox(all_numeric_predictors()) %>% 
+  prep() %>% 
+  bake(new_data = NULL)
+
+apartments_log <- recipe(apartments_train, price ~ .) %>%
+  step_rm(lon, lat, lon_rotated, lat_rotated) %>% 
+  step_log(all_numeric_predictors()) %>% 
+  prep() %>% 
+  bake(new_data = NULL)
+
+apartments_norm <- recipe(apartments_train, price ~ .) %>%
+  step_rm(lon, lat, lon_rotated, lat_rotated) %>% 
+  step_normalize(all_numeric_predictors()) %>% 
+  prep() %>% 
+  bake(new_data = NULL)
+
+# Plot distribution of price before and after transformations
+p5 <- ggplot(data = apartments_cleaned, aes(x = price)) + 
+  geom_density() + 
+  ggtitle("price before transformations")
+
+p6 <- ggplot(data = apartments_BoxCox, aes(x = price)) + 
+  geom_density() + 
+  ggtitle("price after Box-Cox transform")
+
+p7 <- ggplot(data = apartments_norm, aes(x = price)) + 
+  geom_density() + 
+  ggtitle("price after normalization")
+
+p8 <- ggplot(data = apartments_log, aes(x = price)) + 
+  geom_density() + 
+  ggtitle("price after log transform")
+
+(p5 + p6)/ (p7 + p8)
+
 # split dataframes to train(80)/test(20)
 set.seed(345)
 houses_train_split <- initial_split(houses_cleaned, prop = 0.8)
@@ -80,13 +155,6 @@ set.seed(678)
 apartments_train_boots <- bootstraps(apartments_train, times = 25)
 
 # recipes
-houses_lr_recipe <- recipe(houses_train, price ~ .) %>%
-  step_rm(lat_rotated, lon_rotated, municipality) %>%
-  step_log(usable_area, built_up_area, land_area) %>%
-  step_normalize(usable_area, built_up_area, land_area) %>%
-  step_other(all_nominal(), threshold = 0.01) %>%
-  step_dummy(all_nominal()) 
-
 houses_xgboost_recipe <- recipe(houses_train, price ~ .) %>%
   step_rm(lat, lon, municipality) %>%
   step_log(usable_area, built_up_area, land_area) %>%
@@ -103,9 +171,6 @@ apartments_xgboost_recipe <- recipe(apartments_train, price ~ .) %>%
   step_dummy(all_nominal())
 
 # models
-houses_lr_model <- linear_reg() %>%
-  set_engine(engine = "lm")
-
 xgb_model <- 
   boost_tree(
     trees = 1000, loss_reduction = tune(),
@@ -117,7 +182,6 @@ xgb_model <-
   set_engine("xgboost", nthread = 6) # use 6 cores for multithreading
 
 # workflows
-houses_lr_workflow <- workflow() %>% add_recipe(houses_lr_recipe) %>% add_model(houses_lr_model)
 houses_workflow <- workflow() %>% add_recipe(houses_xgboost_recipe) %>% add_model(xgb_model)
 apartments_workflow <- workflow() %>% add_recipe(apartments_xgboost_recipe) %>% add_model(xgb_model)
 
@@ -159,12 +223,6 @@ apartments_xgboost_grid <-
     size = 30
   )
 
-houses_lr_res <- fit_resamples(
-  houses_lr_workflow,
-  resamples = houses_folds,
-  control = control_resamples(save_pred = TRUE)
-)
-
 houses_xgboost_res <- tune_grid(
   houses_workflow,
   resamples = houses_train_boots,
@@ -179,15 +237,10 @@ apartments_xgboost_res <- tune_grid(
   control = control_grid(save_pred = TRUE)
 )
 
-houses_best_lr_model <- select_best(houses_lr_res, "rmse")
 houses_best_model <- select_best(houses_xgboost_res, "rmse")
 apartments_best_model <- select_best(apartments_xgboost_res, "rmse")
 
 # finalize models
-houses_lr_final_model <- finalize_model(houses_lr_model, houses_best_model)
-houses_lr_workflow    <- houses_lr_workflow %>% update_model(houses_lr_final_model)
-houses_lr_fit     <- fit(houses_lr_workflow, data = houses_train)
-
 houses_final_model <- finalize_model(xgb_model, houses_best_model)
 houses_workflow    <- houses_workflow %>% update_model(houses_final_model)
 houses_xgb_fit     <- fit(houses_workflow, data = houses_train)
@@ -195,12 +248,6 @@ houses_xgb_fit     <- fit(houses_workflow, data = houses_train)
 apartments_final_model <- finalize_model(xgb_model, apartments_best_model)
 apartments_workflow    <- apartments_workflow %>% update_model(apartments_final_model)
 apartments_xgb_fit     <- fit(apartments_workflow, data = apartments_train)
-
-library(vip)
-houses_lr_fit %>%
-  fit(data = houses_train) %>%
-  pull_workflow_fit() %>%
-  vip(geom = "point")
 
 houses_xgb_fit %>%
   fit(data = houses_train) %>%
@@ -213,28 +260,6 @@ apartments_xgb_fit %>%
   vip(geom = "point")
 
 # evaluate
-houses_lr_pred <- 
-  predict(houses_lr_fit, houses_test) %>%
-  bind_cols(houses_test)
-
-houses_lr_plot1 <- 
-  houses_lr_pred %>% 
-  ggplot(aes(x = .pred, y = price))+
-  geom_point() + 
-  geom_abline(intercept = 0, col = "red")
-
-
-houses_lr_plot2 <-
-  houses_lr_pred %>%
-  select(.pred, price) %>%
-  gather(key, value) %>%
-  ggplot(aes(x = value, volor = key, fill = key)) +
-  geom_density(alpha = .2) +
-  labs(x = "", y = "")
-
-houses_lr_plot1 / houses_lr_plot2
-
-
 houses_pred <- 
   predict(houses_xgb_fit, houses_test) %>%
   bind_cols(houses_test)
