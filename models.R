@@ -20,7 +20,8 @@ apartments_cleaned <- apartments %>%
          rooms = as.numeric(rooms)
   )
 
-summary(apartments_cleaned)
+ggpairs(houses_cleaned[,c(1, 6, 7, 10, 11)])
+ggpairs(apartments_cleaned[,c(1, 6, 8,11, 12)])
 
 # impute missing values
 set.seed(123)
@@ -158,7 +159,7 @@ apartments_train_boots <- bootstraps(apartments_train, times = 25)
 houses_xgboost_recipe <- recipe(houses_train, price ~ .) %>%
   step_rm(lat, lon, municipality) %>%
   step_log(usable_area, built_up_area, land_area) %>%
-  step_normalize(usable_area, built_up_area, land_area) %>%
+#  step_normalize(usable_area, built_up_area, land_area) %>%
   step_other(all_nominal(), threshold = 0.01) %>%
   step_dummy(all_nominal()) 
 
