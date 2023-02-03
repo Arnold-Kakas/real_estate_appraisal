@@ -267,6 +267,14 @@ apartments_xgb_fit %>%
   pull_workflow_fit() %>%
   vip(geom = "point")
 
+houses_final_res <- last_fit(houses_xgb_fit, houses_train_split)
+collect_metrics(houses_final_res)
+# rsq is small, need to look for more predictors
+
+apartments_final_res <- last_fit(apartments_xgb_fit, apartments_train_split)
+collect_metrics(apartments_final_res)
+
+
 # evaluate
 houses_pred <-
   predict(houses_xgb_fit, houses_test) %>%
