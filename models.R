@@ -41,9 +41,8 @@ houses_cleaned <- houses_cleaned %>%
     municipality = as_factor(municipality),
     type = as_factor(type),
     commission_in_price = as_factor(commission_in_price)
-  ) %>% 
-  remove_sd_outlier(cols = c("price", "usable_area", "built_up_area", "land_area"), n_sigmas = 2) # remove outliers with value +-mean +2sd
-
+  ) %>%
+  remove_percentile_outlier(cols = c("usable_area", "built_up_area", "land_area"), percentile = 5)
 apartments_cleaned <- apartments_cleaned %>%
   mutate(
     condition = replace_na(condition, "not provided"),
@@ -53,8 +52,10 @@ apartments_cleaned <- apartments_cleaned %>%
     type = as_factor(type),
     commission_in_price = as_factor(commission_in_price)
   ) %>% 
-  remove_sd_outlier(cols = c("price", "usable_area"), n_sigmas = 2) # remove outliers with value +-mean +2sd
+  remove_percentile_outlier(cols = c("usable_area"), percentile = 5)
+  #remove_sd_outlier(cols = c("price", "usable_area"), n_sigmas = 1.5) # remove outliers with value +-mean +2sd
 
+summary(houses_cleaned)
 ggpairs(houses_cleaned[, c(1, 6, 7, 10, 11)])
 ggpairs(apartments_cleaned[, c(1, 6, 8, 11, 12)])
 
