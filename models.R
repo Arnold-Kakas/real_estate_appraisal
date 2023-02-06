@@ -43,6 +43,7 @@ houses_cleaned <- houses_cleaned %>%
     commission_in_price = as_factor(commission_in_price)
   ) %>%
   remove_percentile_outlier(cols = c("usable_area", "built_up_area", "land_area"), percentile = 5)
+
 apartments_cleaned <- apartments_cleaned %>%
   mutate(
     condition = replace_na(condition, "not provided"),
@@ -135,6 +136,7 @@ p8 <- ggplot(data = apartments_log, aes(x = usable_area)) +
 (p5 + p6) / (p7 + p8)
 
 # split dataframes to train(80)/test(20)
+houses_cleaned <- droplevels(houses_cleaned)
 set.seed(345)
 houses_train_split <- initial_split(houses_cleaned, prop = 0.8)
 
@@ -151,7 +153,7 @@ set.seed(567)
 houses_train_boots <- bootstraps(houses_train, times = 25)
 
 set.seed(987)
-houses_folds <- vfold_cv(houses_train, strata = type, v = 5)
+houses_folds <- vfold_cv(houses_train, strata = district, v = 5)
 set.seed(876)
 apartments_folds <- vfold_cv(apartments_train, strata = type, v = 5)
 
@@ -172,8 +174,8 @@ apartments_xgboost_recipe <- recipe(apartments_train, price ~ .) %>%
   step_impute_knn(all_nominal_predictors()) %>%
   step_BoxCox(usable_area) %>%
 #  step_normalize(usable_area) %>%
-  step_other(all_nominal(), threshold = 0.01) %>%
-  step_dummy(all_nominal())
+  step_other(all_nominal_predictors(), threshold = 0.01) %>%
+  step_dummy(all_nominal_predictors())
 
 # models
 xgb_model <-
@@ -279,7 +281,9 @@ collect_metrics(apartments_final_res)
 # evaluate
 houses_pred <-
   predict(houses_xgb_fit, houses_test) %>%
-  bind_cols(houses_test)
+  bind_cols(houses_test) %>% 
+  mutate(prediction = 10^.pred,
+         real_price = 10^price)
 
 houses_plot1 <-
   houses_pred %>%
@@ -300,7 +304,9 @@ houses_plot1 / houses_plot2
 
 apartments_pred <-
   predict(apartments_xgb_fit, apartments_test) %>%
-  bind_cols(apartments_test)
+  bind_cols(apartments_test) %>% 
+  mutate(prediction = 10^.pred,
+         real_price = 10^price)
 
 apartments_plot1 <-
   apartments_pred %>%
@@ -319,5 +325,3 @@ apartments_plot2 <-
 
 apartments_plot1 / apartments_plot2
 
-# to do
-# check for julia silge video on many factor levels
