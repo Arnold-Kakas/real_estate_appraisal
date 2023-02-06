@@ -35,14 +35,27 @@ apartments_cleaned <- complete(apartments_cleaned, 1)
 
 # mutate character vector (didn't do it in first cleaning due to slow imputation after this change)
 houses_cleaned <- houses_cleaned %>%
+  filter(
+    usable_area > quantile(usable_area, 0.01),
+         usable_area < quantile(usable_area, 0.9)) %>% 
+  filter(
+    built_up_area < quantile(usable_area, 0.9)) %>% 
   mutate(
     condition = replace_na(condition, "not provided"),
     district = as_factor(district),
     municipality = as_factor(municipality),
     type = as_factor(type),
     commission_in_price = as_factor(commission_in_price)
-  ) %>%
-  remove_percentile_outlier(cols = c("usable_area", "built_up_area", "land_area"), percentile = 5)
+  ) # %>%
+  # remove_percentile_outlier(cols = c("usable_area", "built_up_area", "land_area"), percentile = 5)
+
+ggplot(houses_cleaned, mapping = aes(x = built_up_area)) +
+  geom_boxplot()
+
+summary(houses_cleaned)
+ggpairs(houses_cleaned[, c(1, 6, 7, 10, 11)])
+
+# removing built up area due to low correlation with price and 
 
 apartments_cleaned <- apartments_cleaned %>%
   mutate(
@@ -56,84 +69,83 @@ apartments_cleaned <- apartments_cleaned %>%
   remove_percentile_outlier(cols = c("usable_area"), percentile = 5)
   #remove_sd_outlier(cols = c("price", "usable_area"), n_sigmas = 1.5) # remove outliers with value +-mean +2sd
 
-summary(houses_cleaned)
-ggpairs(houses_cleaned[, c(1, 6, 7, 10, 11)])
+
 ggpairs(apartments_cleaned[, c(1, 6, 8, 11, 12)])
 
 # EDA
-houses_BoxCox <- recipe(houses_train, price ~ .) %>%
-  step_rm(lon, lat, lon_rotated, lat_rotated) %>%
-  step_BoxCox(all_numeric_predictors()) %>%
-  prep() %>%
-  bake(new_data = NULL)
+# houses_BoxCox <- recipe(houses_train, price ~ .) %>%
+#   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
+#   step_BoxCox(all_numeric_predictors()) %>%
+#   prep() %>%
+#   bake(new_data = NULL)
+# 
+# houses_log <- recipe(houses_train, price ~ .) %>%
+#   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
+#   step_log(all_numeric_predictors()) %>%
+#   prep() %>%
+#   bake(new_data = NULL)
+# 
+# houses_norm <- recipe(houses_train, price ~ .) %>%
+#   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
+#   step_normalize(all_numeric_predictors()) %>%
+#   prep() %>%
+#   bake(new_data = NULL)
+# 
+# # Plot distribution of built_up_area before and after transformations
+# p1 <- ggplot(data = houses_cleaned, aes(x = built_up_area)) +
+#   geom_density() +
+#   ggtitle("price before transformations")
+# 
+# p2 <- ggplot(data = houses_BoxCox, aes(x = built_up_area)) +
+#   geom_density() +
+#   ggtitle("price after Box-Cox transform")
+# 
+# p3 <- ggplot(data = houses_norm, aes(x = built_up_area)) +
+#   geom_density() +
+#   ggtitle("price after normalization")
+# 
+# p4 <- ggplot(data = houses_log, aes(x = built_up_area)) +
+#   geom_density() +
+#   ggtitle("price after log transform")
+# 
+# (p1 + p2) / (p3 + p4)
 
-houses_log <- recipe(houses_train, price ~ .) %>%
-  step_rm(lon, lat, lon_rotated, lat_rotated) %>%
-  step_log(all_numeric_predictors()) %>%
-  prep() %>%
-  bake(new_data = NULL)
-
-houses_norm <- recipe(houses_train, price ~ .) %>%
-  step_rm(lon, lat, lon_rotated, lat_rotated) %>%
-  step_normalize(all_numeric_predictors()) %>%
-  prep() %>%
-  bake(new_data = NULL)
-
-# Plot distribution of built_up_area before and after transformations
-p1 <- ggplot(data = houses_cleaned, aes(x = built_up_area)) +
-  geom_density() +
-  ggtitle("price before transformations")
-
-p2 <- ggplot(data = houses_BoxCox, aes(x = built_up_area)) +
-  geom_density() +
-  ggtitle("price after Box-Cox transform")
-
-p3 <- ggplot(data = houses_norm, aes(x = built_up_area)) +
-  geom_density() +
-  ggtitle("price after normalization")
-
-p4 <- ggplot(data = houses_log, aes(x = built_up_area)) +
-  geom_density() +
-  ggtitle("price after log transform")
-
-(p1 + p2) / (p3 + p4)
-
-apartments_BoxCox <- recipe(apartments_train, price ~ .) %>%
-  step_rm(lon, lat, lon_rotated, lat_rotated) %>%
-  step_BoxCox(all_numeric_predictors()) %>%
-  prep() %>%
-  bake(new_data = NULL)
-
-apartments_log <- recipe(apartments_train, price ~ .) %>%
-  step_rm(lon, lat, lon_rotated, lat_rotated) %>%
-  step_log(all_numeric_predictors()) %>%
-  prep() %>%
-  bake(new_data = NULL)
-
-apartments_norm <- recipe(apartments_train, price ~ .) %>%
-  step_rm(lon, lat, lon_rotated, lat_rotated) %>%
-  step_normalize(all_numeric_predictors()) %>%
-  prep() %>%
-  bake(new_data = NULL)
-
-# Plot distribution of usable_area before and after transformations
-p5 <- ggplot(data = apartments_cleaned, aes(x = usable_area)) +
-  geom_density() +
-  ggtitle("price before transformations")
-
-p6 <- ggplot(data = apartments_BoxCox, aes(x = usable_area)) +
-  geom_density() +
-  ggtitle("price after Box-Cox transform")
-
-p7 <- ggplot(data = apartments_norm, aes(x = usable_area)) +
-  geom_density() +
-  ggtitle("price after normalization")
-
-p8 <- ggplot(data = apartments_log, aes(x = usable_area)) +
-  geom_density() +
-  ggtitle("price after log transform")
-
-(p5 + p6) / (p7 + p8)
+# apartments_BoxCox <- recipe(apartments_train, price ~ .) %>%
+#   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
+#   step_BoxCox(all_numeric_predictors()) %>%
+#   prep() %>%
+#   bake(new_data = NULL)
+# 
+# apartments_log <- recipe(apartments_train, price ~ .) %>%
+#   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
+#   step_log(all_numeric_predictors()) %>%
+#   prep() %>%
+#   bake(new_data = NULL)
+# 
+# apartments_norm <- recipe(apartments_train, price ~ .) %>%
+#   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
+#   step_normalize(all_numeric_predictors()) %>%
+#   prep() %>%
+#   bake(new_data = NULL)
+# 
+# # Plot distribution of usable_area before and after transformations
+# p5 <- ggplot(data = apartments_cleaned, aes(x = usable_area)) +
+#   geom_density() +
+#   ggtitle("price before transformations")
+# 
+# p6 <- ggplot(data = apartments_BoxCox, aes(x = usable_area)) +
+#   geom_density() +
+#   ggtitle("price after Box-Cox transform")
+# 
+# p7 <- ggplot(data = apartments_norm, aes(x = usable_area)) +
+#   geom_density() +
+#   ggtitle("price after normalization")
+# 
+# p8 <- ggplot(data = apartments_log, aes(x = usable_area)) +
+#   geom_density() +
+#   ggtitle("price after log transform")
+# 
+# (p5 + p6) / (p7 + p8)
 
 # split dataframes to train(80)/test(20)
 houses_cleaned <- droplevels(houses_cleaned)
@@ -164,7 +176,7 @@ apartments_train_boots <- bootstraps(apartments_train, times = 25)
 # recipes
 houses_xgboost_recipe <- recipe(houses_train, price ~ .) %>%
   step_rm(lat, lon, municipality) %>%
-  step_BoxCox(usable_area, built_up_area, land_area) %>%
+#  step_BoxCox(usable_area, built_up_area, land_area) %>%
   #  step_normalize(usable_area, built_up_area, land_area) %>%
   step_other(all_nominal(), threshold = 0.01) %>%
   step_dummy(all_nominal())
@@ -172,7 +184,7 @@ houses_xgboost_recipe <- recipe(houses_train, price ~ .) %>%
 apartments_xgboost_recipe <- recipe(apartments_train, price ~ .) %>%
   step_rm(lat, lon, municipality) %>%
   step_impute_knn(all_nominal_predictors()) %>%
-  step_BoxCox(usable_area) %>%
+#  step_BoxCox(usable_area) %>%
 #  step_normalize(usable_area) %>%
   step_other(all_nominal_predictors(), threshold = 0.01) %>%
   step_dummy(all_nominal_predictors())
@@ -192,6 +204,7 @@ xgb_model <-
 houses_workflow <- workflow() %>%
   add_recipe(houses_xgboost_recipe) %>%
   add_model(xgb_model)
+
 apartments_workflow <- workflow() %>%
   add_recipe(apartments_xgboost_recipe) %>%
   add_model(xgb_model)

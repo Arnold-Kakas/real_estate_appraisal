@@ -131,7 +131,8 @@ merged_data <- merged_data %>%
 ```
 
 ```{r}
-price_sf_rotated <- merged_data %>%
+price_sf_rotated <- merged_data %>% 
+  filter(!(type %in% c("Rodinný dom", "Rodinná vila", "Vidiecky dom"))) %>% 
   group_by(lat_rotated, lon_rotated) %>%
   summarize(price = mean(price)) %>%
   st_as_sf(coords = c("lon_rotated", "lat_rotated"))
