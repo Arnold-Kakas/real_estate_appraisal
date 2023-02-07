@@ -150,13 +150,13 @@ ggpairs(apartments_cleaned[, c(1, 6, 8, 11, 12)])
 # split dataframes to train(80)/test(20)
 houses_cleaned <- droplevels(houses_cleaned)
 set.seed(345)
-houses_train_split <- initial_split(houses_cleaned, prop = 0.8)
+houses_train_split <- initial_split(houses_cleaned, prop = 0.8, strata = price)
 
 houses_train <- training(houses_train_split)
 houses_test <- testing(houses_train_split)
 
 set.seed(456)
-apartments_train_split <- initial_split(apartments_cleaned, prop = 0.8)
+apartments_train_split <- initial_split(apartments_cleaned, prop = 0.8, strata = price)
 
 apartments_train <- training(apartments_train_split)
 apartments_test <- testing(apartments_train_split)
@@ -164,10 +164,10 @@ apartments_test <- testing(apartments_train_split)
 set.seed(567)
 houses_train_boots <- bootstraps(houses_train, times = 25)
 
-set.seed(987)
-houses_folds <- vfold_cv(houses_train, strata = district, v = 5)
-set.seed(876)
-apartments_folds <- vfold_cv(apartments_train, strata = type, v = 5)
+# set.seed(987)
+# houses_folds <- vfold_cv(houses_train, strata = district, v = 5)
+# set.seed(876)
+# apartments_folds <- vfold_cv(apartments_train, strata = type, v = 5)
 
 
 set.seed(678)
