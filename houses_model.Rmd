@@ -6,64 +6,95 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
-# setup
+# Display only results in output
+knitr::opts_chunk$set(echo = FALSE)
 
-knitr::opts_chunk$set(echo = TRUE)
+# Load pacman library for managing packages
 library(pacman)
-p_load(rio, tidyverse, tidymodels, GGally, mice, vip, reticulate )
+
+# Load and install multiple packages at once
+p_load(rio, tidyverse, tidymodels, GGally, mice, vip, reticulate, skimr)
+
+# Set the path to the Python interpreter
+install_miniconda(path = miniconda_path())
 use_python("C:/Users/kakas/AppData/Local/Programs/Python/Python311/python.exe")
+Sys.setenv(RETICULATE_MINICONDA_PATH = "C:/Users/kakas/AppData/Local/r-miniconda")
+use_miniconda(condaenv = "C:/Users/kakas/AppData/Local/r-miniconda", required = NULL)
+# Handle common conflicts with tidymodels and other packages.
+tidymodels_prefer()
 ```
 
 create and evaluate models
 
+
 ```{r}
 # import data
-houses <- import("data/houses.rds")
-
+houses <- rio::import("data/houses.rds")
+text <- rio::import("data/texts.rds")
 ```
 
 
-
-
 ```{r}
-# clean data 1
-houses_cleaned <- houses %>%
-  mutate( # price = log10(price+1),
+# merge text to houses db
+houses_merged <- houses %>%
+  left_join(text, by = c("link" = "url"))
+```
+
+
+```{r warning=FALSE}
+# Transform vectors types
+houses_cleaned <- houses_merged %>%
+  mutate(
     usable_area = as.numeric(usable_area),
     built_up_area = as.numeric(built_up_area),
     land_area = as.numeric(land_area)
   )
-
 ```
 
 
-```{r}
+```{r warning=FALSE}
 # impute missing values
 set.seed(123)
 houses_cleaned <-
   houses_cleaned %>%
-  mice(m = 5, maxit = 5, method = "rf", ntree = 10)
-houses_cleaned <- complete(houses_cleaned, 1)
+  mice(m = 5, maxit = 5, method = "pmm", print = FALSE)
+houses_cleaned <- complete(houses_cleaned)
 ```
 
-# mutate character vector (didn't do it in first cleaning due to slow imputation after this change)
+```{r}
+# skim(houses_cleaned)
+```
+
 
 ```{r}
 houses_cleaned <- houses_cleaned %>%
   filter(
     usable_area > quantile(usable_area, 0.01),
-         usable_area < quantile(usable_area, 0.9)) %>% 
-  filter(
-    built_up_area < quantile(usable_area, 0.9)) %>% 
+    usable_area < quantile(usable_area, 0.9),
+    built_up_area < quantile(built_up_area, 0.9),
+    land_area < quantile(land_area, 0.9)
+  ) %>%
   mutate(
     condition = replace_na(condition, "not provided"),
     district = as_factor(district),
     municipality = as_factor(municipality),
     type = as_factor(type),
     commission_in_price = as_factor(commission_in_price)
-  ) # %>%
-  # remove_percentile_outlier(cols = c("usable_area", "built_up_area", "land_area"), percentile = 5)
+  )
 ```
+  
+```{r}
+
+```
+  
+```{python}
+from langdetect import detect
+
+sentence = "Hľadáte bývanie na úrovni v kľudnom vidieckom prostredí"
+
+print(detect(sentence))
+```
+  
   
 ```{r}
 ggplot(houses_cleaned, mapping = aes(x = built_up_area)) +
@@ -81,8 +112,6 @@ ggpairs(houses_cleaned[, c(1, 6, 7, 10, 11)], progress = FALSE)
 
 ```{r}
 # EDA
-
-
 ```
 
 ```{r}
@@ -92,36 +121,36 @@ ggpairs(houses_cleaned[, c(1, 6, 7, 10, 11)], progress = FALSE)
 #   step_BoxCox(all_numeric_predictors()) %>%
 #   prep() %>%
 #   bake(new_data = NULL)
-# 
+#
 # houses_log <- recipe(houses_train, price ~ .) %>%
 #   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
 #   step_log(all_numeric_predictors()) %>%
 #   prep() %>%
 #   bake(new_data = NULL)
-# 
+#
 # houses_norm <- recipe(houses_train, price ~ .) %>%
 #   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
 #   step_normalize(all_numeric_predictors()) %>%
 #   prep() %>%
 #   bake(new_data = NULL)
-# 
+#
 # # Plot distribution of built_up_area before and after transformations
 # p1 <- ggplot(data = houses_cleaned, aes(x = built_up_area)) +
 #   geom_density() +
 #   ggtitle("price before transformations")
-# 
+#
 # p2 <- ggplot(data = houses_BoxCox, aes(x = built_up_area)) +
 #   geom_density() +
 #   ggtitle("price after Box-Cox transform")
-# 
+#
 # p3 <- ggplot(data = houses_norm, aes(x = built_up_area)) +
 #   geom_density() +
 #   ggtitle("price after normalization")
-# 
+#
 # p4 <- ggplot(data = houses_log, aes(x = built_up_area)) +
 #   geom_density() +
 #   ggtitle("price after log transform")
-# 
+#
 # (p1 + p2) / (p3 + p4)
 ```
 
@@ -144,10 +173,10 @@ houses_train_boots <- bootstraps(houses_train, times = 25)
 # recipes
 houses_xgboost_recipe <- recipe(houses_train, price ~ .) %>%
   step_rm(lat, lon, municipality) %>%
-#  step_BoxCox(usable_area, built_up_area, land_area) %>%
-  #  step_normalize(usable_area, built_up_area, land_area) %>%
-  step_other(all_nominal(), threshold = 0.01) %>%
-  step_dummy(all_nominal())
+  step_naomit(all_nominal_predictors()) %>% 
+  step_BoxCox(usable_area, built_up_area, land_area) %>%
+  step_other(all_nominal_predictors(), threshold = 0.01) %>%
+  step_dummy(all_nominal_predictors())
 ```
 
 
@@ -192,7 +221,6 @@ houses_xgboost_grid <- grid_latin_hypercube(
   learn_rate(),
   size = 30
 )
-
 ```
 
 ```{r}
@@ -203,7 +231,6 @@ houses_xgboost_res <- tune_grid(
   grid = houses_xgboost_grid,
   control = control_grid(save_pred = TRUE)
 )
-
 ```
 
 ```{r}
@@ -216,7 +243,6 @@ houses_best_model <- select_best(houses_xgboost_res, "rmse")
 houses_final_model <- finalize_model(xgb_model, houses_best_model)
 houses_workflow <- houses_workflow %>% update_model(houses_final_model)
 houses_xgb_fit <- fit(houses_workflow, data = houses_train)
-
 ```
 
 ```{r}
@@ -224,23 +250,23 @@ houses_xgb_fit %>%
   fit(data = houses_train) %>%
   pull_workflow_fit() %>%
   vip(geom = "point")
-
 ```
 
 ```{r}
 houses_final_res <- last_fit(houses_xgb_fit, houses_train_split)
 collect_metrics(houses_final_res)
 # rsq is small, need to look for more predictors
-
 ```
 
 ```{r}
 # evaluate
 houses_pred <-
   predict(houses_xgb_fit, houses_test) %>%
-  bind_cols(houses_test) %>% 
-  mutate(prediction = 10^.pred,
-         real_price = 10^price)
+  bind_cols(houses_test) %>%
+  mutate(
+    prediction = 10^.pred,
+    real_price = 10^price
+  )
 
 houses_plot1 <-
   houses_pred %>%

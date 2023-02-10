@@ -27,8 +27,8 @@ p_load(
 
 ```{r}
 # load data
-scraped_data <- import("data/advertisements.rds")
-geocoded_data <- import("data/geospatial_data/geocodes.csv")
+scraped_data <- rio::import("data/advertisements.rds")
+geocoded_data <- rio::import("data/geospatial_data/geocodes.csv")
 ```
 
 ```{r}
@@ -44,7 +44,7 @@ scraped_data <- scraped_data %>%
     rooms = str_replace_all(rooms, "I", "1")#,
 #    price = log(price + 1)
   ) %>%
-  select(-c(c, street, link))
+  select(-c(c, street))
 
 # skim(scraped_data)
 
