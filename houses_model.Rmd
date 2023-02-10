@@ -1,0 +1,249 @@
+---
+title: "houses_model"
+author: "Arnold Kakaš"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+create and evaluate models
+
+```{r}
+# import libs
+library(pacman)
+p_load(rio, tidyverse, tidymodels, GGally, mice, patchwork, vip, dataPreparation)
+```
+
+
+```{r}
+# import data
+houses <- import("data/houses.rds")
+```
+
+
+
+```{r}
+# clean data 1
+houses_cleaned <- houses %>%
+  mutate( # price = log10(price+1),
+    usable_area = as.numeric(usable_area),
+    built_up_area = as.numeric(built_up_area),
+    land_area = as.numeric(land_area)
+  )
+
+```
+
+
+```{r}
+# impute missing values
+set.seed(123)
+houses_cleaned <-
+  houses_cleaned %>%
+  mice(m = 5, maxit = 5, method = "rf", ntree = 10)
+houses_cleaned <- complete(houses_cleaned, 1)
+```
+
+# mutate character vector (didn't do it in first cleaning due to slow imputation after this change)
+
+```{r}
+houses_cleaned <- houses_cleaned %>%
+  filter(
+    usable_area > quantile(usable_area, 0.01),
+         usable_area < quantile(usable_area, 0.9)) %>% 
+  filter(
+    built_up_area < quantile(usable_area, 0.9)) %>% 
+  mutate(
+    condition = replace_na(condition, "not provided"),
+    district = as_factor(district),
+    municipality = as_factor(municipality),
+    type = as_factor(type),
+    commission_in_price = as_factor(commission_in_price)
+  ) # %>%
+  # remove_percentile_outlier(cols = c("usable_area", "built_up_area", "land_area"), percentile = 5)
+```
+  
+```{r}
+ggplot(houses_cleaned, mapping = aes(x = built_up_area)) +
+  geom_boxplot()
+```
+
+```{r}
+summary(houses_cleaned)
+ggpairs(houses_cleaned[, c(1, 6, 7, 10, 11)])
+```
+
+```{r}
+# EDA
+# houses_BoxCox <- recipe(houses_train, price ~ .) %>%
+#   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
+#   step_BoxCox(all_numeric_predictors()) %>%
+#   prep() %>%
+#   bake(new_data = NULL)
+# 
+# houses_log <- recipe(houses_train, price ~ .) %>%
+#   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
+#   step_log(all_numeric_predictors()) %>%
+#   prep() %>%
+#   bake(new_data = NULL)
+# 
+# houses_norm <- recipe(houses_train, price ~ .) %>%
+#   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
+#   step_normalize(all_numeric_predictors()) %>%
+#   prep() %>%
+#   bake(new_data = NULL)
+# 
+# # Plot distribution of built_up_area before and after transformations
+# p1 <- ggplot(data = houses_cleaned, aes(x = built_up_area)) +
+#   geom_density() +
+#   ggtitle("price before transformations")
+# 
+# p2 <- ggplot(data = houses_BoxCox, aes(x = built_up_area)) +
+#   geom_density() +
+#   ggtitle("price after Box-Cox transform")
+# 
+# p3 <- ggplot(data = houses_norm, aes(x = built_up_area)) +
+#   geom_density() +
+#   ggtitle("price after normalization")
+# 
+# p4 <- ggplot(data = houses_log, aes(x = built_up_area)) +
+#   geom_density() +
+#   ggtitle("price after log transform")
+# 
+# (p1 + p2) / (p3 + p4)
+```
+
+```{r}
+# split dataframes to train(80)/test(20)
+houses_cleaned <- droplevels(houses_cleaned)
+set.seed(345)
+houses_train_split <- initial_split(houses_cleaned, prop = 0.8, strata = price)
+
+houses_train <- training(houses_train_split)
+houses_test <- testing(houses_train_split)
+
+set.seed(567)
+houses_train_boots <- bootstraps(houses_train, times = 25)
+```
+
+```{r}
+# recipes
+houses_xgboost_recipe <- recipe(houses_train, price ~ .) %>%
+  step_rm(lat, lon, municipality) %>%
+#  step_BoxCox(usable_area, built_up_area, land_area) %>%
+  #  step_normalize(usable_area, built_up_area, land_area) %>%
+  step_other(all_nominal(), threshold = 0.01) %>%
+  step_dummy(all_nominal())
+```
+
+
+```{r}
+# models
+xgb_model <-
+  boost_tree(
+    trees = 1000, loss_reduction = tune(),
+    tree_depth = tune(), min_n = tune(),
+    mtry = tune(), sample_size = tune(),
+    learn_rate = tune()
+  ) %>%
+  set_mode("regression") %>%
+  set_engine("xgboost", nthread = 6) # use 6 cores for multithreading
+```
+
+```{r}
+# workflows
+houses_workflow <- workflow() %>%
+  add_recipe(houses_xgboost_recipe) %>%
+  add_model(xgb_model)
+```
+
+```{r}
+# parameters
+houses_xgboost_params <- parameters(
+  trees(),
+  tree_depth(), min_n(),
+  finalize(mtry(), houses_train)
+)
+```
+
+```{r}
+# optimization
+set.seed(789)
+houses_xgboost_grid <- grid_latin_hypercube(
+  tree_depth(),
+  min_n(),
+  loss_reduction(),
+  sample_size = sample_prop(),
+  finalize(mtry(), houses_train),
+  learn_rate(),
+  size = 30
+)
+
+```
+
+```{r}
+# results
+houses_xgboost_res <- tune_grid(
+  houses_workflow,
+  resamples = houses_train_boots,
+  grid = houses_xgboost_grid,
+  control = control_grid(save_pred = TRUE)
+)
+
+```
+
+```{r}
+# best models
+houses_best_model <- select_best(houses_xgboost_res, "rmse")
+```
+
+```{r}
+# finalize models
+houses_final_model <- finalize_model(xgb_model, houses_best_model)
+houses_workflow <- houses_workflow %>% update_model(houses_final_model)
+houses_xgb_fit <- fit(houses_workflow, data = houses_train)
+
+```
+
+```{r}
+houses_xgb_fit %>%
+  fit(data = houses_train) %>%
+  pull_workflow_fit() %>%
+  vip(geom = "point")
+
+```
+
+```{r}
+houses_final_res <- last_fit(houses_xgb_fit, houses_train_split)
+collect_metrics(houses_final_res)
+# rsq is small, need to look for more predictors
+
+```
+
+```{r}
+# evaluate
+houses_pred <-
+  predict(houses_xgb_fit, houses_test) %>%
+  bind_cols(houses_test) %>% 
+  mutate(prediction = 10^.pred,
+         real_price = 10^price)
+
+houses_plot1 <-
+  houses_pred %>%
+  ggplot(aes(x = .pred, y = price)) +
+  geom_point() +
+  geom_abline(intercept = 0, col = "red")
+
+
+houses_plot2 <-
+  houses_pred %>%
+  select(.pred, price) %>%
+  gather(key, value) %>%
+  ggplot(aes(x = value, volor = key, fill = key)) +
+  geom_density(alpha = .2) +
+  labs(x = "", y = "")
+
+houses_plot1 / houses_plot2
+```
