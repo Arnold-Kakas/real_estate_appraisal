@@ -26,6 +26,8 @@ use_python("C:/Users/kakas/AppData/Local/r-miniconda", required = TRUE)
 # Load Python modules
 import multiprocessing as mp
 import pandas as pd
+import googletrans as gtr
+import time
 import spacy
 from spacy.lang.sk import stop_words as stop_words
 from string import punctuation
@@ -89,6 +91,13 @@ houses_cleaned <- houses_cleaned %>%
 ```{r}
 houses_test <- houses_cleaned %>% top_n(10)
 ```
+
+
+```{python}
+translator = gtr.Translator()
+time.sleep(2)
+```
+
 
 ```{python}
 # Load the Slovak language model
