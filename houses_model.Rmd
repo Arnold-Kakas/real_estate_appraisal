@@ -15,27 +15,31 @@ library(pacman)
 # Load and install multiple packages at once
 p_load(rio, tidyverse, tidymodels, GGally, mice, vip, reticulate, skimr)
 
-# Set the path to the Python interpreter
-install_miniconda(path = miniconda_path())
-use_python("C:/Users/kakas/AppData/Local/Programs/Python/Python311/python.exe")
-Sys.setenv(RETICULATE_MINICONDA_PATH = "C:/Users/kakas/AppData/Local/r-miniconda")
-use_miniconda(condaenv = "C:/Users/kakas/AppData/Local/r-miniconda", required = NULL)
-# Handle common conflicts with tidymodels and other packages.
+# Prefer tidymodels package functions
 tidymodels_prefer()
+
+# specify Python
+use_python("C:/Users/kakas/AppData/Local/r-miniconda", required = TRUE)
+```
+
+```{python}
+# Load Python modules
+import google_trans_new as gtn
+import multiprocessing.dummy as mpd
 ```
 
 create and evaluate models
 
 
 ```{r}
-# import data
+# Import data
 houses <- rio::import("data/houses.rds")
 text <- rio::import("data/texts.rds")
 ```
 
 
 ```{r}
-# merge text to houses db
+# Merge text to houses db
 houses_merged <- houses %>%
   left_join(text, by = c("link" = "url"))
 ```
@@ -61,10 +65,6 @@ houses_cleaned <-
 houses_cleaned <- complete(houses_cleaned)
 ```
 
-```{r}
-# skim(houses_cleaned)
-```
-
 
 ```{r}
 houses_cleaned <- houses_cleaned %>%
@@ -88,11 +88,36 @@ houses_cleaned <- houses_cleaned %>%
 ```
   
 ```{python}
-from langdetect import detect
+# Translate a given text to English using the google_trans_new module
+    
+#    Parameters:
+#    text (str): Text to be translated
 
-sentence = "Hľadáte bývanie na úrovni v kľudnom vidieckom prostredí"
+#    Returns:
+#    str: Translated text
 
-print(detect(sentence))
+def translate_text(text):
+    translator = gtn.google_translator(timeout=5).translate("en")
+    return translator.translate(text)
+
+# Translate the text in the given dataframe and create a new column with the translated text
+    
+#    Parameters:
+#    df (pandas.DataFrame): Dataframe to be translated
+#    text_vector (str): Column name in the dataframe to be translated
+
+#    Returns:
+#    pandas.DataFrame: Translated dataframe with a new column for the translated text
+
+def translate_df(df, text_vector):
+    pool = mpd.Pool(6)
+    translated_text = pool.map(translate_text, df[text_vector])
+    df['translated_text'] = translated_text
+    return df
+```
+
+```{python}
+houses_translated = translate_df(r.houses_cleaned, 'info_text')
 ```
   
   
