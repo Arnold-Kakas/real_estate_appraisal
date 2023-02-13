@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = FALSE)
 library(pacman)
 
 # Load and install multiple packages at once
-p_load(rio, tidyverse, tidymodels, GGally, mice, vip, reticulate, skimr)
+p_load(rio, tidyverse, tidymodels, GGally, mice, vip, reticulate, skimr, spacyr)
 
 # Prefer tidymodels package functions
 tidymodels_prefer()
@@ -24,8 +24,11 @@ use_python("C:/Users/kakas/AppData/Local/r-miniconda", required = TRUE)
 
 ```{python}
 # Load Python modules
-import google_trans_new as gtn
-import multiprocessing.dummy as mpd
+import multiprocessing as mp
+import pandas as pd
+import spacy
+from spacy.lang.sk import stop_words as stop_words
+from string import punctuation
 ```
 
 create and evaluate models
@@ -82,45 +85,46 @@ houses_cleaned <- houses_cleaned %>%
     commission_in_price = as_factor(commission_in_price)
   )
 ```
-  
+
 ```{r}
-
-```
-  
-```{python}
-# Translate a given text to English using the google_trans_new module
-    
-#    Parameters:
-#    text (str): Text to be translated
-
-#    Returns:
-#    str: Translated text
-
-def translate_text(text):
-    translator = gtn.google_translator(timeout=5).translate("en")
-    return translator.translate(text)
-
-# Translate the text in the given dataframe and create a new column with the translated text
-    
-#    Parameters:
-#    df (pandas.DataFrame): Dataframe to be translated
-#    text_vector (str): Column name in the dataframe to be translated
-
-#    Returns:
-#    pandas.DataFrame: Translated dataframe with a new column for the translated text
-
-def translate_df(df, text_vector):
-    pool = mpd.Pool(6)
-    translated_text = pool.map(translate_text, df[text_vector])
-    df['translated_text'] = translated_text
-    return df
+houses_test <- houses_cleaned %>% top_n(10)
 ```
 
 ```{python}
-houses_translated = translate_df(r.houses_cleaned, 'info_text')
+# Load the Slovak language model
+nlp = spacy.load('xx_sent_ud_sm')
+removal= ['ADV','PRON','CCONJ','PUNCT','PART','DET','ADP','SPACE', 'NUM', 'SYM']
+punctuations = list(punctuation)
+stop_words = stop_words.STOP_WORDS
+
+def tokenize_funct(sentence):
+    sentence = nlp(sentence)
+    # lemmatizing
+    #sentence = [ token.lemma_.lower().strip() if token.lemma_ != "-PRON-" else token.lower_ for token in sentence ]
+    # removing stop words
+    sentence = [ token.text for token.text in sentence if token.text not in stop_words and token.text not in punctuations ]       text_tokens = word_tokenize(text)
+    sentence = [word for word in text_tokens if not word in stop_words] 
+    return sentence
+
+
+veta = "toto je veta v slovencine a uvidime co sa stane."  
+# for token in nlp(veta):
+#      print(token)
+
+tokenize_funct("toto je veta v slovencine a uvidime co sa stane.")
+# doc = nlp("This is the first sentence. This is another sentence. This is the last sentence.")
+# 
+# for sent in nlp(doc).sents:
+#     print(sent)
 ```
-  
-  
+
+
+
+```{r}
+test <- houses_cleaned %>% 
+  mutate(text_lenght = str_length(info_text))
+```
+
 ```{r}
 ggplot(houses_cleaned, mapping = aes(x = built_up_area)) +
   geom_boxplot()
