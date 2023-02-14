@@ -29,6 +29,8 @@ import pandas as pd
 import spacy
 import time
 from googletrans import Translator
+import rpy2.rinterface
+
 ```
 
 create and evaluate models
@@ -86,7 +88,14 @@ houses_cleaned <- houses_cleaned %>%
   )
 ```
 
+```{r}
+houses_testing <- houses_cleaned %>% top_n(10, price)
+```
+
 ```{python}
+# Define the number of retries
+num_retries = 5
+
 # Define a function for translating text from Slovak to English
 def translate_text(text):
     """
@@ -102,109 +111,136 @@ def translate_text(text):
     str
         The translated text.
     """
-    # Create a Translator object
-    translator = Translator(service_urls=['translate.google.com'])
-    # Translate the text and return the result
-    return translator.translate(text, dest='en').text
-
-# Apply the translate_text function to the info_text column of the houses dataframe
-houses_translated['info_text_en'] = houses_cleaned['info_text'].apply(
-    lambda x: translate_text(x)
-)
-# Wait 2 seconds before translating the next text
-    time.sleep(2)
-
+    # Counter for the number of retries
+    retry_count = 0
+    # Result of the translation
+    result = ""
+    # Flag to indicate if the translation was successful
+    success = False
+    while not success and retry_count < num_retries:
+        try:
+            # Create a Translator object
+            translator = Translator(service_urls=['translate.google.com'])
+            # Translate the text
+            result = translator.translate(text, dest='en').text
+            # Wait 2 seconds before translating the next text
+            time.sleep(2)
+            # Log the input text and the result
+            # print(f"Input text: {text}")
+            # print(f"Result: {result}")
+            # Set the success flag to True if the result is not None
+            success = result is not None
+        except Exception as e:
+            print(f"Error occurred while translating text: {e}")
+            retry_count += 1
+    # Return an empty string if the result is None
+    if result is None:
+        return ""
+    else:
+        return result
 ```
-
 
 ```{python}
-# Load the Slovak language model
-nlp = spacy.load("sk_core_news_sm")
+# Pass the "houses" dataframe from R to Python
+houses_r = r.houses_testing
+
+# Perform your modification on the Pandas dataframe
+houses_r['info_text_en'] = houses_r['info_text'].apply(lambda x: translate_text(x))
+
 ```
 
-```{r}
-# Load the Slovak language model
-model <- spacy_initialize(model = "xx_core_web_sm")
-
-
+```{python}
 # Define a function to extract topics from text
-extract_topics <- function(text) {
-  doc <- spacy_parse(text, as_strings = TRUE)
-  topics <- doc$text[doc$pos == "NOUN" | doc$pos == "PROPN"]
-  return(head(topics, 10))
-}
-
-# Apply the topic extraction function to the "info_text" column
-houses_topics <- houses_cleaned %>% mutate(topics = extract_topics(info_text))
+def extract_topics(text, nlp, num_topics=5):
+    doc = nlp(text)
+    topics = [token.text for token in doc if token.pos_ in ['NOUN', 'PROPN']]
+    return topics[:num_topics]
 ```
 
-```{r}
-test <- houses_cleaned %>% 
-  mutate(text_lenght = str_length(info_text))
+```{python, results='asis'}
+# Load the en language model
+nlp = spacy.load("en_core_web_sm")
+doc = nlp(houses_r.info_text_en[0])
+text = nlp(houses_r.info_text_en[0])
+print(doc)
+
+for sent in doc.sents:
+  print(sent)
+  
+sentence1 = list(doc.sents)[0]
+print(sentence1)
+
+spacy.displacy.render(sentence1, style = "dep")
+
+token23 = sentence1[19]
+print(token23)
+extract_topics(text, nlp)
+text
 ```
 
+
+
+
+ 
 ```{r}
 ggplot(houses_cleaned, mapping = aes(x = built_up_area)) +
-  geom_boxplot()
+ geom_boxplot()
 ```
 
 ```{r}
 # EDA
 summary(houses_cleaned)
 ```
-
+ 
 ```{r}
-ggpairs(houses_cleaned[, c(1, 6, 7, 10, 11)], progress = FALSE)
-```
-
-```{r}
-# EDA
+ ggpairs(houses_cleaned[, c(1, 6, 7, 10, 11)], progress = FALSE)
 ```
 
 ```{r}
 
-# houses_BoxCox <- recipe(houses_train, price ~ .) %>%
-#   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
-#   step_BoxCox(all_numeric_predictors()) %>%
-#   prep() %>%
-#   bake(new_data = NULL)
-#
-# houses_log <- recipe(houses_train, price ~ .) %>%
-#   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
-#   step_log(all_numeric_predictors()) %>%
-#   prep() %>%
-#   bake(new_data = NULL)
-#
-# houses_norm <- recipe(houses_train, price ~ .) %>%
-#   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
-#   step_normalize(all_numeric_predictors()) %>%
-#   prep() %>%
-#   bake(new_data = NULL)
-#
-# # Plot distribution of built_up_area before and after transformations
-# p1 <- ggplot(data = houses_cleaned, aes(x = built_up_area)) +
-#   geom_density() +
-#   ggtitle("price before transformations")
-#
-# p2 <- ggplot(data = houses_BoxCox, aes(x = built_up_area)) +
-#   geom_density() +
-#   ggtitle("price after Box-Cox transform")
-#
-# p3 <- ggplot(data = houses_norm, aes(x = built_up_area)) +
-#   geom_density() +
-#   ggtitle("price after normalization")
-#
-# p4 <- ggplot(data = houses_log, aes(x = built_up_area)) +
-#   geom_density() +
-#   ggtitle("price after log transform")
-#
-# (p1 + p2) / (p3 + p4)
+houses_BoxCox <- recipe(houses_train, price ~ .) %>%
+   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
+   step_BoxCox(all_numeric_predictors()) %>%
+   prep() %>%
+   bake(new_data = NULL)
+
+ houses_log <- recipe(houses_train, price ~ .) %>%
+   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
+   step_log(all_numeric_predictors()) %>%
+   prep() %>%
+   bake(new_data = NULL)
+
+ houses_norm <- recipe(houses_train, price ~ .) %>%
+   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
+   step_normalize(all_numeric_predictors()) %>%
+   prep() %>%
+   bake(new_data = NULL)
+
+# Plot distribution of built_up_area before and after transformations
+p1 <- ggplot(data = houses_cleaned, aes(x = built_up_area)) +
+  geom_density() +
+  ggtitle("price before transformations")
+
+p2 <- ggplot(data = houses_BoxCox, aes(x = built_up_area)) +
+  geom_density() +
+  ggtitle("price after Box-Cox transform")
+
+p3 <- ggplot(data = houses_norm, aes(x = built_up_area)) +
+  geom_density() +
+  ggtitle("price after normalization")
+
+p4 <- ggplot(data = houses_log, aes(x = built_up_area)) +
+  geom_density() +
+  ggtitle("price after log transform")
+
+ (p1 + p2) / (p3 + p4)
 ```
 
 
 
 ```{r}
-# split dataframes to train(80)/test(20)
+split dataframes to train(80)/test(20)
+
 houses_cleaned <- droplevels(houses_cleaned)
 set.seed(345)
 houses_train_split <- initial_split(houses_cleaned, prop = 0.8, strata = price)
@@ -220,7 +256,7 @@ houses_train_boots <- bootstraps(houses_train, times = 25)
 # recipes
 houses_xgboost_recipe <- recipe(houses_train, price ~ .) %>%
   step_rm(lat, lon, municipality) %>%
-  step_naomit(all_nominal_predictors()) %>% 
+  step_naomit(all_nominal_predictors()) %>%
   step_BoxCox(usable_area, built_up_area, land_area) %>%
   step_other(all_nominal_predictors(), threshold = 0.01) %>%
   step_dummy(all_nominal_predictors())
