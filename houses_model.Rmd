@@ -26,11 +26,9 @@ use_python("C:/Users/kakas/AppData/Local/r-miniconda", required = TRUE)
 # Load Python modules
 import multiprocessing as mp
 import pandas as pd
-import googletrans as gtr
-import time
 import spacy
-from spacy.lang.sk import stop_words as stop_words
-from string import punctuation
+import time
+from googletrans import Translator
 ```
 
 create and evaluate models
@@ -88,46 +86,57 @@ houses_cleaned <- houses_cleaned %>%
   )
 ```
 
-```{r}
-houses_test <- houses_cleaned %>% top_n(10)
-```
-
-
 ```{python}
-translator = gtr.Translator()
-time.sleep(2)
+# Define a function for translating text from Slovak to English
+def translate_text(text):
+    """
+    Translates the input text from Slovak to English.
+
+    Parameters
+    ----------
+    text : str
+        The text to be translated.
+
+    Returns
+    -------
+    str
+        The translated text.
+    """
+    # Create a Translator object
+    translator = Translator(service_urls=['translate.google.com'])
+    # Translate the text and return the result
+    return translator.translate(text, dest='en').text
+
+# Apply the translate_text function to the info_text column of the houses dataframe
+houses_translated['info_text_en'] = houses_cleaned['info_text'].apply(
+    lambda x: translate_text(x)
+)
+# Wait 2 seconds before translating the next text
+    time.sleep(2)
+
 ```
 
 
 ```{python}
 # Load the Slovak language model
-nlp = spacy.load('xx_sent_ud_sm')
-removal= ['ADV','PRON','CCONJ','PUNCT','PART','DET','ADP','SPACE', 'NUM', 'SYM']
-punctuations = list(punctuation)
-stop_words = stop_words.STOP_WORDS
-
-def tokenize_funct(sentence):
-    sentence = nlp(sentence)
-    # lemmatizing
-    #sentence = [ token.lemma_.lower().strip() if token.lemma_ != "-PRON-" else token.lower_ for token in sentence ]
-    # removing stop words
-    sentence = [ token.text for token.text in sentence if token.text not in stop_words and token.text not in punctuations ]       text_tokens = word_tokenize(text)
-    sentence = [word for word in text_tokens if not word in stop_words] 
-    return sentence
-
-
-veta = "toto je veta v slovencine a uvidime co sa stane."  
-# for token in nlp(veta):
-#      print(token)
-
-tokenize_funct("toto je veta v slovencine a uvidime co sa stane.")
-# doc = nlp("This is the first sentence. This is another sentence. This is the last sentence.")
-# 
-# for sent in nlp(doc).sents:
-#     print(sent)
+nlp = spacy.load("sk_core_news_sm")
 ```
 
+```{r}
+# Load the Slovak language model
+model <- spacy_initialize(model = "xx_core_web_sm")
 
+
+# Define a function to extract topics from text
+extract_topics <- function(text) {
+  doc <- spacy_parse(text, as_strings = TRUE)
+  topics <- doc$text[doc$pos == "NOUN" | doc$pos == "PROPN"]
+  return(head(topics, 10))
+}
+
+# Apply the topic extraction function to the "info_text" column
+houses_topics <- houses_cleaned %>% mutate(topics = extract_topics(info_text))
+```
 
 ```{r}
 test <- houses_cleaned %>% 
