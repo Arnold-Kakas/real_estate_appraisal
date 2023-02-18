@@ -8,7 +8,7 @@ output: html_document
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 # Display only results in output
 knitr::opts_chunk$set(echo = FALSE)
-
+Sys.setenv(RETICULATE_PYTHON = "C:/Users/kakas/AppData/Local/r-miniconda/")
 # Load pacman library for managing packages
 library(pacman)
 
@@ -19,7 +19,7 @@ p_load(rio, tidyverse, tidymodels, GGally, mice, vip, reticulate, skimr, spacyr)
 tidymodels_prefer()
 
 # specify Python
-use_python("C:/Users/kakas/AppData/Local/r-miniconda", required = TRUE)
+use_python("C:/Users/kakas/AppData/Local/r-miniconda/python.exe", required = TRUE)
 ```
 
 ```{python}
@@ -30,7 +30,7 @@ import spacy
 import time
 from googletrans import Translator
 import rpy2.rinterface
-
+from collections import defaultdict
 ```
 
 create and evaluate models
@@ -150,32 +150,54 @@ houses_r['info_text_en'] = houses_r['info_text'].apply(lambda x: translate_text(
 ```
 
 ```{python}
-# Define a function to extract topics from text
-def extract_topics(text, nlp, num_topics=5):
+# Define a function to phrases/keywords from text
+nlp = spacy.load("en_core_web_lg")
+
+# Define the extract_main_phrases() function
+def extract_main_phrases(text):
     doc = nlp(text)
-    topics = [token.text for token in doc if token.pos_ in ['NOUN', 'PROPN']]
-    return topics[:num_topics]
+    phrases = []
+    for chunk in doc.noun_chunks:
+        if not chunk.root.is_stop and not chunk.root.is_punct:
+            phrases.append(chunk.lemma_.lower())
+    for token in doc:
+        if token.dep_ == 'ROOT' and token.pos_ == 'VERB' and not token.is_stop and not token.is_punct:
+            phrases.append(token.lemma_.lower())
+    return phrases
+
+def get_similar_phrases(phrase, phrases):
+    phrase_vec = nlp(phrase).vector
+    phrase_vecs = [nlp(phrase).vector for phrase in phrases]
+    similarities = nlp.vocab.vectors.cosine_similarities(phrase_vecs, [phrase_vec])
+    top_indices = similarities.argsort()[:-6:-1]
+    return [phrases[i] for i in top_indices]
+
+def cluster_phrases(phrases):
+    clusters = defaultdict(list)
+    for i, phrase1 in enumerate(phrases):
+        for j, phrase2 in enumerate(phrases[i+1:], i+1):
+            sim = nlp(phrase1).similarity(nlp(phrase2))
+            if sim > 0.8:
+                clusters[i].append(j)
+                clusters[j].append(i)
+    groups = []
+    seen = set()
+    for i in range(len(phrases)):
+        if i not in seen:
+            group = [phrases[i]]
+            seen.add(i)
+            for j in clusters[i]:
+                if j not in seen:
+                    group.append(phrases[j])
+                    seen.add(j)
+            groups.append(group)
+    return groups
 ```
 
 ```{python, results='asis'}
-# Load the en language model
-nlp = spacy.load("en_core_web_sm")
-doc = nlp(houses_r.info_text_en[0])
-text = nlp(houses_r.info_text_en[0])
-print(doc)
-
-for sent in doc.sents:
-  print(sent)
-  
-sentence1 = list(doc.sents)[0]
-print(sentence1)
-
-spacy.displacy.render(sentence1, style = "dep")
-
-token23 = sentence1[19]
-print(token23)
-extract_topics(text, nlp)
-text
+# Extract the main phrases for each row in the 'info_text_en' column
+houses_r['main_phrases'] = houses_r['info_text_en'].apply(extract_main_phrases)
+houses_r['grouped_phrases'] = houses_r['main_phrases'].apply(cluster_phrases)
 ```
 
 
