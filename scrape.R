@@ -1,6 +1,6 @@
 library(pacman)
 
-p_load(rio, tidyverse, rvest, httr, doParallel, furrr)
+p_load(rio, tidyverse, rvest, httr, doParallel, furrr, RSelenium)
 
 # scrape through nehnutelnosti web page and retrieve data advertisements for the sale of apartments and houses
 site <- "https://www.nehnutelnosti.sk/slovensko/predaj/?p[categories][ids]=1.2&p[order]=1&p[page]="
@@ -64,6 +64,11 @@ additional_info_df <- map_dfr(advertisements$link, function(i) {
   tibble(condition = condition, usable_area = usable_area, built_up_area = built_up_area, land_area = land_area, commission_in_price = commission_in_price)
 })
 
+
+
+
+
+
 text_long <- map_dfr(advertisements$link, function(i) {
   temp <- read_html(GET(i, timeout(60)))
   
@@ -76,6 +81,12 @@ text_long <- map_dfr(advertisements$link, function(i) {
   
   tibble(url = i, info_text = info_text)
 })
+
+
+
+
+
+
 
 # bind ads and additional info dataframes
 advertisements <- cbind(advertisements, additional_info_df)
@@ -123,3 +134,17 @@ saveRDS(text_long, file = "data/texts.rds") # instead of csv due to size reducti
 
 # write.csv2(advertisements_cleaned, "data/advertisements.csv")
 saveRDS(advertisements_cleaned, file = "data/advertisements.rds") # instead of csv due to size reduction
+
+
+driver <- rsDriver(browser=c("firefox"), iedrver = NULL)
+remote_driver <- driver[["client"]]
+remote_driver$open()
+remote_driver$navigate("https://www.nehnutelnosti.sk/5000493/4-izbovy-rodinny-dom-brezova-ulica-stupava/")
+remote_driver$findElement(using = "xpath", '/html/body/div[5]/div[1]/section/div[1]/div[2]/div/div[1]/div[5]/div[1]/div[1]/div/div[2]/div[1]/div/div/p[1]/span')
+
+
+remDr <- remoteDriver()
+remDr$navigate("https://www.nehnutelnosti.sk/5000493/4-izbovy-rodinny-dom-brezova-ulica-stupava/")
+remDr$navigate()
+%>% 
+  

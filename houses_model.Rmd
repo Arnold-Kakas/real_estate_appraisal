@@ -24,13 +24,15 @@ use_python("C:/Users/kakas/AppData/Local/r-miniconda/python.exe", required = TRU
 
 ```{python}
 # Load Python modules
-import multiprocessing as mp
+# import multiprocessing as mp
 import pandas as pd
 import spacy
 import time
 from googletrans import Translator
 import rpy2.rinterface
 from collections import defaultdict
+from string import punctuation # Idea from Medium https://medium.com/better-programming/extract-keywords-using-spacy-in-python-4a8415478fbf
+from collections import Counter # Idea from Medium https://medium.com/better-programming/extract-keywords-using-spacy-in-python-4a8415478fbf
 ```
 
 create and evaluate models
@@ -124,7 +126,7 @@ def translate_text(text):
             # Translate the text
             result = translator.translate(text, dest='en').text
             # Wait 2 seconds before translating the next text
-            time.sleep(2)
+            time.sleep(3)
             # Log the input text and the result
             # print(f"Input text: {text}")
             # print(f"Result: {result}")
@@ -142,7 +144,7 @@ def translate_text(text):
 
 ```{python}
 # Pass the "houses" dataframe from R to Python
-houses_r = r.houses_testing
+houses_r = r.houses_cleaned
 
 # Perform your modification on the Pandas dataframe
 houses_r['info_text_en'] = houses_r['info_text'].apply(lambda x: translate_text(x))
@@ -152,58 +154,91 @@ houses_r['info_text_en'] = houses_r['info_text'].apply(lambda x: translate_text(
 ```{python}
 # Define a function to phrases/keywords from text
 nlp = spacy.load("en_core_web_lg")
+```
 
+```{python}
 # Define the extract_main_phrases() function
 def extract_main_phrases(text):
+    """
+    Extracts the main phrases from a text by identifying noun chunks and root verbs.
+
+    Parameters:
+        text (str): The input text to extract main phrases from.
+        
+    Returns:
+        list: A list of the main phrases in the input text, where each phrase is represented as a lowercase string.
+    """
+    # Parse the input text using spaCy
     doc = nlp(text)
+    
+    # Initialize an empty list to store the main phrases
     phrases = []
+    
+    # Extract noun chunks and add them to the phrases list
     for chunk in doc.noun_chunks:
+        # Check that the root word of the noun chunk is not a stop word or punctuation
         if not chunk.root.is_stop and not chunk.root.is_punct:
             phrases.append(chunk.lemma_.lower())
+    
+    # Extract root verbs and add them to the phrases list
     for token in doc:
+        # Check that the token is a root verb and not a stop word or punctuation
         if token.dep_ == 'ROOT' and token.pos_ == 'VERB' and not token.is_stop and not token.is_punct:
             phrases.append(token.lemma_.lower())
+    
+    # Return the list of main phrases
     return phrases
 
-def get_similar_phrases(phrase, phrases):
-    phrase_vec = nlp(phrase).vector
-    phrase_vecs = [nlp(phrase).vector for phrase in phrases]
-    similarities = nlp.vocab.vectors.cosine_similarities(phrase_vecs, [phrase_vec])
-    top_indices = similarities.argsort()[:-6:-1]
-    return [phrases[i] for i in top_indices]
+```
 
-def cluster_phrases(phrases):
-    clusters = defaultdict(list)
-    for i, phrase1 in enumerate(phrases):
-        for j, phrase2 in enumerate(phrases[i+1:], i+1):
-            sim = nlp(phrase1).similarity(nlp(phrase2))
-            if sim > 0.8:
-                clusters[i].append(j)
-                clusters[j].append(i)
-    groups = []
-    seen = set()
-    for i in range(len(phrases)):
-        if i not in seen:
-            group = [phrases[i]]
-            seen.add(i)
-            for j in clusters[i]:
-                if j not in seen:
-                    group.append(phrases[j])
-                    seen.add(j)
-            groups.append(group)
-    return groups
+```{python}
+def get_hotwords(text):
+    """
+    Extracts the top 5 most common hot words from the input text after removing stop words and punctuations.
+    
+    Args:
+        text (str): The input text to extract hot words from.
+    
+    Returns:
+        List of strings: The top 5 most common hot words in the input text.
+    """
+    nlp.Defaults.stop_words |= {"•","m2", "house"}  # add additional stop words
+    result = []
+    doc = nlp(text.lower())
+    pos_tag = ['PROPN', 'ADJ', 'NOUN']
+    result = [token.text for token in doc if token.text not in nlp.Defaults.stop_words and token.text not in punctuation and token.pos_ in pos_tag]
+    return [word for word, count in Counter(result).most_common(5)]
+
 ```
 
 ```{python, results='asis'}
 # Extract the main phrases for each row in the 'info_text_en' column
 houses_r['main_phrases'] = houses_r['info_text_en'].apply(extract_main_phrases)
-houses_r['grouped_phrases'] = houses_r['main_phrases'].apply(cluster_phrases)
+houses_r['hotwords'] = houses_r['info_text_en'].apply(get_hotwords)
 ```
 
 
+```{python}
+# Create a list to store vectors
+vector_list = []
+
+# Iterate over each vector in the 'hotwords' column of the 'houses_r' dataframe
+for vec in houses_r['hotwords']:
+    # Append the vector to the 'vector_list'
+    vector_list.append(vec)
+
+# Create a list of all the words in the 'hotwords' vectors without duplicates
+word_list = list(set([word for vec in vector_list for word in vec]))
+
+# Create a new dataframe with a single column called 'word' containing all the words
+hotwords = pd.DataFrame({'word': word_list})
+
+# Add a column to the dataframe to count duplicates of each word and drop any duplicates
+hotwords['duplicates_count'] = hotwords.duplicated(['word']).groupby(hotwords['word']).transform('sum')+1
+hotwords = hotwords.drop_duplicates()
+```
 
 
- 
 ```{r}
 ggplot(houses_cleaned, mapping = aes(x = built_up_area)) +
  geom_boxplot()
