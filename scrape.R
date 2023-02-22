@@ -1,6 +1,6 @@
 library(pacman)
 
-p_load(rio, tidyverse, rvest, httr, doParallel, furrr, RSelenium)
+p_load(rio, tidyverse, rvest, httr, doParallel, furrr, RSelenium, remotes)
 
 # scrape through nehnutelnosti web page and retrieve data advertisements for the sale of apartments and houses
 site <- "https://www.nehnutelnosti.sk/slovensko/predaj/?p[categories][ids]=1.2&p[order]=1&p[page]="
@@ -136,15 +136,14 @@ saveRDS(text_long, file = "data/texts.rds") # instead of csv due to size reducti
 saveRDS(advertisements_cleaned, file = "data/advertisements.rds") # instead of csv due to size reduction
 
 
-driver <- rsDriver(browser=c("firefox"), iedrver = NULL)
-remote_driver <- driver[["client"]]
+remote_driver <- remoteDriver(remoteServerAddr = "localhost", port = 4445, browserName = "chrome")
 remote_driver$open()
 remote_driver$navigate("https://www.nehnutelnosti.sk/5000493/4-izbovy-rodinny-dom-brezova-ulica-stupava/")
 remote_driver$findElement(using = "xpath", '/html/body/div[5]/div[1]/section/div[1]/div[2]/div/div[1]/div[5]/div[1]/div[1]/div/div[2]/div[1]/div/div/p[1]/span')
 
 
-remDr <- remoteDriver()
+remDr <-  remoteDriver$new()
+remDr$open()
 remDr$navigate("https://www.nehnutelnosti.sk/5000493/4-izbovy-rodinny-dom-brezova-ulica-stupava/")
 remDr$navigate()
-%>% 
   
