@@ -1,6 +1,6 @@
 library(pacman)
 
-p_load(rio, tidyverse, rvest, httr, doParallel, furrr, RSelenium, remotes)
+p_load(rio, tidyverse, rvest, httr, doParallel, furrr, RSelenium, netstat)
 
 # scrape through nehnutelnosti web page and retrieve data advertisements for the sale of apartments and houses
 site <- "https://www.nehnutelnosti.sk/slovensko/predaj/?p[categories][ids]=1.2&p[order]=1&p[page]="
@@ -136,14 +136,55 @@ saveRDS(text_long, file = "data/texts.rds") # instead of csv due to size reducti
 saveRDS(advertisements_cleaned, file = "data/advertisements.rds") # instead of csv due to size reduction
 
 
-remote_driver <- remoteDriver(remoteServerAddr = "localhost", port = 4445, browserName = "chrome")
+
+
+
+# Start a Docker container running the Selenium Chrome browser image
+system("docker run -d -p 4445:4444 selenium/standalone-chrome")
+# Check that the container is running
+docker_status <- system("docker ps")
+
+remote_driver <- remoteDriver(remoteServerAddr = "localhost",
+                                                  port = 4445,
+                                                  browserName = "chrome")
 remote_driver$open()
+remote_driver$
 remote_driver$navigate("https://www.nehnutelnosti.sk/5000493/4-izbovy-rodinny-dom-brezova-ulica-stupava/")
-remote_driver$findElement(using = "xpath", '/html/body/div[5]/div[1]/section/div[1]/div[2]/div/div[1]/div[5]/div[1]/div[1]/div/div[2]/div[1]/div/div/p[1]/span')
+pagesource <- remote_driver$findElement(using = 'xpath', '//*[contains(concat( " ", @class, " " ), concat( " ", "align-self-stretch", " " ))]')
+page_html <- pagesource$getPageSource()
+
+page_html
 
 
-remDr <-  remoteDriver$new()
+# Stop Docker container
+system(paste0("docker stop ", container_id))
+
+# Remove Docker container
+system(paste0("docker rm ", container_id))
+
+
+
+library(tidyverse)
+library(RSelenium)
+library(netstat)
+
+# start the server
+rs_driver_object <- rsDriver(browser = 'chrome',
+                             chromever = '110.0.5481.30',
+                             verbose = FALSE,
+                             port = free_port())
+
+# create a client object
+remDr <- rs_driver_object$client
+
+# open a browser
 remDr$open()
 remDr$navigate("https://www.nehnutelnosti.sk/5000493/4-izbovy-rodinny-dom-brezova-ulica-stupava/")
-remDr$navigate()
-  
+webElem <- remDr$findElement("css", "body")
+webElem$sendKeysToElement(list(key = "end"))
+pagesource <- remDr$findElement(using = 'xpath', '//*[contains(concat( " ", @class, " " ), concat( " ", "align-self-stretch", " " ))]')
+page_html <- pagesource$getPageSource()[[1]] %>% xml2::read_html()
+
+
+page_html %>% html_nodes(xpath = '//*[@id="totalCityperformerWrapper"]/div/p[1]')
+
