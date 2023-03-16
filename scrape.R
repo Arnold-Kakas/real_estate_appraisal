@@ -170,7 +170,7 @@ library(netstat)
 
 # start the server
 rs_driver_object <- rsDriver(browser = 'chrome',
-                             chromever = '110.0.5481.30',
+                             chromever = '110.0.5481.77',
                              verbose = FALSE,
                              port = free_port())
 
@@ -182,9 +182,7 @@ remDr$open()
 remDr$navigate("https://www.nehnutelnosti.sk/5000493/4-izbovy-rodinny-dom-brezova-ulica-stupava/")
 webElem <- remDr$findElement("css", "body")
 webElem$sendKeysToElement(list(key = "end"))
-pagesource <- remDr$findElement(using = 'xpath', '//*[contains(concat( " ", @class, " " ), concat( " ", "align-self-stretch", " " ))]')
+pagesource <- remDr$findElement(using = 'xpath', '//*[@id="totalCityperformerWrapper"]/div/p[1]')
 page_html <- pagesource$getPageSource()[[1]] %>% xml2::read_html()
-
-
-page_html %>% html_nodes(xpath = '//*[@id="totalCityperformerWrapper"]/div/p[1]')
+page_html %>% html_nodes(xpath = '//*[@id="totalCityperformerWrapper"]/div/p[1]') %>% html_text()
 
