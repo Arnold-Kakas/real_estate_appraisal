@@ -41,52 +41,93 @@ advertisements <- future_map_dfr(1:number_of_pages, function(i) {
 
 # Additional info from web
 
+# start the server
+rs_driver_object <- rsDriver(browser = 'chrome',
+                             chromever = '111.0.5563.41',
+                             verbose = FALSE,
+                             port = free_port(random = TRUE))
+                          
+# create a client object
+remDr <- rs_driver_object$client
+# open a browser
+remDr$open()
+remDr$navigate('https://www.nehnutelnosti.sk/')
+Sys.sleep(5) #wait for 5 seconds
+# deal with cookies
+remDr$switchToFrame(remDr$findElement(using = 'xpath', '//*[@id="sp_message_iframe_710573"]'))
+remDr$findElement(using = 'xpath', '//*[@id="notice"]/div[5]/div[2]/button')$clickElement()
+
+# wait for another pop up window
+Sys.sleep(10)
+
+# decline option 
+remDr$findElement(using = 'xpath', '//*[@id="onesignal-slidedown-cancel-button"]')$clickElement()
+
+
 additional_info_df <- map_dfr(advertisements$link, function(i) {
-  temp <- read_html(GET(i, timeout(60)))
+  remDr$navigate(i)
+  Sys.sleep(5) #wait for 5 seconds
 
-  info_details <- temp %>%
-    html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "col-md-4", " " ))]//div') %>%
-    html_text2()
+  height <- as.numeric(remDr$executeScript('return document.documentElement.scrollHeight')) - 2400 # 2400 pixels = lenght from botton which does not change
+  remDr$executeScript(paste('window.scrollTo(0, ',height,');')) # scroll to living index
 
-  info <- as.data.frame(info_details) %>%
-    separate(info_details, sep = ": ", c("info", "status")) %>%
-    filter(info %in% info_names) %>%
-    pivot_wider(names_from = "info", values_from = "status")
-
-  temp_col_names <- colnames(info)
-
-  condition <- ifelse("Stav" %in% temp_col_names, info$Stav, NA)
-  usable_area <- ifelse("Úžit. plocha" %in% temp_col_names, info$"Úžit. plocha", NA)
-  built_up_area <- ifelse("Zast. plocha" %in% temp_col_names, info$"Zast. plocha", NA)
-  land_area <- ifelse("Plocha pozemku" %in% temp_col_names, info$"Plocha pozemku", NA)
-  commission_in_price <- ifelse("Provízia zahrnutá v cene" %in% temp_col_names, info$"Provízia zahrnutá v cene", NA)
-
-  tibble(condition = condition, usable_area = usable_area, built_up_area = built_up_area, land_area = land_area, commission_in_price = commission_in_price)
-})
-
-
-
-
-
-
-text_long <- map_dfr(advertisements$link, function(i) {
-  temp <- read_html(GET(i, timeout(60)))
+  page <- remDr$findElement(using = 'xpath', '//*[@id="map-filter-container"]')
+  page_html <- page$getElementAttribute('outerHTML')
+  page_html <- read_html(page_html[[1]])
   
-  info_text <- temp %>%
+  info_text <- page_html %>% 
     html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "text-inner", " " ))]') %>%
     html_text2() %>%
     as.character() %>%
     str_trim() %>% 
     str_squish()
   
-  tibble(url = i, info_text = info_text)
-})
+  info_details <- page_html %>% 
+    html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "col-md-4", " " ))]//div') %>%
+    html_text2()
+  
+  info <- as.data.frame(info_details) %>%
+    separate(info_details, sep = ": ", c("info", "status")) %>%
+    filter(info %in% info_names) %>%
+    pivot_wider(names_from = "info", values_from = "status")
 
+  temp_col_names <- colnames(info)
+  
+  condition <- ifelse("Stav" %in% temp_col_names, info$Stav, NA)
+  usable_area <- ifelse("Úžit. plocha" %in% temp_col_names, info$"Úžit. plocha", NA)
+  built_up_area <- ifelse("Zast. plocha" %in% temp_col_names, info$"Zast. plocha", NA)
+  land_area <- ifelse("Plocha pozemku" %in% temp_col_names, info$"Plocha pozemku", NA)
+  commission_in_price <- ifelse("Provízia zahrnutá v cene" %in% temp_col_names, info$"Provízia zahrnutá v cene", NA)
+  
 
+  tryCatch({
+    index <- page_html %>% 
+      html_nodes(xpath = '//*[@id="totalCityperformerWrapper"]/div/p[1]/span') %>%
+      html_text2() # %>% 
+    # str_extract("[:digit:]+") %>% 
+    # as.numeric()
+  }, error = function(e) {
+    index <- NA
+  })  
+  
+  tryCatch({
+    additional_chars <- page_html %>% 
+      html_nodes(xpath = '//*[@id="additional-features-modal-button"]/ul') %>% 
+      html_text() %>% 
+      str_squish()
+  }, error = function(e) {
+    additional_chars <- NA
+  })
+  
+  
 
+  tibble(info_text = info_text, additional_characteristics = additional_chars, index_of_living = index, condition = condition, usable_area = usable_area, built_up_area = built_up_area, land_area = land_area, commission_in_price = commission_in_price)
+  })
 
-
-
+rs_driver_object$client$close()
+rs_driver_object$server$stop()
+rm(rs_driver_object, remDr)
+gc()
 
 # bind ads and additional info dataframes
 advertisements <- cbind(advertisements, additional_info_df)
@@ -138,53 +179,33 @@ saveRDS(advertisements_cleaned, file = "data/advertisements.rds") # instead of c
 
 
 
-
-# Start a Docker container running the Selenium Chrome browser image
-system("docker run -d -p 4445:4444 selenium/standalone-chrome")
-# Check that the container is running
-docker_status <- system("docker ps")
-
-remote_driver <- remoteDriver(remoteServerAddr = "localhost",
-                                                  port = 4445,
-                                                  browserName = "chrome")
-remote_driver$open()
-remote_driver$
-remote_driver$navigate("https://www.nehnutelnosti.sk/5000493/4-izbovy-rodinny-dom-brezova-ulica-stupava/")
-pagesource <- remote_driver$findElement(using = 'xpath', '//*[contains(concat( " ", @class, " " ), concat( " ", "align-self-stretch", " " ))]')
-page_html <- pagesource$getPageSource()
-
-page_html
-
-
-# Stop Docker container
-system(paste0("docker stop ", container_id))
-
-# Remove Docker container
-system(paste0("docker rm ", container_id))
-
-
-
-library(tidyverse)
-library(RSelenium)
-library(netstat)
-
-# start the server
-rs_driver_object <- rsDriver(browser = 'chrome',
-                             chromever = '110.0.5481.30',
-                             verbose = FALSE,
-                             port = free_port())
-
-# create a client object
-remDr <- rs_driver_object$client
-
-# open a browser
-remDr$open()
-remDr$navigate("https://www.nehnutelnosti.sk/5000493/4-izbovy-rodinny-dom-brezova-ulica-stupava/")
-webElem <- remDr$findElement("css", "body")
-webElem$sendKeysToElement(list(key = "end"))
-pagesource <- remDr$findElement(using = 'xpath', '//*[contains(concat( " ", @class, " " ), concat( " ", "align-self-stretch", " " ))]')
-page_html <- pagesource$getPageSource()[[1]] %>% xml2::read_html()
+# 
+# # Start a Docker container running the Selenium Chrome browser image
+# system("docker run -d -p 4445:4444 selenium/standalone-chrome")
+# # Check that the container is running
+# system("docker ps")
+# 
+# remDr <- RSelenium::remoteDriver(remoteServerAddr = "localhost",
+#                                  port = 4445L,
+#                                  browserName = "chrome")
+# # open a browser
+# remDr$open()
+# remDr$navigate("https://www.nehnutelnosti.sk/4968526/arvin-benet-moderny-nadcasovy-4i-rodinny-dom")
+# webElem <- remDr$findElement("css", "body")
+# webElem$sendKeysToElement(list(key = "end"))
+# pagesource <- remDr$findElement(using = 'xpath', '//*[contains(concat( " ", @class, " " ), concat( " ", "align-self-stretch", " " ))]')
+# page_html <- pagesource$getPageSource()[[1]] %>% xml2::read_html()
+# page_html %>% html_nodes(xpath = '//*[@id="totalCityperformerWrapper"]/div/p[1]/span') %>% html_text2()
+# 
+# 
+# # Stop Docker container
+# system(paste0("docker stop ", container_id))
+# 
+# # Remove Docker container
+# system(paste0("docker rm ", container_id))
 
 
-page_html %>% html_nodes(xpath = '//*[@id="totalCityperformerWrapper"]/div/p[1]')
+
+
+
 
