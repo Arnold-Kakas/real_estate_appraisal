@@ -40,7 +40,7 @@ advertisements <- future_map_dfr(1:number_of_pages, function(i) {
 
 # Delete all cookies from the last 24 hours
 clearCookies <- function(remDr) {
-  remDr$delete_all_cookies("24 hours")
+  remDr$deleteAllCookies()
 }
 
 # Define a function that handles the errors in page load
@@ -95,12 +95,12 @@ split_size <- ceiling(nrow(advertisements) / num_splits)
 # split the data frame into subsets
 advertisments_list <- split(advertisements, rep(1:num_splits, each = split_size, length.out = nrow(advertisements)))
 
-# for (i in seq_along(advertisments_list)) {
-#   assign(paste0("advertisements_", i), advertisments_list[[i]])
-# }
-for (i in 1:2) {
+for (i in seq_along(advertisments_list)) {
   assign(paste0("advertisements_", i), advertisments_list[[i]])
 }
+# for (i in 1:2) {
+#   assign(paste0("advertisements_", i), advertisments_list[[i]])
+# }
 
 ################################################################################################
 # create empty dataframeoutside of the loop to hold additional info
@@ -233,8 +233,8 @@ end_time <- Sys.time()
 elapsed_time <- end_time - start_time
 elapsed_time
 
-saveRDS(additional_info_list, "additional_info_list.RDS")
-
+saveRDS(additional_info_df, "additional_info_df.RDS")
+saveRDS(advertisements, "advertisements.RDS")
 # bind ads and additional info dataframes
 
 # info <- as.data.frame(info_details) %>%
