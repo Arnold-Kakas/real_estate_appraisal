@@ -231,11 +231,57 @@ for (i in 1:10) {
 
 end_time <- Sys.time()
 elapsed_time <- end_time - start_time
-elapsed_time
+etime <- elapsed_time
 
 saveRDS(additional_info_df, "additional_info_df.RDS")
 saveRDS(advertisements, "advertisements.RDS")
-# bind ads and additional info dataframes
+
+# list of characteristics, not all will be used
+characteristics <- c("Vlastníctvo", 
+                     "Počet izieb/miestností", 
+                     "Orientácia", 
+                     "Rok výstavby", 
+                     "Rok poslednej rekonštrukcie", 
+                     "Rok kolaudácie",
+                     "Energetický certifikát",
+                     "Počet nadzemných podlaží",
+                     "Podlažie",
+                     "Počet podzemných podlaži",
+                     "Umiestnenie",
+                     "Typ konštrukcie",
+                     "Telekomunikáčné a dátové siete",
+                     "Počet balkónov",
+                     "Výťah",
+                     "Počet lodžií",
+                     "Kúrenie",
+                     "Pivnica",
+                     "Verejné parkovanie",
+                     "Vonkajšie parkovacie miesto", # combine under Verejné parkovanie
+                     "Plocha predzáhradky",
+                     "Plochy pivníc",
+                     "Garáž")
+patterns <- list(
+  Vlastníctvo = "(?<=Vlastníctvo: ).*?(?=\\s|$)",
+  `Počet izieb/miestností` = "(?<=Počet izieb/miestností: ).*?(?=\\s|$)",
+  Orientácia = "(?<=Orientácia: ).*?(?=\\s|$)",
+  `Rok výstavby` = "(?<=Rok výstavby: ).*?(?=\\s|$)",
+  `Rok poslednej rekonštrukcie` = "(?<=Rok poslednej rekonštrukcie: ).*?(?=\\s|$)",
+  `Rok kolaudácie` = "(?<=Rok kolaudácie: ).*?(?=\\s|$)",
+  `Energetický certifikát` = "(?<=Energetický certifikát: ).*?(?=\\s|$)",
+  `Počet nadzemných podlaží` = "(?<=Počet nadzemných podlaží: ).*?(?=\\s|$)",
+  Podlažie = "(?<=Podlažie: ).*?(?=\\s|$)",
+  `Počet podzemných podlaži` = "(?<=Počet podzemných podlaži: ).*?(?=\\s|$)",
+  Umiestnenie = "(?<=Umiestnenie: ).*?(?=\\s|$)",
+  `Typ konštrukcie` = "(?<=Typ konštrukcie: ).*?(?=\\s|$)",
+  `Telekomunikáčné a dátové siete` = "(?<=Telekomunikáčné a dátové siete: ).*?(?=\\s|$)",
+  `Počet balkónov` = "(?<=Počet balkónov: ).*?(?=\\s|$)",
+  Výťah = "(?<=Výťah: ).*?(?=\\s|$)",
+  `Počet lodžií` = "(?<=Počet lodžií: ).*?(?=\\s|$)",
+  Kúrenie = "(?<=Kúrenie: ).*?(?=\\s|$)",
+  Pivnica = "(?<=Pivnica: ).*?(?=\\s|$)",
+  `Verejné parkovanie` = "(?<=Verejné parkovanie: ).*?(?=\\s|$)|(?<=Vonkajšie parkovacie miesto: ).
+
+
 
 # info <- as.data.frame(info_details) %>%
 #   separate(info_details, sep = ": ", c("info", "status")) %>%
