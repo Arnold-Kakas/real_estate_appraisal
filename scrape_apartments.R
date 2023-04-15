@@ -73,9 +73,9 @@ get_text_or_na <- function(nodes) {
     {
       text <- nodes %>%
         html_text2() %>%
-        as.character() %>%
-        str_trim() %>%
-        str_squish()
+        as.character() #%>%
+        #str_trim() %>%
+        #str_squish()
       if (text == "") NA else text
     },
     error = function(e) {
@@ -85,7 +85,6 @@ get_text_or_na <- function(nodes) {
 }
 
 # Additional info from web
-start_time <- Sys.time()
 
 ################################################################################################
 # number of splits
@@ -98,9 +97,7 @@ advertisments_list <- split(advertisements, rep(1:num_splits, each = split_size,
 for (i in seq_along(advertisments_list)) {
   assign(paste0("advertisements_", i), advertisments_list[[i]])
 }
-# for (i in 1:2) {
-#   assign(paste0("advertisements_", i), advertisments_list[[i]])
-# }
+
 
 ################################################################################################
 # create empty dataframeoutside of the loop to hold additional info
@@ -112,7 +109,8 @@ additional_info_df <- tibble(link = character(),
   stringsAsFactors = FALSE
 )
 
-# loop through each dataframe (df1, df2, ..., df10)
+start_time <- Sys.time()
+
 for (i in 1:10) {
   # get the current dataframe
   current_df <- get(paste0("advertisements_", i))
@@ -138,19 +136,31 @@ for (i in 1:10) {
   # accept cookies
   remDr$switchToFrame(remDr$findElement(using = "xpath", '//*[@id="sp_message_iframe_710573"]'))
   remDr$findElement(using = "xpath", '//*[@id="notice"]/div[5]/div[2]/button')$clickElement()
-
-  # wait for pop up window
-  Sys.sleep(15)
-
-  # decline option
-  remDr$findElement(using = "xpath", '//*[@id="onesignal-slidedown-cancel-button"]')$clickElement()
-
-
+  
+# ##########################################################################################################################################################
+#        delete if code works 
+# ##########################################################################################################################################################  
+#   #scroll
+#   height <- as.numeric(remDr$executeScript("return document.documentElement.scrollHeight"))/2 # 3000 pixels = lenght from botton which does not change
+#   remDr$executeScript(paste("window.scrollTo(0, ", height, ");"))
+# 
+#   # wait for pop up window
+#   Sys.sleep(15)
+#   
+#   # decline option
+#   tryCatch(
+#            {
+#              remDr$findElement(using = "xpath", '//*[@id="onesignal-slidedown-cancel-button"]')$clickElement()
+#   },
+#   error = function(e) {
+#     decline <- NA
+#   }
+#   )
+# ##########################################################################################################################################################
+  
   # loop through each link in the current dataframe
   for (link in current_df$link) {
-    
-    link
-    
+
     info_text = NA
     additional_characteristics = NA
     index_of_living = NA
@@ -159,7 +169,7 @@ for (i in 1:10) {
     # additional_info_df <- map_dfr(df$link, function(j) {
     navigate_with_retry(link, remDr)
 
-    height <- as.numeric(remDr$executeScript("return document.documentElement.scrollHeight")) - 3000 # 3000 pixels = lenght from botton which does not change
+    height <- as.numeric(remDr$executeScript("return document.documentElement.scrollHeight")) - 3200 # Scroll to load index of living
     remDr$executeScript(paste("window.scrollTo(0, ", height, ");")) # scroll to living index
 
     Sys.sleep(1)
@@ -203,8 +213,8 @@ for (i in 1:10) {
         {
           additional_characteristics <- page_html %>%
             html_nodes(xpath = '//*[@id="additional-features-modal-button"]/ul') %>%
-            html_text() %>%
-            str_squish()
+            html_text2()# %>%
+            #str_squish()
         },
         error = function(e) {
           additional_characteristics <- NA
@@ -235,6 +245,9 @@ etime <- elapsed_time
 
 saveRDS(additional_info_df, "additional_info_df.RDS")
 saveRDS(advertisements, "advertisements.RDS")
+
+additional_info_df <- read_rds("additional_info_df.RDS")
+advertisements <- read_rds("advertisements.RDS")
 
 # list of characteristics, not all will be used
 characteristics <- c("Vlastníctvo", 
