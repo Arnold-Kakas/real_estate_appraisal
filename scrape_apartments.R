@@ -109,7 +109,6 @@ additional_info_df <- tibble(link = character(),
   stringsAsFactors = FALSE
 )
 
-start_time <- Sys.time()
 
 for (i in 1:10) {
   # get the current dataframe
@@ -239,109 +238,93 @@ for (i in 1:10) {
 }
 
 
-end_time <- Sys.time()
-elapsed_time <- end_time - start_time
-etime <- elapsed_time
-
 saveRDS(additional_info_df, "additional_info_df.RDS")
 saveRDS(advertisements, "advertisements.RDS")
 
 additional_info_df <- read_rds("additional_info_df.RDS")
 advertisements <- read_rds("advertisements.RDS")
 
-# list of characteristics, not all will be used
-characteristics <- c("Vlastníctvo", 
-                     "Počet izieb/miestností", 
-                     "Orientácia", 
-                     "Rok výstavby", 
-                     "Rok poslednej rekonštrukcie", 
-                     "Rok kolaudácie",
-                     "Energetický certifikát",
-                     "Počet nadzemných podlaží",
-                     "Podlažie",
-                     "Počet podzemných podlaži",
-                     "Umiestnenie",
-                     "Typ konštrukcie",
-                     "Telekomunikáčné a dátové siete",
-                     "Počet balkónov",
-                     "Výťah",
-                     "Počet lodžií",
-                     "Kúrenie",
-                     "Pivnica",
-                     "Verejné parkovanie",
-                     "Vonkajšie parkovacie miesto", # combine under Verejné parkovanie
-                     "Plocha predzáhradky",
-                     "Plochy pivníc",
-                     "Garáž")
-patterns <- list(
-  Vlastníctvo = "(?<=Vlastníctvo: ).*?(?=\\s|$)",
-  `Počet izieb/miestností` = "(?<=Počet izieb/miestností: ).*?(?=\\s|$)",
-  Orientácia = "(?<=Orientácia: ).*?(?=\\s|$)",
-  `Rok výstavby` = "(?<=Rok výstavby: ).*?(?=\\s|$)",
-  `Rok poslednej rekonštrukcie` = "(?<=Rok poslednej rekonštrukcie: ).*?(?=\\s|$)",
-  `Rok kolaudácie` = "(?<=Rok kolaudácie: ).*?(?=\\s|$)",
-  `Energetický certifikát` = "(?<=Energetický certifikát: ).*?(?=\\s|$)",
-  `Počet nadzemných podlaží` = "(?<=Počet nadzemných podlaží: ).*?(?=\\s|$)",
-  Podlažie = "(?<=Podlažie: ).*?(?=\\s|$)",
-  `Počet podzemných podlaži` = "(?<=Počet podzemných podlaži: ).*?(?=\\s|$)",
-  Umiestnenie = "(?<=Umiestnenie: ).*?(?=\\s|$)",
-  `Typ konštrukcie` = "(?<=Typ konštrukcie: ).*?(?=\\s|$)",
-  `Telekomunikáčné a dátové siete` = "(?<=Telekomunikáčné a dátové siete: ).*?(?=\\s|$)",
-  `Počet balkónov` = "(?<=Počet balkónov: ).*?(?=\\s|$)",
-  Výťah = "(?<=Výťah: ).*?(?=\\s|$)",
-  `Počet lodžií` = "(?<=Počet lodžií: ).*?(?=\\s|$)",
-  Kúrenie = "(?<=Kúrenie: ).*?(?=\\s|$)",
-  Pivnica = "(?<=Pivnica: ).*?(?=\\s|$)",
-  `Verejné parkovanie` = "(?<=Verejné parkovanie: ).*?(?=\\s|$)|(?<=Vonkajšie parkovacie miesto: ).
+# clean advertisements data
 
-
-
-# info <- as.data.frame(info_details) %>%
-#   separate(info_details, sep = ": ", c("info", "status")) %>%
-#   filter(info %in% info_names) %>%
-#   pivot_wider(names_from = "info", values_from = "status")
-# 
-# temp_col_names <- colnames(info)
-# 
-# condition <- ifelse("Stav" %in% temp_col_names, info$Stav, NA)
-# usable_area <- ifelse("Úžit. plocha" %in% temp_col_names, info$"Úžit. plocha", NA)
-# built_up_area <- ifelse("Zast. plocha" %in% temp_col_names, info$"Zast. plocha", NA)
-# land_area <- ifelse("Plocha pozemku" %in% temp_col_names, info$"Plocha pozemku", NA)
-# commission_in_price <- ifelse("Provízia zahrnutá v cene" %in% temp_col_names, info$"Provízia zahrnutá v cene", NA)
-
-
-# use this logic to get data from above:
-# split_string <- strsplit(info_details, "\n")
-# x <- split_string %>% unlist() %>% as.data.frame()
-# separate(x, sep = ": ", c("info", "status")) this needs to be fixed
-# then select only relevant cols
-
-# clean data
 advertisements_cleaned <- advertisements %>%
   separate(type_of_real_estate, c("type", "area"), sep = " • ") %>%
   separate(address, c("a", "b", "c"), sep = ", ", remove = TRUE) %>%
+  unite("address", c(6, 5, 4), sep = ", ", na.rm = TRUE, remove = TRUE) %>% # reordering to keep all districts in first column
   mutate(
+    address0 = address,
     rooms = case_when(
       str_detect(type, "byt") ~ substr(type, 1, 1),
       str_detect(type, "Garsónka") ~ "1,5",
       str_detect(type, "Dvojgarsónka") ~ "2,5"
     ),
-    price = str_replace(price, " €", ""),
-    usable_area = str_replace(usable_area, " m2", ""),
-    built_up_area = str_replace(built_up_area, " m2", ""),
-    land_area = str_replace(land_area, " m2", ""),
-    commission_in_price = ifelse(is.na(commission_in_price) == TRUE, "no", "yes"),
-    type = case_when(
-      !str_detect(type, "byt") ~ type,
-      str_detect(type, "byt") ~ "Byt"
-    )
+    price = str_replace(price, " €", "") %>% str_replace_all(" ", "") %>% as.numeric()
   ) %>%
-  unite("address", c(5, 4), sep = ", ", na.rm = TRUE, remove = FALSE) %>% # new address for geocoding
-  unite("address0", c(6, 5, 4), sep = ", ", na.rm = TRUE, remove = TRUE) %>% # reordering to keep all districts in first column
-  separate(address0, c("district", "municipality", "street"), sep = ", ") %>%
-  filter(str_detect(district, "okres")) %>%
-  mutate(price = as.numeric(str_replace_all(price, " ", ""))) %>%
-  select(-area)
+  separate(address0, c("district", "municipality", "street"), sep = ", ")
+
+# get additional information from scraped data
+# define list of characteristics
+characteristics <- c("Počet izieb/miestností", 
+                     "Orientácia", 
+                     "Rok výstavby", 
+                     "Rok poslednej rekonštrukcie",
+                     "Energetický certifikát",
+                     "Počet nadzemných podlaží",
+                     "Podlažie",
+                     "Výťah",
+                     "Typ konštrukcie",
+                     "Počet balkónov",
+                     "Počet lodžií",
+                     "Pivnica"
+)
+
+#
+info_wrangler <- additional_info_df %>% 
+  mutate(
+    chars_list = str_split( additional_characteristics,"\n"), # %>% str_split(": "),
+    details_list = str_split( info_details,"\n")# %>% str_split(": ")
+  ) %>% 
+  select(-additional_characteristics, -info_details)
+
+get_characteristics <- function(nodes) {
+  temp_df <- test %>% unlist() %>% as.data.frame()
+  temp_df <- rename(temp_df, chars = .)
+  temp_df <- temp_df %>% separate_wider_delim(chars, delim = ": ", names = c("info", "status"))
+}
+
+
+
+
+
+
+
+
+
+
+
+# complete list of characteristics, not all will be used
+# characteristics <- c("Vlastníctvo", 
+#                      "Počet izieb/miestností", 
+#                      "Orientácia", 
+#                      "Rok výstavby", 
+#                      "Rok poslednej rekonštrukcie", 
+#                      "Rok kolaudácie",
+#                      "Energetický certifikát",
+#                      "Počet nadzemných podlaží",
+#                      "Podlažie",
+#                      "Počet podzemných podlaži",
+#                      "Umiestnenie",
+#                      "Typ konštrukcie",
+#                      "Telekomunikáčné a dátové siete",
+#                      "Počet balkónov",
+#                      "Výťah",
+#                      "Počet lodžií",
+#                      "Kúrenie",
+#                      "Pivnica",
+#                      "Verejné parkovanie",
+#                      "Vonkajšie parkovacie miesto",
+#                      "Plocha predzáhradky",
+#                      "Plochy pivníc")
+
 
 
 # save the old file to histo folder for further use in predictive analyses
@@ -363,30 +346,3 @@ saveRDS(text_long, file = "data/texts.rds") # instead of csv due to size reducti
 # write.csv2(advertisements_cleaned, "data/advertisements.csv")
 saveRDS(advertisements_cleaned, file = "data/advertisements.rds") # instead of csv due to size reduction
 
-
-
-
-#
-# # Start a Docker container running the Selenium Chrome browser image
-# system("docker run -d -p 4445:4444 selenium/standalone-chrome")
-# # Check that the container is running
-# system("docker ps")
-#
-# remDr <- RSelenium::remoteDriver(remoteServerAddr = "localhost",
-#                                  port = 4445L,
-#                                  browserName = "chrome")
-# # open a browser
-# remDr$open()
-# remDr$navigate("https://www.nehnutelnosti.sk/4968526/arvin-benet-moderny-nadcasovy-4i-rodinny-dom")
-# webElem <- remDr$findElement("css", "body")
-# webElem$sendKeysToElement(list(key = "end"))
-# pagesource <- remDr$findElement(using = 'xpath', '//*[contains(concat( " ", @class, " " ), concat( " ", "align-self-stretch", " " ))]')
-# page_html <- pagesource$getPageSource()[[1]] %>% xml2::read_html()
-# page_html %>% html_nodes(xpath = '//*[@id="totalCityperformerWrapper"]/div/p[1]/span') %>% html_text2()
-#
-#
-# # Stop Docker container
-# system(paste0("docker stop ", container_id))
-#
-# # Remove Docker container
-# system(paste0("docker rm ", container_id))
