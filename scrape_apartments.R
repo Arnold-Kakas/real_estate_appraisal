@@ -285,10 +285,17 @@ info_wrangler <- additional_info_df %>%
   ) %>% 
   select(-additional_characteristics, -info_details)
 
-get_characteristics <- function(nodes) {
-  temp_df <- test %>% unlist() %>% as.data.frame()
+get_characteristics <- function(x) {
+  temp_df <- x %>% unlist() %>% as.data.frame()
   temp_df <- rename(temp_df, chars = .)
-  temp_df <- temp_df %>% separate_wider_delim(chars, delim = ": ", names = c("info", "status"))
+  temp_df <- temp_df %>% 
+    separate_wider_delim(chars, 
+                         delim = ": ", 
+                         names = c("info", 
+                                   "status")
+                         ) %>% 
+    filter(info %in% characteristics) %>% 
+    pivot_wider(names_from = info, values_from = status)
 }
 
 
