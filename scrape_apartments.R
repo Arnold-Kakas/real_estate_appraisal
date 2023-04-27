@@ -3,20 +3,22 @@ if (!require("pacman")) {
 }
 
 
-pacman::p_load(rio, 
-               tidyverse, 
-               rvest, 
-               httr, 
-               doParallel, 
-               furrr, 
-               RSelenium, 
-               netstat)
+pacman::p_load(
+  rio,
+  tidyverse,
+  rvest,
+  httr,
+  doParallel,
+  furrr,
+  RSelenium,
+  netstat
+)
 
 # apartments page
 site <- "https://www.nehnutelnosti.sk/slovensko/byty/predaj/?p[page]="
 
 # scrape the number of pages
-number_of_pages <- read_html(paste0(site, 1)) %>% 
+number_of_pages <- read_html(paste0(site, 1)) %>%
   html_nodes(xpath = '//*[@id="content"]/div[8]/div/div/div[1]/div[17]/div/div/ul/li[5]') %>%
   html_elements("a") %>%
   html_text(trim = TRUE) %>%
@@ -79,9 +81,9 @@ get_text_or_na <- function(nodes) {
     {
       text <- nodes %>%
         html_text2() %>%
-        as.character() #%>%
-        #str_trim() %>%
-        #str_squish()
+        as.character() # %>%
+      # str_trim() %>%
+      # str_squish()
       if (text == "") NA else text
     },
     error = function(e) {
@@ -106,7 +108,8 @@ for (i in seq_along(advertisments_list)) {
 
 ################################################################################################
 # create empty dataframeoutside of the loop to hold additional info
-additional_info_df <- tibble(link = character(),
+additional_info_df <- tibble(
+  link = character(),
   info_text = character(),
   additional_characteristics = character(),
   index_of_living = character(),
@@ -140,36 +143,35 @@ for (i in 1:10) {
   # accept cookies
   remDr$switchToFrame(remDr$findElement(using = "xpath", '//*[@id="sp_message_iframe_710573"]'))
   remDr$findElement(using = "xpath", '//*[@id="notice"]/div[5]/div[2]/button')$clickElement()
-  
-# ##########################################################################################################################################################
-#        delete if code works 
-# ##########################################################################################################################################################  
-#   #scroll
-#   height <- as.numeric(remDr$executeScript("return document.documentElement.scrollHeight"))/2 # 3000 pixels = lenght from botton which does not change
-#   remDr$executeScript(paste("window.scrollTo(0, ", height, ");"))
-# 
-#   # wait for pop up window
-#   Sys.sleep(15)
-#   
-#   # decline option
-#   tryCatch(
-#            {
-#              remDr$findElement(using = "xpath", '//*[@id="onesignal-slidedown-cancel-button"]')$clickElement()
-#   },
-#   error = function(e) {
-#     decline <- NA
-#   }
-#   )
-# ##########################################################################################################################################################
-  
+
+  # ##########################################################################################################################################################
+  #        delete if code works
+  # ##########################################################################################################################################################
+  #   #scroll
+  #   height <- as.numeric(remDr$executeScript("return document.documentElement.scrollHeight"))/2 # 3000 pixels = lenght from botton which does not change
+  #   remDr$executeScript(paste("window.scrollTo(0, ", height, ");"))
+  #
+  #   # wait for pop up window
+  #   Sys.sleep(15)
+  #
+  #   # decline option
+  #   tryCatch(
+  #            {
+  #              remDr$findElement(using = "xpath", '//*[@id="onesignal-slidedown-cancel-button"]')$clickElement()
+  #   },
+  #   error = function(e) {
+  #     decline <- NA
+  #   }
+  #   )
+  # ##########################################################################################################################################################
+
   # loop through each link in the current dataframe
   for (link in current_df$link) {
+    info_text <- NA
+    additional_characteristics <- NA
+    index_of_living <- NA
+    info_details <- NA
 
-    info_text = NA
-    additional_characteristics = NA
-    index_of_living = NA
-    info_details = NA
-    
     # additional_info_df <- map_dfr(df$link, function(j) {
     navigate_with_retry(link, remDr)
 
@@ -181,15 +183,16 @@ for (i in 1:10) {
     page <- safe_find_element(remDr, '//*[@id="map-filter-container"]')
 
     if (is.na(page)) {
-      new_row <- tibble(link = link,
-                            info_text = NA,
-                            additional_characteristics = NA,
-                            index_of_living = NA,
-                            info_details = NA)
-                              
+      new_row <- tibble(
+        link = link,
+        info_text = NA,
+        additional_characteristics = NA,
+        index_of_living = NA,
+        info_details = NA
+      )
+
       # bind new row to additional info dataframe
       additional_info_df <- rbind(additional_info_df, new_row)
-      
     } else {
       page_html <- page$getElementAttribute("outerHTML")
       page_html <- read_html(page_html[[1]])
@@ -199,7 +202,7 @@ for (i in 1:10) {
         get_text_or_na()
 
       info_details <- page_html %>%
-        html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[2]/div[5]/ul') %>% 
+        html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[2]/div[5]/ul') %>%
         html_text2()
 
       tryCatch(
@@ -217,19 +220,21 @@ for (i in 1:10) {
         {
           additional_characteristics <- page_html %>%
             html_nodes(xpath = '//*[@id="additional-features-modal-button"]/ul') %>%
-            html_text2()# %>%
-            #str_squish()
+            html_text2() # %>%
+          # str_squish()
         },
         error = function(e) {
           additional_characteristics <- NA
         }
       )
-      
-      new_row <- tibble(link = link, info_text = info_text,
-                 additional_characteristics = additional_characteristics,
-                 index_of_living = index_of_living,
-                 info_details = info_details)
-      
+
+      new_row <- tibble(
+        link = link, info_text = info_text,
+        additional_characteristics = additional_characteristics,
+        index_of_living = index_of_living,
+        info_details = info_details
+      )
+
       # bind new row to additional info dataframe
       additional_info_df <- rbind(additional_info_df, new_row)
     }
@@ -253,51 +258,62 @@ advertisements <- read_rds("advertisements.RDS")
 
 advertisements_cleaned <- advertisements %>%
   separate(address, c("a", "b", "c"), sep = ", ", remove = TRUE) %>%
-  unite("address", c(6, 5, 4), sep = ", ", na.rm = TRUE, remove = TRUE) %>% # reordering to keep all districts in first column
+  unite("address", c(5, 4, 3), sep = ", ", na.rm = TRUE, remove = TRUE) %>% # reordering to keep all districts in first column
   mutate(
-    address0 = address) %>%
-  separate(address0, c("district", "municipality", "street"), sep = ", ")
+    price = str_replace_all(str_replace_all(price, " €", ""), " ", "") %>%
+      as.integer(),
+    address0 = address
+  ) %>%
+  separate(address0, c("district", "municipality", "street"), sep = ", ") %>%
+  select(-street, -type_of_real_estate)
 
 # get additional information from scraped data
 # First list of additional info details
-characteristics1 <- c("Stav", 
-                      "Úžit. plocha", 
-                      "Energie", 
-                      "Provízia zahrnutá v cene")
+characteristics1 <- c(
+  "Stav",
+  "Úžit. plocha",
+  "Energie",
+  "Provízia zahrnutá v cene"
+)
 
 characteristics1_df <- data.frame(characteristics1, value = NA)
 # Second list of additional info details
-characteristics2 <- c("Počet izieb/miestností", 
-                     "Orientácia", 
-                     "Rok výstavby", 
-                     "Rok poslednej rekonštrukcie",
-                     "Energetický certifikát",
-                     "Počet nadzemných podlaží",
-                     "Podlažie",
-                     "Výťah",
-                     "Typ konštrukcie",
-                     "Počet balkónov",
-                     "Počet lodžií",
-                     "Pivnica"
+characteristics2 <- c(
+  "Počet izieb/miestností",
+  "Orientácia",
+  "Rok výstavby",
+  "Rok poslednej rekonštrukcie",
+  "Energetický certifikát",
+  "Počet nadzemných podlaží",
+  "Podlažie",
+  "Výťah",
+  "Typ konštrukcie",
+  "Počet balkónov",
+  "Počet lodžií",
+  "Pivnica"
 )
 
 characteristics2_df <- data.frame(characteristics2, value = NA)
 
-characteristics_wrangler <- additional_info_df %>% 
+characteristics_wrangler <- additional_info_df %>%
   mutate(
-    chars1_list = str_split( info_details,"\n"),
-    chars2_list = str_split( additional_characteristics,"\n")
-  ) %>% 
+    chars1_list = str_split(info_details, "\n"),
+    chars2_list = str_split(additional_characteristics, "\n")
+  ) %>%
   select(-additional_characteristics, -info_details)
 
 get_characteristics1 <- function(x) {
-  temp_df <- x %>% unlist() %>% as.data.frame()
+  temp_df <- x %>%
+    unlist() %>%
+    as.data.frame()
   temp_df <- rename(temp_df, chars = .)
   temp_df <- temp_df %>%
     separate_wider_delim(chars,
-                         delim = ": ",
-                         names = c("info",
-                                   "status")
+      delim = ": ",
+      names = c(
+        "info",
+        "status"
+      )
     ) %>%
     filter(info %in% characteristics1) %>%
     full_join(characteristics1_df, join_by("info" == "characteristics1"), keep = FALSE) %>%
@@ -307,14 +323,18 @@ get_characteristics1 <- function(x) {
 }
 
 get_characteristics2 <- function(x) {
-  temp_df <- x %>% unlist() %>% as.data.frame()
+  temp_df <- x %>%
+    unlist() %>%
+    as.data.frame()
   temp_df <- rename(temp_df, chars = .)
   temp_df <- temp_df %>%
     separate_wider_delim(chars,
-                         delim = ": ",
-                         names = c("info",
-                                   "status")
-                         ) %>%
+      delim = ": ",
+      names = c(
+        "info",
+        "status"
+      )
+    ) %>%
     filter(info %in% characteristics2) %>%
     full_join(characteristics2_df, join_by("info" == "characteristics2"), keep = FALSE) %>%
     select(-value) %>%
@@ -326,31 +346,45 @@ get_characteristics2 <- function(x) {
 output_df_characteristics1 <- map_dfr(characteristics_wrangler$chars1_list, get_characteristics1)
 output_df_characteristics2 <- map_dfr(characteristics_wrangler$chars2_list, get_characteristics2)
 
-# Add the new columns to my_df
-advertisements_complete <- cbind(advertisements %>% 
-                                   select(-type_of_real_estate), 
-                                 output_df_characteristics1, 
-                                 output_df_characteristics2, 
-                                 additional_info_df %>% 
-                                   mutate(index_of_living = str_replace_all(index_of_living, " /","")) %>% 
-                                   select(c(info_text, index_of_living)))
+# Add the new columns to additional_info_df
+additional_info_df_complete <- cbind(
+  additional_info_df %>%
+    mutate(index_of_living = str_replace_all(index_of_living, " /", "")) %>%
+    select(c(link, info_text, index_of_living)) %>% 
+    mutate(flag = "x"), 
+  output_df_characteristics1,
+  output_df_characteristics2
+)
+advertisements_complete <- advertisements_cleaned %>%
+  left_join(additional_info_df_complete, by = "link", multiple = "first") %>%
+  filter(!is.na(flag)) %>% 
+  select(-flag)
 
-# save the old file to histo folder for further use in predictive analyses
-
-if (file.exists("data/advertisements.rds")) {
-  histo_rds <- import("data/advertisements.rds") %>%
-    mutate(timestamp = as.Date(file.info("data/advertisements.rds")$ctime))
-  histo_date <- file.info("data/advertisements.rds")$ctime %>%
+# save the old file advertisements_complete to histo folder for further use in predictive analyses
+if (file.exists("data/advertisements_complete.rds")) {
+  histo_rds <- import("data/advertisements_complete.rds") %>%
+    mutate(timestamp = as.Date(file.info("data/advertisements_complete.rds")$ctime))
+  histo_date <- file.info("data/advertisements_complete.rds")$ctime %>%
     as.Date() %>%
     as.character() %>%
     str_replace_all("-", "_")
-  saveRDS(histo_rds, paste0("data/histo/advertisements", histo_date, ".rds"))
+  saveRDS(histo_rds, paste0("data/histo/advertisements_complete", histo_date, ".rds"))
 }
 
-# save scraped data
-# write.csv2(text_long, "data/texts.csv")
-saveRDS(text_long, file = "data/texts.rds") # instead of csv due to size reduction
+# create separate df for text analyses
+text_long <- advertisements_complete$info_text
 
-# write.csv2(advertisements_cleaned, "data/advertisements.csv")
-saveRDS(advertisements_cleaned, file = "data/advertisements.rds") # instead of csv due to size reduction
+# save the old file text_long to histo folder for further use in predictive analyses
+if (file.exists("data/text_long.rds")) {
+  histo_rds <- import("data/text_long.rds") %>%
+    mutate(timestamp = as.Date(file.info("data/text_long.rds")$ctime))
+  histo_date <- file.info("data/text_long.rds")$ctime %>%
+    as.Date() %>%
+    as.character() %>%
+    str_replace_all("-", "_")
+  saveRDS(histo_rds, paste0("data/histo/text_long", histo_date, ".rds"))
+}
 
+saveRDS(text_long, file = "data/text_long.rds") # instead of csv due to size reduction
+
+saveRDS(advertisements_complete, file = "data/advertisements_complete.rds") # instead of csv due to size reduction
