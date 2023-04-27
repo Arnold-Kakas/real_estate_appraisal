@@ -1,20 +1,26 @@
-library(pacman)
+if (!require("pacman")) {
+  install.packages("pacman")
+}
 
-p_load(rio, tidyverse, rvest, httr, doParallel, furrr, RSelenium, netstat)
+
+pacman::p_load(rio, 
+               tidyverse, 
+               rvest, 
+               httr, 
+               doParallel, 
+               furrr, 
+               RSelenium, 
+               netstat)
 
 # apartments page
 site <- "https://www.nehnutelnosti.sk/slovensko/byty/predaj/?p[page]="
 
 # scrape the number of pages
-number_of_pages <- read_html(paste0(site, 1)) %>% # read_html(paste0(site, 1))
+number_of_pages <- read_html(paste0(site, 1)) %>% 
   html_nodes(xpath = '//*[@id="content"]/div[8]/div/div/div[1]/div[17]/div/div/ul/li[5]') %>%
   html_elements("a") %>%
   html_text(trim = TRUE) %>%
   as.numeric()
-
-# list of additional info we want to retrieve later on
-
-info_names <- c("Stav", "Úžit. plocha", "Zast. plocha", "Plocha pozemku", "Provízia zahrnutá v cene")
 
 # create a cluster of worker processes (cores)
 plan(multisession, workers = 6)
@@ -85,7 +91,6 @@ get_text_or_na <- function(nodes) {
 }
 
 # Additional info from web
-
 ################################################################################################
 # number of splits
 num_splits <- 10
@@ -247,23 +252,22 @@ advertisements <- read_rds("advertisements.RDS")
 # clean advertisements data
 
 advertisements_cleaned <- advertisements %>%
-  separate(type_of_real_estate, c("type", "area"), sep = " • ") %>%
   separate(address, c("a", "b", "c"), sep = ", ", remove = TRUE) %>%
   unite("address", c(6, 5, 4), sep = ", ", na.rm = TRUE, remove = TRUE) %>% # reordering to keep all districts in first column
   mutate(
-    address0 = address,
-    rooms = case_when(
-      str_detect(type, "byt") ~ substr(type, 1, 1),
-      str_detect(type, "Garsónka") ~ "1,5",
-      str_detect(type, "Dvojgarsónka") ~ "2,5"
-    ),
-    price = str_replace(price, " €", "") %>% str_replace_all(" ", "") %>% as.numeric()
-  ) %>%
+    address0 = address) %>%
   separate(address0, c("district", "municipality", "street"), sep = ", ")
 
 # get additional information from scraped data
-# define list of characteristics
-characteristics <- c("Počet izieb/miestností", 
+# First list of additional info details
+characteristics1 <- c("Stav", 
+                      "Úžit. plocha", 
+                      "Energie", 
+                      "Provízia zahrnutá v cene")
+
+characteristics1_df <- data.frame(characteristics1, value = NA)
+# Second list of additional info details
+characteristics2 <- c("Počet izieb/miestností", 
                      "Orientácia", 
                      "Rok výstavby", 
                      "Rok poslednej rekonštrukcie",
@@ -277,62 +281,59 @@ characteristics <- c("Počet izieb/miestností",
                      "Pivnica"
 )
 
-#
-info_wrangler <- additional_info_df %>% 
+characteristics2_df <- data.frame(characteristics2, value = NA)
+
+characteristics_wrangler <- additional_info_df %>% 
   mutate(
-    chars_list = str_split( additional_characteristics,"\n"), # %>% str_split(": "),
-    details_list = str_split( info_details,"\n")# %>% str_split(": ")
+    chars1_list = str_split( info_details,"\n"),
+    chars2_list = str_split( additional_characteristics,"\n")
   ) %>% 
   select(-additional_characteristics, -info_details)
 
-get_characteristics <- function(x) {
+get_characteristics1 <- function(x) {
   temp_df <- x %>% unlist() %>% as.data.frame()
   temp_df <- rename(temp_df, chars = .)
-  temp_df <- temp_df %>% 
-    separate_wider_delim(chars, 
-                         delim = ": ", 
-                         names = c("info", 
+  temp_df <- temp_df %>%
+    separate_wider_delim(chars,
+                         delim = ": ",
+                         names = c("info",
                                    "status")
-                         ) %>% 
-    filter(info %in% characteristics) %>% 
+    ) %>%
+    filter(info %in% characteristics1) %>%
+    full_join(characteristics1_df, join_by("info" == "characteristics1"), keep = FALSE) %>%
+    select(-value) %>%
     pivot_wider(names_from = info, values_from = status)
+  return(temp_df)
 }
 
+get_characteristics2 <- function(x) {
+  temp_df <- x %>% unlist() %>% as.data.frame()
+  temp_df <- rename(temp_df, chars = .)
+  temp_df <- temp_df %>%
+    separate_wider_delim(chars,
+                         delim = ": ",
+                         names = c("info",
+                                   "status")
+                         ) %>%
+    filter(info %in% characteristics2) %>%
+    full_join(characteristics2_df, join_by("info" == "characteristics2"), keep = FALSE) %>%
+    select(-value) %>%
+    pivot_wider(names_from = info, values_from = status)
+  return(temp_df)
+}
 
+# Apply get_characteristics1() and get_characteristics2() to each row in additional_info_df and combine the results
+output_df_characteristics1 <- map_dfr(characteristics_wrangler$chars1_list, get_characteristics1)
+output_df_characteristics2 <- map_dfr(characteristics_wrangler$chars2_list, get_characteristics2)
 
-
-
-
-
-
-
-
-
-# complete list of characteristics, not all will be used
-# characteristics <- c("Vlastníctvo", 
-#                      "Počet izieb/miestností", 
-#                      "Orientácia", 
-#                      "Rok výstavby", 
-#                      "Rok poslednej rekonštrukcie", 
-#                      "Rok kolaudácie",
-#                      "Energetický certifikát",
-#                      "Počet nadzemných podlaží",
-#                      "Podlažie",
-#                      "Počet podzemných podlaži",
-#                      "Umiestnenie",
-#                      "Typ konštrukcie",
-#                      "Telekomunikáčné a dátové siete",
-#                      "Počet balkónov",
-#                      "Výťah",
-#                      "Počet lodžií",
-#                      "Kúrenie",
-#                      "Pivnica",
-#                      "Verejné parkovanie",
-#                      "Vonkajšie parkovacie miesto",
-#                      "Plocha predzáhradky",
-#                      "Plochy pivníc")
-
-
+# Add the new columns to my_df
+advertisements_complete <- cbind(advertisements %>% 
+                                   select(-type_of_real_estate), 
+                                 output_df_characteristics1, 
+                                 output_df_characteristics2, 
+                                 additional_info_df %>% 
+                                   mutate(index_of_living = str_replace_all(index_of_living, " /","")) %>% 
+                                   select(c(info_text, index_of_living)))
 
 # save the old file to histo folder for further use in predictive analyses
 
