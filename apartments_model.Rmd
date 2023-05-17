@@ -13,117 +13,38 @@ create and evaluate models
 
 ```{r}
 # import libs
-library(pacman)
-p_load(rio, tidyverse, tidymodels, GGally, mice, patchwork, vip, dataPreparation)
+if (!require("pacman")) {
+  install.packages("pacman")
+}
+
+pacman::p_load(rio, tidyverse, tidymodels, GGally, mice, patchwork, vip, dataPreparation, doParallel)
 ```
 
 
 ```{r}
 # import data
-apartments <- import("data/apartments.rds")
+apartments <- import("data/apartments_final_data.rds")
 ```
 
 
-
-```{r}
-# clean data 1
-
-apartments_cleaned <- apartments %>%
-  mutate( # price = log10(price),
-    usable_area = as.numeric(usable_area),
-    rooms = as.numeric(rooms)
-  )
-```
-
-
-```{r}
-# impute missing values
-set.seed(234)
-apartments_cleaned <-
-  apartments_cleaned %>%
-  mice(m = 5, maxit = 5, method = "rf", ntree = 10)
-apartments_cleaned <- complete(apartments_cleaned, 1)
-```
-
-# mutate character vector (didn't do it in first cleaning due to slow imputation after this change)
-```{r}
-apartments_cleaned <- apartments_cleaned %>%
-  mutate(
-    condition = replace_na(condition, "not provided"),
-    district = as_factor(district),
-    municipality = as_factor(municipality),
-    condition = as_factor(condition),
-    type = as_factor(type),
-    commission_in_price = as_factor(commission_in_price)
-  ) %>% 
-  remove_percentile_outlier(cols = c("usable_area"), percentile = 5)
-  #remove_sd_outlier(cols = c("price", "usable_area"), n_sigmas = 1.5) # remove outliers with value +-mean +2sd
-```
-
-```{r}
-summary(apartments_cleaned)
-ggpairs(apartments_cleaned[, c(1, 6, 8, 11, 12)])
-```
-
-```{r}
-# apartments_BoxCox <- recipe(apartments_train, price ~ .) %>%
-#   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
-#   step_BoxCox(all_numeric_predictors()) %>%
-#   prep() %>%
-#   bake(new_data = NULL)
-# 
-# apartments_log <- recipe(apartments_train, price ~ .) %>%
-#   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
-#   step_log(all_numeric_predictors()) %>%
-#   prep() %>%
-#   bake(new_data = NULL)
-# 
-# apartments_norm <- recipe(apartments_train, price ~ .) %>%
-#   step_rm(lon, lat, lon_rotated, lat_rotated) %>%
-#   step_normalize(all_numeric_predictors()) %>%
-#   prep() %>%
-#   bake(new_data = NULL)
-# 
-# # Plot distribution of usable_area before and after transformations
-# p5 <- ggplot(data = apartments_cleaned, aes(x = usable_area)) +
-#   geom_density() +
-#   ggtitle("price before transformations")
-# 
-# p6 <- ggplot(data = apartments_BoxCox, aes(x = usable_area)) +
-#   geom_density() +
-#   ggtitle("price after Box-Cox transform")
-# 
-# p7 <- ggplot(data = apartments_norm, aes(x = usable_area)) +
-#   geom_density() +
-#   ggtitle("price after normalization")
-# 
-# p8 <- ggplot(data = apartments_log, aes(x = usable_area)) +
-#   geom_density() +
-#   ggtitle("price after log transform")
-# 
-# (p5 + p6) / (p7 + p8)
-```
 
 ```{r}
 # split dataframes to train(80)/test(20)
 set.seed(123)
-apartments_train_split <- initial_split(apartments_cleaned, prop = 0.8, strata = price)
+apartments_train_split <- initial_split(apartments, prop = 0.8, strata = price)
 
 apartments_train <- training(apartments_train_split)
 apartments_test <- testing(apartments_train_split)
 
-set.seed(567)
+set.seed(123)
 apartments_train_boots <- bootstraps(apartments_train, times = 25)
 ```
 
 ```{r}
 # recipes
 apartments_xgboost_recipe <- recipe(apartments_train, price ~ .) %>%
-  step_rm(lat, lon, municipality) %>%
   step_impute_knn(all_nominal_predictors()) %>%
-#  step_BoxCox(usable_area) %>%
-#  step_normalize(usable_area) %>%
-  step_other(all_nominal_predictors(), threshold = 0.01) %>%
+  step_unknown(all_nominal_predictors()) %>%
   step_dummy(all_nominal_predictors())
 ```
 
@@ -138,7 +59,7 @@ xgb_model <-
     learn_rate = tune()
   ) %>%
   set_mode("regression") %>%
-  set_engine("xgboost", nthread = 6) # use 6 cores for multithreading
+  set_engine("xgboost")
 ```
 
 ```{r}
@@ -159,7 +80,7 @@ apartments_xgboost_params <- parameters(
 
 ```{r}
 # optimization
-set.seed(789)
+set.seed(123)
 apartments_xgboost_grid <-
   grid_latin_hypercube(
     tree_depth(),
@@ -174,6 +95,9 @@ apartments_xgboost_grid <-
 
 ```{r}
 # results
+registerDoParallel()
+
+set.seed(123)
 apartments_xgboost_res <- tune_grid(
   apartments_workflow,
   resamples = apartments_train_boots,
@@ -210,9 +134,11 @@ collect_metrics(apartments_final_res)
 # evaluate
 apartments_pred <-
   predict(apartments_xgb_fit, apartments_test) %>%
-  bind_cols(apartments_test) %>% 
-  mutate(prediction = 10^.pred,
-         real_price = 10^price)
+  bind_cols(apartments_test)
+
+# %>% 
+#   mutate(prediction = 10^.pred,
+#          real_price = 10^price)
 
 apartments_plot1 <-
   apartments_pred %>%
@@ -231,4 +157,40 @@ apartments_plot2 <-
 
 apartments_plot1 / apartments_plot2
 ```
+
+```{r}
+# save model
+saveRDS(apartments_xgb_fit, "data/model.RDS")
+
+# save other data for app
+conditions <- scraped_cleaned_wo_outliers_wo_geometry %>% select(condition) %>% distinct()
+saveRDS(conditions, "data/conditions.RDS")
+
+certificate <- scraped_cleaned_wo_outliers_wo_geometry %>% select(certificate) %>% distinct()
+saveRDS(certificate, "data/certificate.RDS")
+
+type <- scraped_cleaned_wo_outliers_wo_geometry %>% select(type) %>% distinct()
+saveRDS(type, "data/type.RDS")
+```
+
+```{r}
+test <- data.frame(name_nsi = "Senec",
+                 district = "Senec",
+                 index = NA,
+                 condition = "Novostavba",
+                 area = 72,
+                 provision = "Nie",
+                 certificate = "nemá",
+                 type = "3 izbový byt",
+                 rooms = 3,
+                 index_mean_district = 6.3
+                 )
+
+
+test_pred <-
+  predict(apartments_xgb_fit, test) %>%
+  bind_cols(test)
+```
+
+
 

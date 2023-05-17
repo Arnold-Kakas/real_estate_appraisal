@@ -15,7 +15,7 @@ pacman::p_load(
 )
 
 # apartments page
-site <- "https://www.nehnutelnosti.sk/slovensko/byty/predaj/?p[page]="
+site <- "https://www.nehnutelnosti.sk/slovensko/byty/predaj/?p[param1][from]=1000&p[param1][to]=&p[page]="
 
 # scrape the number of pages
 number_of_pages <- read_html(paste0(site, 1)) %>%
@@ -92,6 +92,7 @@ get_text_or_na <- function(nodes) {
   )
 }
 
+
 # Additional info from web
 ################################################################################################
 # number of splits
@@ -118,14 +119,14 @@ additional_info_df <- tibble(
 )
 
 
-for (i in 1:10) {
+for (i in 2:10) { #10, if ok, go to 2:10
   # get the current dataframe
   current_df <- get(paste0("advertisements_", i))
 
   # start the server
   rs_driver_object <- rsDriver(
     browser = "chrome",
-    chromever = "111.0.5563.41",
+    chromever = "113.0.5672.63",
     verbose = FALSE,
     port = free_port(random = TRUE)
   )
@@ -135,7 +136,9 @@ for (i in 1:10) {
 
   # open a browser
   remDr$open()
-
+  remDr$maxWindowSize()
+  #remDr$deleteAllCookies()
+  
   # navigate to a website
   remDr$navigate("https://www.nehnutelnosti.sk/")
   Sys.sleep(5) # wait for 5 seconds
@@ -144,27 +147,6 @@ for (i in 1:10) {
   remDr$switchToFrame(remDr$findElement(using = "xpath", '//*[@id="sp_message_iframe_710573"]'))
   remDr$findElement(using = "xpath", '//*[@id="notice"]/div[5]/div[2]/button')$clickElement()
 
-  # ##########################################################################################################################################################
-  #        delete if code works
-  # ##########################################################################################################################################################
-  #   #scroll
-  #   height <- as.numeric(remDr$executeScript("return document.documentElement.scrollHeight"))/2 # 3000 pixels = lenght from botton which does not change
-  #   remDr$executeScript(paste("window.scrollTo(0, ", height, ");"))
-  #
-  #   # wait for pop up window
-  #   Sys.sleep(15)
-  #
-  #   # decline option
-  #   tryCatch(
-  #            {
-  #              remDr$findElement(using = "xpath", '//*[@id="onesignal-slidedown-cancel-button"]')$clickElement()
-  #   },
-  #   error = function(e) {
-  #     decline <- NA
-  #   }
-  #   )
-  # ##########################################################################################################################################################
-
   # loop through each link in the current dataframe
   for (link in current_df$link) {
     info_text <- NA
@@ -172,14 +154,13 @@ for (i in 1:10) {
     index_of_living <- NA
     info_details <- NA
 
-    # additional_info_df <- map_dfr(df$link, function(j) {
     navigate_with_retry(link, remDr)
-
-    height <- as.numeric(remDr$executeScript("return document.documentElement.scrollHeight")) - 3200 # Scroll to load index of living
+    #remDr$executeScript("document.body.style.zoom = '50%';")
+    height <- as.numeric(remDr$executeScript("return document.documentElement.scrollHeight"))/10*4.2 # Scroll to load index of living
     remDr$executeScript(paste("window.scrollTo(0, ", height, ");")) # scroll to living index
-
+    
+    
     Sys.sleep(1)
-
     page <- safe_find_element(remDr, '//*[@id="map-filter-container"]')
 
     if (is.na(page)) {
@@ -204,7 +185,7 @@ for (i in 1:10) {
       info_details <- page_html %>%
         html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[2]/div[5]/ul') %>%
         html_text2()
-
+      
       tryCatch(
         {
           index_of_living <- page_html %>%
@@ -248,15 +229,16 @@ for (i in 1:10) {
 }
 
 
-saveRDS(additional_info_df, "additional_info_df.RDS")
-saveRDS(advertisements, "advertisements.RDS")
+saveRDS(additional_info_df, "data/additional_info_df.RDS")
+saveRDS(advertisements, "data/advertisements.RDS")
 
-additional_info_df <- read_rds("additional_info_df.RDS")
-advertisements <- read_rds("advertisements.RDS")
+additional_info_df <- read_rds("data/additional_info_df.RDS")
+advertisements <- read_rds("data/advertisements.RDS")
 
 # clean advertisements data
 
 advertisements_cleaned <- advertisements %>%
+  separate(type_of_real_estate, c("type", "area"), sep = " • ", remove = TRUE) %>% 
   separate(address, c("a", "b", "c"), sep = ", ", remove = TRUE) %>%
   unite("address", c(5, 4, 3), sep = ", ", na.rm = TRUE, remove = TRUE) %>% # reordering to keep all districts in first column
   mutate(
@@ -265,7 +247,7 @@ advertisements_cleaned <- advertisements %>%
     address0 = address
   ) %>%
   separate(address0, c("district", "municipality", "street"), sep = ", ") %>%
-  select(-street, -type_of_real_estate)
+  select(-street)
 
 # get additional information from scraped data
 # First list of additional info details
@@ -377,6 +359,7 @@ text_long <- advertisements_complete$info_text
 # save the old file text_long to histo folder for further use in predictive analyses
 if (file.exists("data/text_long.rds")) {
   histo_rds <- import("data/text_long.rds") %>%
+    as.data.frame() %>% 
     mutate(timestamp = as.Date(file.info("data/text_long.rds")$ctime))
   histo_date <- file.info("data/text_long.rds")$ctime %>%
     as.Date() %>%
@@ -388,3 +371,7 @@ if (file.exists("data/text_long.rds")) {
 saveRDS(text_long, file = "data/text_long.rds") # instead of csv due to size reduction
 
 saveRDS(advertisements_complete, file = "data/advertisements_complete.rds") # instead of csv due to size reduction
+
+advertisements_complete <- read_rds("data/advertisements_complete.rds")
+
+skim(advertisements_complete)

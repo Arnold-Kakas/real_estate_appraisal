@@ -13,154 +13,219 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 # import libraries
+if (!require("pacman")) {
+  install.packages("pacman")
+}
 
-library(pacman)
-p_load(
+pacman::p_load(
   tidyverse,
-  rio,
+  janitor,
   skimr,
+  DataExplorer,
   sf,
   ggmap,
-  plotly
+  colorRamps,
+  plotly,
+  spdep,
+  rgeos,
+  rgdal,
+  sfdep
 )
 ```
 
 ```{r}
 # load data
-scraped_data <- rio::import("data/advertisements.rds")
-geocoded_data <- rio::import("data/geospatial_data/geocodes.csv")
+
+ advertisements <- advertisements %>% separate(type_of_real_estate, c("type", "area"), sep = " • ", remove = TRUE) %>% select(link, type)
+
+
+scraped_data <- readRDS("data/advertisements_complete_geocoded.RDS") %>% 
+  left_join(advertisements, by = "link", multiple = "first", keep = FALSE) %>% 
+  clean_names() %>%
+  mutate(pocet_izieb_miestnosti = as.numeric(pocet_izieb_miestnosti),
+         uzit_plocha = str_replace(str_replace(uzit_plocha, ",", "."), " m2", ""),
+         energie = str_replace(str_replace(energie, ",", "."), " €/mesiac", ""),
+         provizia_zahrnuta_v_cene = str_replace_na(provizia_zahrnuta_v_cene, "Nie"),
+         rooms = case_when(type == "1 izbový byt" ~ 1,
+                           type == "2 izbový byt" ~ 2,
+                           type == "3 izbový byt" ~ 3,
+                           type == "4 izbový byt" ~ 4,
+                           type == "5 a viac izbový byt" ~ 5,
+                           type == "Garsónka" ~ 1,
+                           type == "Dvojgarsónka" ~ 2, 
+                           .default = NA),
+         pocet_izieb_miestnosti = coalesce(pocet_izieb_miestnosti, rooms, pocet_izieb_miestnosti)) %>% 
+  mutate_at(c('index_of_living',
+              'uzit_plocha',
+              'energie',
+              'pocet_nadzemnych_podlazi', 
+              'podlazie', 
+              'pocet_izieb_miestnosti', 
+              'rok_vystavby', 
+              'rok_poslednej_rekonstrukcie', 
+              'pocet_balkonov', 
+              'pocet_lodzii'), as.numeric) %>% 
+  select(-link, -info_text, -address, -address1, -address2) %>% 
+  filter(pocet_izieb_miestnosti < 10 & !is.na(pocet_izieb_miestnosti)) %>% 
+  mutate(
+         type = coalesce(type, case_when(pocet_izieb_miestnosti == 1 ~ "1 izbový byt",
+                           pocet_izieb_miestnosti == 2 ~ "2 izbový byt",
+                           pocet_izieb_miestnosti == 3 ~ "3 izbový byt",
+                           pocet_izieb_miestnosti == 4 ~ "4 izbový byt",
+                           pocet_izieb_miestnosti >= 5 ~ "5 a viac izbový byt"))) %>% 
+  select(-rooms) %>% 
+  filter(!(type %in% c("Apartmán", "Mezonet", "Iný byt", "Loft"))) %>% 
+  mutate(rooms = case_when(type == "1 izbový byt" ~ 1,
+                           type == "2 izbový byt" ~ 2,
+                           type == "3 izbový byt" ~ 3,
+                           type == "4 izbový byt" ~ 4,
+                           type == "5 a viac izbový byt" ~ 5,
+                           type == "Garsónka" ~ 1,
+                           type == "Dvojgarsónka" ~ 2, 
+                           .default = NA))
+
 ```
 
 ```{r}
-scraped_data <- scraped_data %>%
+scraped_cleaned <- scraped_data %>% 
+  select(-c(rok_vystavby,
+            rok_poslednej_rekonstrukcie,
+            typ_konstrukcie,
+            pocet_balkonov,
+            pocet_lodzii,
+            orientacia,
+            energie,
+            pivnica,
+            vytah,
+            pocet_izieb_miestnosti,
+            pocet_nadzemnych_podlazi,
+            podlazie)) %>% 
+  rename(index = index_of_living) %>% 
+  rename(condition = stav) %>% 
+  rename(area = uzit_plocha) %>% 
+  rename(provision = provizia_zahrnuta_v_cene) %>%
+  rename(certificate = energeticky_certifikat)
+
+scraped_cleaned_wo_geometry <- scraped_cleaned
+st_geometry(scraped_cleaned_wo_geometry) <- NULL
+
+#DataExplorer::create_report(scraped_cleaned_wo_geometry)
+
+
+```
+
+```{r}
+# calculate mean index of district
+index_district <- scraped_cleaned_wo_geometry %>% 
   filter(!is.na(price)) %>%
-  filter(if_all(
-    where(is.numeric),
-    ~ between(price, quantile(price, .02), quantile(price, .98))
-  )) %>%
-  mutate(
-    district = str_replace_all(district, "okres ", ""),
-    address = paste(municipality, district, "Slovakia", sep = ", "),
-    rooms = str_replace_all(rooms, "I", "1")#,
-#    price = log(price + 1)
-  ) %>%
-  select(-c(c, street))
+  group_by(name_nsi) %>% 
+  mutate(index_mean_name_nsi = mean(index, na.rm = TRUE)) %>%
+  ungroup() %>%
+  select(name_nsi, district, index_mean_name_nsi) %>% 
+  distinct() %>% 
+  mutate(index_mean_name_nsi = if_else(index_mean_name_nsi > 0, index_mean_name_nsi, NA)) %>% 
+  group_by(district) %>% 
+  summarize(index_mean_district = mean(index_mean_name_nsi, na.rm = TRUE))
+  
 
-# skim(scraped_data)
 
-# check what is c column and correct in scraping code
+scraped_cleaned_wo_outliers <- scraped_cleaned %>% 
+  filter(!is.na(price)) %>%
+  group_by(name_nsi) %>% 
+  mutate(index = mean(as.numeric(index),na.rm = TRUE),
+         index = if_else(index > 0, index, NA),
+         IQR = IQR(price),
+         median = median(price),
+         lower = median - 1.5*IQR,
+         upper = median + 1.5*IQR,
+         ) %>% 
+  ungroup() %>% 
+  filter(price >= lower & price <= upper) %>% 
+  select(-lower, -upper, -median, -IQR) %>% 
+  left_join(index_district, by = "district", multiple = "first", keep = FALSE)
+```
+
+
+```{r}
+# 
+# district_mean_index <- scraped_data %>% group_by(name) %>% summarize(i = mean(as.numeric(index_of_living),na.rm = TRUE))
+# 
+# district_mean_index$x[is.nan(district_mean_index$i)] <- NA
+# district_mean_index$x <- ifelse(district_mean_index$x == 0.000000, NA, district_mean_index$x)
+# district_mean_index$x.check <- district_mean_index$x
+# 
+# 
+# x <- 1
+# n <- 5
+# nb.districts <- st_contiguity(district_mean_index)
+# weight <- st_weights(nb.districts)
+# while (i <= n) {
+# district_mean_index$lag.x <- st_lag(district_mean_index$x, nb.districts, weight, na_ok = TRUE)
+# district_mean_index <- district_mean_index %>% 
+#   mutate(x = coalesce(x, lag.x)) %>% 
+#   select(-lag.x)
+# 
+# i = i + 1
+# 
+# }
+
 ```
 
 ```{r}
-# tidy geocoded data
-geocoded_data <- geocoded_data %>%
-  transmute(
-    address = V2,
-    lon = V3,
-    lat = V4
-  ) %>%
-  slice(-1) %>%
-  mutate(
-    lon = as.numeric(str_replace_all(lon, ",", ".")),
-    lat = as.numeric(str_replace_all(lat, ",", "."))
+rm(list = setdiff(ls(), "scraped_cleaned_wo_outliers"))
+
+gc()
+```
+
+
+```{r}
+districts <- readRDS("data/geospatial_data/districts.RDS")  
+
+scraped_cleaned_wo_outliers <- scraped_cleaned_wo_outliers %>% st_centroid()
+  
+advertisements_complete_districts_geocoded <- districts %>% 
+  st_join(scraped_cleaned_wo_outliers, join = st_contains) %>% 
+  select(-municipality, -district) %>% 
+  rename(district = NAME) %>% 
+  mutate(district = as_factor(district),
+    condition = as_factor(condition),
+    type = as_factor(type),
+    provision = as_factor(provision),
+    certificate = as_factor(certificate),
+    name_nsi = as_factor(name_nsi)
   )
 ```
 
-```{r}
-merged_data <- scraped_data %>%
-  left_join(geocoded_data, by = "address")
-```
 
-```{r label}
-# check for missing geocodes
-missing_geocodes <- merged_data %>%
-  filter(is.na(lat)) %>%
-  select(c(address)) %>%
-  distinct()
-is_missing <- length(missing_geocodes) > 1
-```
-
-```{r}
-# if there are missing geocodes, this code will be executed
-if (is_missing) {
-api_key <- ""
-register_google(key = api_key)
-geocodes <- geocode(missing_geocodes$address, output = "latlon", source = "google")
-missing_geocodes <- cbind(missing_geocodes, geocodes)
-rm(api_key, geocodes)
-
-geocoded_data <- bind_rows(geocoded_data, missing_geocodes)
-write.csv2(geocoded_data, "data/geospatial_data/geocodes.csv")
-
-merged_data <- merged_data %>%
-  left_join(missing_geocodes, by = "address") %>%
-  mutate(
-    lat = coalesce(lat.x, lat.y),
-    lon = coalesce(lon.x, lon.y)
-  ) %>%
-  select(-c(lat.x, lat.y, lon.x, lon.y))
-}
-```
-
-```{r}
-p_load(colorRamps)
-price_sf <- merged_data %>%
-#  filter(!(type %in% c("Rodinný dom", "Rodinná vila", "Vidiecky dom"))) %>% 
-#  filter(type %in% c("Rodinný dom", "Rodinná vila", "Vidiecky dom")) %>% 
-  group_by(lat, lon) %>%
-  summarize(price = mean(price)) %>%
-  st_as_sf(coords = c("lon", "lat"))
-
-price_sf <- st_set_crs(price_sf, 4326)
-
-map <- price_sf %>% ggplot(aes(col = price)) +
-  geom_sf() +
-  scale_colour_stepsn(colours = colorRamps::green2red(10), )
-ggplotly(map)
-```
-
-```{r}
-# rotate coordinates
-angle <- -12 # degrees
-angle_radians <- angle * pi / 180
-
-# Calculate the new coordinate values after rotation
-merged_data <- merged_data %>% 
-  mutate(lon_rotated = lon * cos(angle_radians) - lat * sin(angle_radians),
-         lat_rotated = lon * sin(angle_radians) + lat * cos(angle_radians))
-```
-
-```{r}
-price_sf_rotated <- merged_data %>% 
-  filter(!(type %in% c("Rodinný dom", "Rodinná vila", "Vidiecky dom"))) %>% 
-  group_by(lat_rotated, lon_rotated) %>%
-  summarize(price = mean(price)) %>%
-  st_as_sf(coords = c("lon_rotated", "lat_rotated"))
-
-price_sf_rotated <- st_set_crs(price_sf_rotated, 4326)
-
-map <- price_sf_rotated %>% ggplot(aes(col = price)) +
-  geom_sf() +
-  scale_colour_stepsn(colours = colorRamps::green2red(10), )
-ggplotly(map)
-```
-
-```{r}
-# split data to apartments and houses
-apartments <- merged_data %>% 
-  filter(!(type %in% c("Rodinný dom", "Rodinná vila", "Vidiecky dom"))) %>% 
-  select(-c(built_up_area, land_area, address))
-
-houses <- merged_data %>% 
-  filter(type %in% c("Rodinný dom", "Rodinná vila", "Vidiecky dom")) %>% 
-  select(-c(rooms, address))
-
-skim(houses)
-```
 
 ```{r}
 # save data for models
-saveRDS(apartments, file = "data/apartments.rds")
-saveRDS(houses, file = "data/houses.rds")
+final_data <- advertisements_complete_districts_geocoded
+final_data$geomtery <- NULL
+
+saveRDS(final_data, file = "data/apartments_final_data.rds")
+```
+
+```{r}
+rm(list = ls())
+
+gc()
+```
+
+```{r}
+apartments_final_data <- read_rds("data/apartments_final_data.rds")
+```
+
+```{r}
+st_geometry(apartments_final_data) <- NULL
+
+index_districts <- apartments_final_data %>% 
+  mutate(index = if_else(index > 0, index, NA)) %>% 
+  select(district, index_mean_district) %>% 
+  distinct() %>% 
+  group_by(district) %>% 
+  summarize(index_mean_district = mean(index_mean_district, na.rm = TRUE))
+
+saveRDS(index_districts, "data/index_districts.RDS")
 ```
 
