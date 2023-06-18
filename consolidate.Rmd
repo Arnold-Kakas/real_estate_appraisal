@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
 ```
 
 ## Consolidate data scraped from web and geospatial data
@@ -35,8 +36,8 @@ pacman::p_load(
 
 ```{r}
 # load data
-
- advertisements <- advertisements %>% separate(type_of_real_estate, c("type", "area"), sep = " • ", remove = TRUE) %>% select(link, type)
+advertisements <- readRDS("data/advertisements.RDS")
+advertisements <- advertisements %>% separate(type_of_real_estate, c("type", "area"), sep = " • ", remove = TRUE) %>% select(link, type)
 
 
 scraped_data <- readRDS("data/advertisements_complete_geocoded.RDS") %>% 
@@ -65,7 +66,7 @@ scraped_data <- readRDS("data/advertisements_complete_geocoded.RDS") %>%
               'rok_poslednej_rekonstrukcie', 
               'pocet_balkonov', 
               'pocet_lodzii'), as.numeric) %>% 
-  select(-link, -info_text, -address, -address1, -address2) %>% 
+  select(-link, -info_text, -address) %>% 
   filter(pocet_izieb_miestnosti < 10 & !is.na(pocet_izieb_miestnosti)) %>% 
   mutate(
          type = coalesce(type, case_when(pocet_izieb_miestnosti == 1 ~ "1 izbový byt",
@@ -85,6 +86,7 @@ scraped_data <- readRDS("data/advertisements_complete_geocoded.RDS") %>%
                            .default = NA))
 
 ```
+
 
 ```{r}
 scraped_cleaned <- scraped_data %>% 
@@ -114,6 +116,25 @@ st_geometry(scraped_cleaned_wo_geometry) <- NULL
 
 ```
 
+
+```{r}
+# keep only municipalities with at least 5 ads
+number_of_ads <- scraped_cleaned_wo_geometry %>% group_by(name_nsi) %>% tally() %>% arrange(n)
+
+scraped_cleaned <- scraped_cleaned %>% 
+  left_join(number_of_ads, by = "name_nsi", keep = FALSE) %>% 
+  filter(n > 4)
+
+relevant_mun <- number_of_ads %>% 
+  filter(n > 4) %>% 
+  select(1)
+
+saveRDS(relevant_mun, file = "data/app_obce_filter_list.rds")
+
+```
+
+
+
 ```{r}
 # calculate mean index of district
 index_district <- scraped_cleaned_wo_geometry %>% 
@@ -129,19 +150,22 @@ index_district <- scraped_cleaned_wo_geometry %>%
   
 
 
-scraped_cleaned_wo_outliers <- scraped_cleaned %>% 
-  filter(!is.na(price)) %>%
-  group_by(name_nsi) %>% 
-  mutate(index = mean(as.numeric(index),na.rm = TRUE),
-         index = if_else(index > 0, index, NA),
-         IQR = IQR(price),
-         median = median(price),
-         lower = median - 1.5*IQR,
-         upper = median + 1.5*IQR,
-         ) %>% 
-  ungroup() %>% 
-  filter(price >= lower & price <= upper) %>% 
-  select(-lower, -upper, -median, -IQR) %>% 
+# scraped_cleaned_wo_outliers <- scraped_cleaned %>% 
+#   filter(!is.na(price)) %>%
+#   group_by(name_nsi) %>% 
+#   mutate(index = mean(as.numeric(index),na.rm = TRUE),
+#          index = if_else(index > 0, index, NA),
+#          IQR = IQR(price),
+#          median = median(price),
+#          lower = median - 1.5*IQR,
+#          upper = median + 1.5*IQR,
+#          ) %>% 
+#   ungroup() %>% 
+#   filter(price >= lower & price <= upper) %>% 
+#   select(-lower, -upper, -median, -IQR) %>% 
+#   left_join(index_district, by = "district", multiple = "first", keep = FALSE)
+
+scraped_cleaned_final <- scraped_cleaned %>% 
   left_join(index_district, by = "district", multiple = "first", keep = FALSE)
 ```
 
@@ -172,7 +196,7 @@ scraped_cleaned_wo_outliers <- scraped_cleaned %>%
 ```
 
 ```{r}
-rm(list = setdiff(ls(), "scraped_cleaned_wo_outliers"))
+rm(list = setdiff(ls(), "scraped_cleaned_final")) #scraped_cleaned_wo_outliers
 
 gc()
 ```
@@ -181,10 +205,10 @@ gc()
 ```{r}
 districts <- readRDS("data/geospatial_data/districts.RDS")  
 
-scraped_cleaned_wo_outliers <- scraped_cleaned_wo_outliers %>% st_centroid()
+scraped_cleaned_final <- scraped_cleaned_final %>% st_centroid()
   
 advertisements_complete_districts_geocoded <- districts %>% 
-  st_join(scraped_cleaned_wo_outliers, join = st_contains) %>% 
+  st_join(scraped_cleaned_final, join = st_contains) %>% 
   select(-municipality, -district) %>% 
   rename(district = NAME) %>% 
   mutate(district = as_factor(district),
@@ -201,7 +225,8 @@ advertisements_complete_districts_geocoded <- districts %>%
 ```{r}
 # save data for models
 final_data <- advertisements_complete_districts_geocoded
-final_data$geomtery <- NULL
+
+final_data$geometry <- NULL
 
 saveRDS(final_data, file = "data/apartments_final_data.rds")
 ```
@@ -217,8 +242,6 @@ apartments_final_data <- read_rds("data/apartments_final_data.rds")
 ```
 
 ```{r}
-st_geometry(apartments_final_data) <- NULL
-
 index_districts <- apartments_final_data %>% 
   mutate(index = if_else(index > 0, index, NA)) %>% 
   select(district, index_mean_district) %>% 

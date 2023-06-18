@@ -11,19 +11,60 @@ knitr::opts_chunk$set(echo = TRUE)
 
 create and evaluate models
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 # import libs
 if (!require("pacman")) {
   install.packages("pacman")
 }
 
-pacman::p_load(rio, tidyverse, tidymodels, GGally, mice, patchwork, vip, dataPreparation, doParallel)
+pacman::p_load(rio, 
+               tidyverse,
+               tidymodels,
+               GGally,
+               mice,
+               patchwork,
+               vip,
+               parallel,
+               dataPreparation,
+               doParallel)
 ```
 
 
 ```{r}
 # import data
-apartments <- import("data/apartments_final_data.rds")
+apartments_analysis_data <- import("data/apartments_final_data.rds") %>% 
+  select(-n, -address1, -address2) %>% 
+  filter(!is.na(price)) %>% 
+  group_by(name_nsi)
+
+
+#apartments_analysis_data <- apartments_app_analysis_data
+apartments_app_analysis_data <- apartments_analysis_data
+apartments_app_analysis_data_sk <- apartments_analysis_data %>% 
+  mutate(district = "Slovensko") %>% 
+  mutate(district = as.factor(district))
+
+apartments_app_analysis_data <- rbind(apartments_app_analysis_data_sk)
+
+
+saveRDS(apartments_app_analysis_data, "data/apartments_app_analysis_data.rds")
+
+
+
+apartments <- apartments_analysis_data %>% 
+  mutate(index = mean(as.numeric(index),na.rm = TRUE),
+         index = if_else(index > 0, index, NA),
+         IQR = IQR(price),
+         median = median(price),
+         lower = median - 1.5*IQR,
+         upper = median + 1.5*IQR,
+         ) %>% 
+  ungroup() %>% 
+  filter(price >= lower & price <= upper) %>% 
+  select(-lower, -upper, -median, -IQR)
+
+
+
 ```
 
 
@@ -35,6 +76,8 @@ apartments_train_split <- initial_split(apartments, prop = 0.8, strata = price)
 
 apartments_train <- training(apartments_train_split)
 apartments_test <- testing(apartments_train_split)
+
+saveRDS(apartments_test, "data/apartments_test.RDS")
 
 set.seed(123)
 apartments_train_boots <- bootstraps(apartments_train, times = 25)
@@ -95,7 +138,7 @@ apartments_xgboost_grid <-
 
 ```{r}
 # results
-registerDoParallel()
+registerDoParallel(cores = detectCores() - 2)
 
 set.seed(123)
 apartments_xgboost_res <- tune_grid(
@@ -162,15 +205,15 @@ apartments_plot1 / apartments_plot2
 # save model
 saveRDS(apartments_xgb_fit, "data/model.RDS")
 
-# save other data for app
-conditions <- scraped_cleaned_wo_outliers_wo_geometry %>% select(condition) %>% distinct()
-saveRDS(conditions, "data/conditions.RDS")
-
-certificate <- scraped_cleaned_wo_outliers_wo_geometry %>% select(certificate) %>% distinct()
-saveRDS(certificate, "data/certificate.RDS")
-
-type <- scraped_cleaned_wo_outliers_wo_geometry %>% select(type) %>% distinct()
-saveRDS(type, "data/type.RDS")
+# # save other data for app
+# conditions <- scraped_cleaned_wo_outliers_wo_geometry %>% select(condition) %>% distinct()
+# saveRDS(conditions, "data/conditions.RDS")
+# 
+# certificate <- scraped_cleaned_wo_outliers_wo_geometry %>% select(certificate) %>% distinct()
+# saveRDS(certificate, "data/certificate.RDS")
+# 
+# type <- scraped_cleaned_wo_outliers_wo_geometry %>% select(type) %>% distinct()
+# saveRDS(type, "data/type.RDS")
 ```
 
 ```{r}

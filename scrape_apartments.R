@@ -340,13 +340,13 @@ additional_info_df_complete <- cbind(
 advertisements_complete <- advertisements_cleaned %>%
   left_join(additional_info_df_complete, by = "link", multiple = "first") %>%
   filter(!is.na(flag)) %>% 
-  select(-flag)
+  select(-flag, -c, -type)
 
 # save the old file advertisements_complete to histo folder for further use in predictive analyses
 if (file.exists("data/advertisements_complete.rds")) {
   histo_rds <- import("data/advertisements_complete.rds") %>%
-    mutate(timestamp = as.Date(file.info("data/advertisements_complete.rds")$ctime))
-  histo_date <- file.info("data/advertisements_complete.rds")$ctime %>%
+    mutate(timestamp = as.Date(file.info("data/advertisements_complete.rds")$mtime))
+  histo_date <- file.info("data/advertisements_complete.rds")$mtime %>%
     as.Date() %>%
     as.character() %>%
     str_replace_all("-", "_")
@@ -360,18 +360,18 @@ text_long <- advertisements_complete$info_text
 if (file.exists("data/text_long.rds")) {
   histo_rds <- import("data/text_long.rds") %>%
     as.data.frame() %>% 
-    mutate(timestamp = as.Date(file.info("data/text_long.rds")$ctime))
-  histo_date <- file.info("data/text_long.rds")$ctime %>%
+    mutate(timestamp = as.Date(file.info("data/text_long.rds")$mtime))
+  histo_date <- file.info("data/text_long.rds")$mtime %>%
     as.Date() %>%
     as.character() %>%
     str_replace_all("-", "_")
   saveRDS(histo_rds, paste0("data/histo/text_long", histo_date, ".rds"))
 }
-
 saveRDS(text_long, file = "data/text_long.rds") # instead of csv due to size reduction
-
 saveRDS(advertisements_complete, file = "data/advertisements_complete.rds") # instead of csv due to size reduction
 
 advertisements_complete <- read_rds("data/advertisements_complete.rds")
 
-skim(advertisements_complete)
+print(colnames(advertisements_complete))
+
+print(colnames(advertisements_complete_07_05_2023))
