@@ -1,5 +1,5 @@
 ---
-title: "Model Evaluation"
+title: "Advertisement data EDA"
 author: "Arnold Kakaš"
 date: "`r Sys.Date()`"
 output: 
@@ -11,17 +11,19 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Advertisement data EDA & Price prediction model {.tabset}
+## Advertisement data EDA Price prediction model
 
 ### Introduction
-
+<br>
 In this post I will go through <strong> Exploratory Data Analyses (EDA) </strong> of real estate advertisements data and evaluation of <strong> price prediction model </strong> based on this dataset.
+
+<br>
 
 Data is scraped from [Nehnutelnosti](https://www.nehnutelnosti.sk/) website that specializes in real estate listings and services. I will go through the scraping process and initial data cleaning in more details in the next blog post.
 
 
 ### EDA
-
+<br>
 Loading of libraries. For this part I like to use [packman](https://cran.r-project.org/web/packages/pacman/index.html) package
 ```{r message=FALSE, warning=FALSE}
 # load libs
@@ -29,7 +31,7 @@ pacman::p_load(rio,
                tidyverse,
                tidymodels,
                gt,
-               gtsummary,
+               DT,
                GGally,
                patchwork,
                vip,
@@ -48,17 +50,13 @@ As you can see, data is stored in RDS format. I prefer this format due to severa
 * RDS format preserves the entire R object structure, including data frames, matrices, lists, functions, and metadata.Therefore you can save objects like dataframes with factors, trained models, etc. 
 * RDS is optimized for reading and writing by the R. Therefore importing or exporting data is very quick.
 <br>
-
 Before the EDA, I need to clean up the scraped data.
-
 <br>
-
 I import two datasets. First one is advertisements.RDS file which contains links and basic information from the initial [webpage](https://www.nehnutelnosti.sk/byty/predaj/). I split one of the variables to obtain type of real estate.
 This dataframe is joined to second one, advertisements_complete_geocoded.RDS, that contains more detailed information of each of advertisements (these informations are visible after opening the links in first dataframe) and is already geocoded with [tidygeocoder](https://jessecambon.github.io/tidygeocoder/) package using OSM Nominatim API.
-
 <br>
-
 Afterwards follows the <strong> data cleaning </strong> and <strong> data wrangling </strong> using different methods:
+
 * replacing
 * filtering
 * imputing missing values
@@ -68,12 +66,8 @@ Afterwards follows the <strong> data cleaning </strong> and <strong> data wrangl
 * grouping
 * using geospatial joins
 * removing outliers
-
 <br>
-
-Generally this part can be described as <strong> feature engineering </strong>.
-
-
+This process is part of <strong> feature engineering </strong> for subsequent prediction model creation.
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 # load data for EDA
 advertisements <- import("data/advertisements.RDS")
@@ -202,76 +196,40 @@ st_geometry(scraped_cleaned_no_outliers) <- NULL
 rm(list = setdiff(ls(), "scraped_cleaned_no_outliers"))
 gc()
 ```
-
+<br>
 I like to start the EDA with base summary function.
+<br>
 
-```{r}
-sum_tbl <- summary(scraped_cleaned_no_outliers) %>% 
+```{r message=FALSE, warning=FALSE}
+summary(scraped_cleaned_no_outliers) %>% 
   as.data.frame()  %>%
-  select(- Var1)
-  pivot_wider(names_from = Var2, values_from = Freq)
-sum_tbl
-```
-
-
-### Final pricing model
-Since the goal of this model is to predict price 
-
-The word "Final" in this section may tell you, that there were multiple versions of the model. Indeed, I tried several models - linear regression, random forest and xgboost. 
-
-### Model evaluation
-
-
-```{r}
-# load data for model evaluation
-apartments_test <- import("data/apartments_test.RDS")
-model <- import("data/model.RDS")
-```
-
-
-```{r}
-model %>%
-  fit(data = apartments_test) %>%
-  pull_workflow_fit() %>%
-  vip(num_features = 10,
-      geom = "point")
-```
-
-```{r}
-set.seed(123)
-apartments_train_split <- initial_split(apartments_analysis_data, prop = 0.8, strata = price)
-results <- last_fit(model, apartments_train_split)
-collect_metrics(results) %>%
-  mutate(Estimate = round(.estimate, 3),
-         Metric = .metric) %>% 
-  select(Metric, Estimate) 
+  select(-Var1) %>% 
+  pivot_wider(names_from = Var2, values_from = Freq) %>% 
+  unnest(everything()) %>% 
+  rename('district mean index' = 11) %>% 
+  rename(municipality = 2) %>% 
+  gt() %>% 
+  tab_options(table.font.size = 9,
+              table.width = 1100,
+              table.layout = "auto")
 
 ```
-
-```{r}
-# evaluate
-apartments_pred <-
-  predict(apartments_xgb_fit, apartments_test) %>%
-  bind_cols(apartments_test)
-
-# %>% 
-#   mutate(prediction = 10^.pred,
-#          real_price = 10^price)
-
-apartments_plot1 <-
-  apartments_pred %>%
-  ggplot(aes(x = .pred, y = price)) +
-  geom_point() +
-  geom_abline(intercept = 0, col = "red")
-
-
-apartments_plot2 <-
-  apartments_pred %>%
-  select(.pred, price) %>%
-  gather(key, value) %>%
-  ggplot(aes(x = value, volor = key, fill = key)) +
-  geom_density(alpha = .2) +
-  labs(x = "", y = "")
-
-apartments_plot1 / apartments_plot2
-```
+<br>
+Most of the advertisements are from western part of Slovakia, we can see clear dominance of Bratislava city districts. Looking at the top 5 municipalities, only Banská Bystrica is located outside of the western part of country.
+<br>
+Price has quite big range from 1000 to almost 700k, but the middle 50 % lies within 70k range from 105,000 to 179,000. We will check the distribution later in histogram.
+<br>
+Index can have values from 0 to 10 and it is prepared by slovak startup [City Performer](https://cityperformer.com/). It is made up of six categories: environment, quality of housing, safety, transport, services and relaxation. That being said, it is not available for all places.
+Middle 50 % are within 7.1 to 8.1.
+<br>
+There are 6 possible conditions + NA. The most common is complete reconstruction followed by partial reconstruction and new construction.
+<br>
+Area is one of the most important attributes impacting the price. As we can see, we it ranges from 1 squared meter to 215,000, both are obviously incorrect values. Similarily to price, we will look at distribution in histogram.
+<br>
+Provision tells us whether the provision of real estate agency is included. Mostly it is not (only part of the apartments are sold via real estate agency).
+<br>
+Information on energy certificate is mostly missing or the property does not have one. But in cases of high grade certificates we can expect positive impact on price.
+<br>
+Type and rooms are two variables showing very similar characteristic. Most common are apartments with 3 and 2 rooms. 
+<br>
+Mean index value of district is used as additional feature to evaluate the location quality for places where local index is not available. Still, there are places where even this could not be calculated, nor by grouping or spatial lag.
