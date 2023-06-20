@@ -22,7 +22,7 @@ In this post I will go through <strong> Exploratory Data Analyses (EDA) </strong
 Data is scraped from [Nehnutelnosti](https://www.nehnutelnosti.sk/) website that specializes in real estate listings and services. I will go through the scraping process and initial data cleaning in more details in the next blog post.
 
 
-### EDA
+### Data cleaning
 <br>
 Loading of libraries. For this part I like to use [packman](https://cran.r-project.org/web/packages/pacman/index.html) package
 ```{r message=FALSE, warning=FALSE}
@@ -30,6 +30,8 @@ Loading of libraries. For this part I like to use [packman](https://cran.r-proje
 pacman::p_load(rio, 
                tidyverse,
                tidymodels,
+               corrplot,
+               scater,
                gt,
                DT,
                GGally,
@@ -130,11 +132,11 @@ scraped_cleaned <- import("data/advertisements_complete_geocoded.RDS") %>%
             pocet_izieb_miestnosti,
             pocet_nadzemnych_podlazi,
             podlazie)) %>% 
-  rename(index = index_of_living) %>% 
-  rename(condition = stav) %>% 
-  rename(area = uzit_plocha) %>% 
-  rename(provision = provizia_zahrnuta_v_cene) %>%
-  rename(certificate = energeticky_certifikat)
+  dplyr::rename(index = index_of_living) %>% 
+  dplyr::rename(condition = stav) %>% 
+  dplyr::rename(area = uzit_plocha) %>% 
+  dplyr::rename(provision = provizia_zahrnuta_v_cene) %>%
+  dplyr::rename(certificate = energeticky_certifikat)
 
 scraped_cleaned_wo_geometry <- scraped_cleaned
 st_geometry(scraped_cleaned_wo_geometry) <- NULL
@@ -163,7 +165,7 @@ districts <- import("data/geospatial_data/districts.RDS")
 scraped_cleaned <- districts %>% 
   st_join(scraped_cleaned, join = st_contains) %>% 
   select(-municipality, -district) %>% 
-  rename(district = NAME) %>% 
+  dplyr::rename(district = NAME) %>% 
   mutate(district = as_factor(district),
     condition = as_factor(condition),
     type = as_factor(type),
@@ -196,23 +198,36 @@ st_geometry(scraped_cleaned_no_outliers) <- NULL
 rm(list = setdiff(ls(), "scraped_cleaned_no_outliers"))
 gc()
 ```
-<br>
-I like to start the EDA with base summary function.
-<br>
 
-```{r message=FALSE, warning=FALSE}
-summary(scraped_cleaned_no_outliers) %>% 
-  as.data.frame()  %>%
-  select(-Var1) %>% 
-  pivot_wider(names_from = Var2, values_from = Freq) %>% 
-  unnest(everything()) %>% 
-  rename('district mean index' = 11) %>% 
-  rename(municipality = 2) %>% 
+### EDA {.tabset}
+
+#### Overview
+<br>
+Let's check how the data look like
+<br>
+```{r}
+head(scraped_cleaned_no_outliers) %>% 
   gt() %>% 
   tab_options(table.font.size = 9,
               table.width = 1100,
               table.layout = "auto")
+```
 
+<br>
+I like to start the EDA with base summary function.
+<br>
+```{r message=FALSE, warning=FALSE}
+ summary(scraped_cleaned_no_outliers) %>% 
+  as.data.frame()  %>%
+  select(-Var1) %>% 
+  pivot_wider(names_from = Var2, values_from = Freq) %>% 
+  unnest(everything()) %>% 
+  dplyr::rename('district mean index' = 11) %>% 
+  dplyr::rename(municipality = 2) %>% 
+  gt() %>% 
+  tab_options(table.font.size = 9,
+              table.width = 1100,
+              table.layout = "auto")
 ```
 <br>
 Most of the advertisements are from western part of Slovakia, we can see clear dominance of Bratislava city districts. Looking at the top 5 municipalities, only Banská Bystrica is located outside of the western part of country.
@@ -233,3 +248,96 @@ Information on energy certificate is mostly missing or the property does not hav
 Type and rooms are two variables showing very similar characteristic. Most common are apartments with 3 and 2 rooms. 
 <br>
 Mean index value of district is used as additional feature to evaluate the location quality for places where local index is not available. Still, there are places where even this could not be calculated, nor by grouping or spatial lag.
+
+#### Price
+
+Price is the variable I will try to predict.
+
+```{r}
+scraped_cleaned_no_outliers %>% 
+  ggplot(aes(x = price)) +
+        geom_histogram(fill = "blue", binwidth = 10000) +
+        scale_x_continuous(breaks = seq(0, 700000, by = 100000), labels = comma)
+```
+<br>
+As we can see, the distribution is skewed to the right meaning there are some 
+
+
+#### District
+
+#### Municipality
+
+#### Index
+
+#### Condition
+
+#### Area
+<br>
+```{r}
+scraped_cleaned_no_outliers %>% 
+  filter(area < 200) %>% 
+  ggplot(aes(x = area, y = price)) +
+  geom_point(col = 'blue') + 
+  geom_smooth(method = "lm", se = FALSE, color = "black", aes(group = 1)) +
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma)
+
+```
+
+#### Provision
+
+#### Certificate
+
+#### Type
+<br>
+```{r}
+scraped_cleaned_no_outliers %>% 
+  ggplot(aes(x = factor(type), y = price)) +
+  geom_boxplot(col = 'blue') + 
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
+  theme_minimal()
+
+```
+
+
+#### Mean District Index
+
+#### Correlation 
+
+```{r eval=FALSE, include=FALSE}
+all_numVar <- scraped_cleaned_no_outliers %>%  select(where(is.numeric))
+cor_numVar <- cor(all_numVar) #correlations of all numeric variables
+
+#sort on decreasing correlations with SalePrice
+cor_sorted <- as.matrix(sort(cor_numVar[,'price'], decreasing = TRUE))
+ #select only high corelations
+CorHigh <- names(which(apply(cor_sorted, 1, function(x) abs(x) > 0.5)))
+cor_numVar <- cor_numVar[CorHigh, CorHigh]
+
+corrplot.mixed(cor_numVar, tl.col = "black", tl.pos = "lt")
+
+```
+
+#### All numeric predictors
+<br>
+```{r message=FALSE, warning=FALSE}
+s1 <- ggplot(data = scraped_cleaned_no_outliers %>% filter(area < 200), aes(x = area)) +
+  geom_density() +
+  labs(x = "Square meters living area") +
+  theme_minimal()
+s2 <- ggplot(data = scraped_cleaned_no_outliers, aes(x = as.factor(rooms))) +
+  geom_histogram(stat = "count") +
+  labs(x = "Rooms") +
+  theme_minimal()
+s3 <- ggplot(data = scraped_cleaned_no_outliers, aes(x = index)) +
+  geom_density() +
+  labs(x = "Living index") +
+  theme_minimal()
+s4 <- ggplot(data = scraped_cleaned_no_outliers, aes(x = index_mean_district)) +
+  geom_density() +
+  labs(x = "Mean district index") +
+  theme_minimal()
+
+layout <- matrix(c(1,2,3,4),2,2,byrow = TRUE)
+multiplot(s1, s2, s3, s4, layout = layout)
+```
+
