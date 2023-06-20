@@ -1,5 +1,5 @@
 ---
-title: "Advertisement data EDA"
+title: "Real estate advertisements data EDA"
 author: "Arnold Kakaš"
 date: "`r Sys.Date()`"
 output: 
