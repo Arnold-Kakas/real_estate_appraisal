@@ -27,11 +27,13 @@ Data is scraped from [Nehnutelnosti](https://www.nehnutelnosti.sk/) website that
 Loading of libraries. For this part I like to use [packman](https://cran.r-project.org/web/packages/pacman/index.html) package
 ```{r message=FALSE, warning=FALSE}
 # load libs
-pacman::p_load(rio, 
+pacman::p_load(rio,
+               gridExtra,
                tidyverse,
                tidymodels,
                corrplot,
-               scater,
+               ggpubr,
+               plotly,
                gt,
                DT,
                GGally,
@@ -182,15 +184,20 @@ scraped_cleaned_no_outliers <- scraped_cleaned %>%
   mutate(index = mean(as.numeric(index),na.rm = TRUE), # index of municipality
          index = if_else(index > 0, index, NA), # replace 0 index with NA
          IQR = IQR(price), 
-         median = median(price), 
-         lower = median - 1.5*IQR, # calculate lower bound
-         upper = median + 1.5*IQR  # calculate upper bound
+         median_price = median(price),
+         lower = median_price - 1.5*IQR, 
+         upper = median_price + 1.5*IQR
          ) %>% 
   ungroup() %>% 
   filter(price >= lower & price <= upper) %>% # filter out outliers
-  select(-lower, -upper, -median, -IQR) # remove variables
+  select(-lower, -upper, -median_price, -IQR)# remove variables
 
 st_geometry(scraped_cleaned_no_outliers) <- NULL
+
+scraped_cleaned_no_outliers <- scraped_cleaned_no_outliers %>% 
+  group_by(district) %>% 
+  mutate(avg_price_district = mean(price, na.rm = TRUE),
+         )
 ```
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
@@ -253,91 +260,135 @@ Mean index value of district is used as additional feature to evaluate the locat
 
 Price is the variable I will try to predict.
 
-```{r}
-scraped_cleaned_no_outliers %>% 
+```{r message=FALSE, warning=FALSE}
+price1 <- scraped_cleaned_no_outliers %>% 
   ggplot(aes(x = price)) +
-        geom_histogram(fill = "blue", binwidth = 10000) +
-        scale_x_continuous(breaks = seq(0, 700000, by = 100000), labels = comma)
+        geom_histogram(fill = "steelblue", binwidth = 10000) +
+        scale_x_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
+  theme_minimal()
+        
+price2 <- scraped_cleaned_no_outliers %>% 
+  ggplot(aes(x = log10(price))) +
+        geom_histogram(fill = "steelblue") +
+  theme_minimal()
+
+grid.arrange(price1, price2, ncol = 1)
 ```
 <br>
-As we can see, the distribution is skewed to the right meaning there are some 
+```{r}
+price3 <- scraped_cleaned_no_outliers %>% 
+  ggplot(aes(y = price)) +
+  geom_boxplot(col = 'steelblue') + 
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
+  theme_minimal()
 
+price4 <- scraped_cleaned_no_outliers %>% 
+  ggplot(aes(y = log10(price))) +
+  geom_boxplot(col = 'steelblue') + 
+  theme_minimal()
+
+grid.arrange(price3, price4, ncol = 2)
+```
+
+As we can see, the distribution is skewed to the right, log transformation help with this issue to some extent.
 
 #### District
+
+
 
 #### Municipality
 
 #### Index
 
+```{r}
+scraped_cleaned_no_outliers %>% 
+  select(index) %>% 
+  drop_na() %>% 
+  ggplot(aes(x = index)) +
+        geom_histogram(fill = "steelblue") +
+  theme_minimal()
+```
+
+
+```{r message=FALSE, warning=FALSE}
+scraped_cleaned_no_outliers %>% 
+  select(price, index) %>% 
+  drop_na() %>% 
+  ggplot(aes(x = index, y = price)) +
+  geom_point(col = 'steelblue') + 
+  geom_smooth(method = "lm", se = FALSE, color = "red", aes(group = 1)) +
+  stat_regline_equation(label.x = 3, label.y = 650000) + # for regression equation 
+  stat_cor(aes(method = "pearson", label = after_stat(rr.label)), label.x = 3, label.y = 600000) + # for R^2 
+  theme_minimal() +
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma)
+```
 #### Condition
 
 #### Area
 <br>
-```{r}
+```{r message=FALSE, warning=FALSE}
 scraped_cleaned_no_outliers %>% 
-  filter(area < 200) %>% 
+  filter(area < 200 & area > 10) %>% 
   ggplot(aes(x = area, y = price)) +
-  geom_point(col = 'blue') + 
-  geom_smooth(method = "lm", se = FALSE, color = "black", aes(group = 1)) +
+  geom_point(col = 'steelblue') + 
+  geom_smooth(method = "lm", se = FALSE, color = "red", aes(group = 1)) +
+  stat_regline_equation(label.x = 3, label.y = 650000) + # for regression equation 
+  stat_cor(aes(method = "pearson", label = after_stat(rr.label)), label.x = 3, label.y = 600000) + # for R^2 
+  theme_minimal() +
   scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma)
-
 ```
+Area explains 24% of variance in price.
 
 #### Provision
 
 #### Certificate
+<br>
+```{r}
+cert1 <- scraped_cleaned_no_outliers %>% 
+  ggplot(aes(x = factor(certificate), y = price)) +
+  geom_boxplot(col = 'steelblue') + 
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
+  theme_minimal() +
+  labs(x = "type")
 
+ggplotly(cert1)
+```
 #### Type
 <br>
 ```{r}
-scraped_cleaned_no_outliers %>% 
+type1 <- scraped_cleaned_no_outliers %>% 
   ggplot(aes(x = factor(type), y = price)) +
-  geom_boxplot(col = 'blue') + 
+  geom_boxplot(col = 'steelblue') + 
   scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
-  theme_minimal()
+  theme_minimal() +
+  labs(x = "type")
 
+ggplotly(type1)
 ```
 
 
 #### Mean District Index
-
-#### Correlation 
-
-```{r eval=FALSE, include=FALSE}
-all_numVar <- scraped_cleaned_no_outliers %>%  select(where(is.numeric))
-cor_numVar <- cor(all_numVar) #correlations of all numeric variables
-
-#sort on decreasing correlations with SalePrice
-cor_sorted <- as.matrix(sort(cor_numVar[,'price'], decreasing = TRUE))
- #select only high corelations
-CorHigh <- names(which(apply(cor_sorted, 1, function(x) abs(x) > 0.5)))
-cor_numVar <- cor_numVar[CorHigh, CorHigh]
-
-corrplot.mixed(cor_numVar, tl.col = "black", tl.pos = "lt")
-
-```
-
-#### All numeric predictors
-<br>
 ```{r message=FALSE, warning=FALSE}
-s1 <- ggplot(data = scraped_cleaned_no_outliers %>% filter(area < 200), aes(x = area)) +
-  geom_density() +
-  labs(x = "Square meters living area") +
-  theme_minimal()
-s2 <- ggplot(data = scraped_cleaned_no_outliers, aes(x = as.factor(rooms))) +
-  geom_histogram(stat = "count") +
-  labs(x = "Rooms") +
-  theme_minimal()
-s3 <- ggplot(data = scraped_cleaned_no_outliers, aes(x = index)) +
-  geom_density() +
-  labs(x = "Living index") +
-  theme_minimal()
-s4 <- ggplot(data = scraped_cleaned_no_outliers, aes(x = index_mean_district)) +
-  geom_density() +
-  labs(x = "Mean district index") +
-  theme_minimal()
+scraped_cleaned_no_outliers %>% 
+  select(price, index_mean_district) %>% 
+  drop_na() %>% 
+  ggplot(aes(x = index_mean_district, y = price)) +
+  geom_point(col = 'steelblue') + 
+  geom_smooth(method = "lm", se = FALSE, color = "red", aes(group = 1)) +
+  stat_regline_equation(label.x = 3, label.y = 650000) + # for regression equation 
+  stat_cor(aes(method = "pearson", label = after_stat(rr.label)), label.x = 3, label.y = 600000) + # for R^2 
+  theme_minimal() +
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma)
+```
+#### Correlation 
+<br>
 
-layout <- matrix(c(1,2,3,4),2,2,byrow = TRUE)
-multiplot(s1, s2, s3, s4, layout = layout)
+```{r}
+all_num_pred <- select_if(scraped_cleaned_no_outliers, is.numeric) %>% drop_na()
+
+M <- cor(all_num_pred)
+
+corrplot(M, method = 'number', order = 'AOE', type = 'upper', diag = FALSE)
 ```
 
+There is a strong multicollinearity between index and mean district index. SPOILER ALERT Since the final model is an XGBoost model, I don't consider this a big issue. On the other hand, it may be beneficial in cases where there is no index value available (approx. 700 cases).
