@@ -237,6 +237,8 @@ I like to start the EDA with base summary function.
               table.layout = "auto")
 ```
 <br>
+Generally, there is a lot of missing data. This issue will be handled by imputation directly in model steps set up.
+<br>
 Most of the advertisements are from western part of Slovakia, we can see clear dominance of Bratislava city districts. Looking at the top 5 municipalities, only Banská Bystrica is located outside of the western part of country.
 <br>
 Price has quite big range from 1000 to almost 700k, but the middle 50 % lies within 70k range from 105,000 to 179,000. We will check the distribution later in histogram.
@@ -290,7 +292,8 @@ price4 <- scraped_cleaned_no_outliers %>%
 grid.arrange(price3, price4, ncol = 2)
 ```
 
-As we can see, the distribution is skewed to the right, log transformation help with this issue to some extent. 
+As we can see, the distribution is skewed to the right, but this was expected since there are some expensive apartments in limited numbers.
+Log transformation help with this issue to some extent. 
 
 #### District
 
