@@ -16,12 +16,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ### Introduction
 <br>
 In this post I will go through <strong> Exploratory Data Analyses (EDA) </strong> of real estate advertisements data and evaluation of <strong> price prediction model </strong> based on this dataset.
-
+It is not a typical EDA, since there are already some variables excluded based on previous experience. I will examine only the variables that were proven to have reasonable impact on price prediction.
 <br>
-
 Data is scraped from [Nehnutelnosti](https://www.nehnutelnosti.sk/) website that specializes in real estate listings and services. I will go through the scraping process and initial data cleaning in more details in the next blog post.
-
-
+<br>
 ### Data cleaning
 <br>
 Loading of libraries. For this part I like to use [packman](https://cran.r-project.org/web/packages/pacman/index.html) package
@@ -40,11 +38,7 @@ pacman::p_load(rio,
                patchwork,
                vip,
                janitor,
-               sf)#,
-               #spdep,
-               #rgeos,
-               #rgdal,
-               #sfdep)
+               sf)
 ```
 
 <br>
@@ -260,7 +254,7 @@ Mean index value of district is used as additional feature to evaluate the locat
 
 #### Price
 
-Price is the variable I will try to predict.
+Price is the most important variable in this dataset and it is the one I will try to predict.
 
 ```{r message=FALSE, warning=FALSE}
 price1 <- scraped_cleaned_no_outliers %>% 
@@ -297,16 +291,16 @@ Log transformation help with this issue to some extent.
 
 #### District
 
-```{r}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 top_bottom_10_districts <- scraped_cleaned_no_outliers %>% 
   group_by(district) %>% 
   summarize(price = mean(price, na.rm = TRUE),
-            adverts_count = n) %>% 
+            adverts_count = n()) %>% 
    filter(!between(dense_rank(price), 10 + 1, n() - 10)) %>% 
   arrange(desc(price))
 ```
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 #n1 <- 
 top_bottom_10_districts %>% 
   ggplot(aes(x = reorder(district, -price), y = price)) + 
@@ -321,9 +315,14 @@ top_bottom_10_districts %>%
 #         theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
 # grid.arrange(n1, n2) 
 ```
-
+<br>
+Again, we can see that most expensive apartments are from western part of Slovakia with exceptions of Košice I and Poprad. On the other hand all of the bottom 10 districts are located in eastern part. There I need to note, that most of these districts have very low number of advertisements. This can tell us two things. Firstly, the low prices can be due to chance. Secondly, the real estate market in this part of Slovakia is less developed.
 
 #### Municipality
+<br>
+For municipalities I will not do EDA since there are more than 200 unique values. Only to put in to perspective, there is 2890 municipalities (considering Bratislava and Košice as single entities without split to city districts). Only around 150 of them have more than 5000 inhabitants.
+More interesting information on cities and towns in Slovakia can be found on [this](https://www.sodbtn.sk/) webpage.
+
 
 #### Index
 
@@ -335,7 +334,7 @@ scraped_cleaned_no_outliers %>%
         geom_histogram(fill = "steelblue") +
   theme_minimal()
 ```
-
+<br>
 
 ```{r message=FALSE, warning=FALSE}
 scraped_cleaned_no_outliers %>% 
@@ -407,7 +406,11 @@ scraped_cleaned_no_outliers %>%
   theme_minimal() +
   scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma)
 ```
-#### Correlation 
+
+
+#### {-}
+
+### Correlation 
 <br>
 
 ```{r}
