@@ -194,10 +194,10 @@ scraped_cleaned_no_outliers <- scraped_cleaned %>%
 
 st_geometry(scraped_cleaned_no_outliers) <- NULL
 
-scraped_cleaned_no_outliers <- scraped_cleaned_no_outliers %>% 
-  group_by(district) %>% 
-  mutate(avg_price_district = mean(price, na.rm = TRUE),
-         )
+# scraped_cleaned_no_outliers <- scraped_cleaned_no_outliers %>% 
+#   group_by(district) %>% 
+#   mutate(avg_price_district = mean(price, na.rm = TRUE),
+#          )
 ```
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
@@ -290,10 +290,34 @@ price4 <- scraped_cleaned_no_outliers %>%
 grid.arrange(price3, price4, ncol = 2)
 ```
 
-As we can see, the distribution is skewed to the right, log transformation help with this issue to some extent.
+As we can see, the distribution is skewed to the right, log transformation help with this issue to some extent. 
 
 #### District
 
+```{r}
+top_bottom_10_districts <- scraped_cleaned_no_outliers %>% 
+  group_by(district) %>% 
+  summarize(price = mean(price, na.rm = TRUE),
+            adverts_count = n) %>% 
+   filter(!between(dense_rank(price), 10 + 1, n() - 10)) %>% 
+  arrange(desc(price))
+```
+
+```{r}
+#n1 <- 
+top_bottom_10_districts %>% 
+  ggplot(aes(x = reorder(district, -price), y = price)) + 
+  geom_bar(stat='summary', fun.y = "mean", fill='steelblue') + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  scale_y_continuous(breaks = seq(0, 350000, by = 50000), labels = comma) + 
+  geom_text(aes(x = reorder(district, -price) ,y = price + 25000, label = adverts_count)) +
+  geom_hline(yintercept = 135900, linetype="dashed", color = "red") #dashed line is median price 
+# n2 <- ggplot(data=all, aes(x=Neighborhood)) + 
+#         geom_histogram(stat='count')+ 
+#         geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=3)+ 
+#         theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+# grid.arrange(n1, n2) 
+```
 
 
 #### Municipality
