@@ -310,7 +310,7 @@ top_bottom_10_districts %>%
   geom_bar(stat='summary', fun.y = "mean", fill='steelblue') + 
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
   scale_y_continuous(breaks = seq(0, 350000, by = 50000), labels = comma) + 
-  geom_text(aes(x = reorder(district, -price) ,y = price + 25000, label = adverts_count)) +
+  geom_text(aes(x = reorder(district, -price) ,y = price + 25000, label = adverts_count), size = 3) +
   geom_hline(yintercept = 135900, linetype="dashed", color = "red") #dashed line is median price 
 # n2 <- ggplot(data=all, aes(x=Neighborhood)) + 
 #         geom_histogram(stat='count')+ 
