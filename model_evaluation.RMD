@@ -46,20 +46,6 @@ pacman::p_load(rio,
                sf)
 ```
 
-
-```{r}
-# function for boxplots, mean and count
-stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
-  return( 
-    data.frame(
-      y = 0.95 * upper_limit,
-      label = paste('n =', length(y), '\n',
-                    'x\u0305', ' =', round(mean(y), 0), '\n')
-    )
-  )
-}
-```
-
 <br>
 Next step is to load the analysed data. Usually for imports I use [rio](https://cran.r-project.org/web/packages/rio/index.html) package.
 <br>
@@ -220,7 +206,7 @@ rm(list = setdiff(ls(), "scraped_cleaned_no_outliers"))
 gc()
 ```
 
-### EDA
+### EDA {.tabset .tabset-pills}
 
 #### Overview
 <br>
@@ -405,7 +391,7 @@ Looking at the linear regression model, index explains roughly 10% of variance i
 <br>
 I expect the area to be one of the most important features impacting the price. The greater is the living area, the higher is the price. Obviously area is closely tied with e.g. type of apartments. More rooms usually means more space. 
 <br>
-```{r index_histo, message=FALSE, warning=FALSE}
+```{r area_histo, message=FALSE, warning=FALSE}
 scraped_cleaned_no_outliers %>% 
   filter(area < 200 & area > 10) %>% 
   select(area) %>% 
@@ -477,15 +463,15 @@ Interestingly enough it seems like the apartments with provision included in pri
 #### Certificate
 <br>
 ```{r}
-# stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
-#   return( 
-#     data.frame(
-#       y = 0.95 * upper_limit,
-#       label = paste('count =', length(y), '\n',
-#                     'x\u0305', ' =', round(mean(y), 0), '\n')
-#     )
-#   )
-# }
+stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
+  return(
+    data.frame(
+      y = 0.95 * upper_limit,
+      label = paste('count =', length(y), '\n',
+                    'x\u0305', ' =', round(mean(y), 0), '\n')
+    )
+  )
+}
 
 cert1 <- scraped_cleaned_no_outliers %>% 
   ggplot(aes(x = factor(certificate), y = price)) +
@@ -505,15 +491,15 @@ ggplotly(cert1)
 #### Type
 <br>
 ```{r}
-# stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
-#   return( 
-#     data.frame(
-#       y = 0.95 * upper_limit,
-#       label = paste('count =', length(y), '\n',
-#                     'x\u0305', ' =', round(mean(y), 0), '\n')
-#     )
-#   )
-# }
+stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
+  return(
+    data.frame(
+      y = 0.95 * upper_limit,
+      label = paste('count =', length(y), '\n',
+                    'x\u0305', ' =', round(mean(y), 0), '\n')
+    )
+  )
+}
 
 type1 <- scraped_cleaned_no_outliers %>% 
   ggplot(aes(x = factor(type, levels = c("1 izbový byt",
