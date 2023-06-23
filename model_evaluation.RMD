@@ -3,8 +3,12 @@ title: "Real estate advertisements data EDA"
 author: "Arnold Kakaš"
 date: "`r Sys.Date()`"
 output: 
-  rmdformats::readthedown:
+  html_document:
     code_folding: hide
+    toc: TRUE
+    toc_float:
+      collapsed: FALSE
+    toc_depth: 4
 ---
 
 ```{r setup, include=FALSE}
@@ -20,13 +24,13 @@ It is not a typical EDA, since there are already some variables excluded based o
 <br>
 Data is scraped from [Nehnutelnosti](https://www.nehnutelnosti.sk/) website that specializes in real estate listings and services. I will go through the scraping process and initial data cleaning in more details in the next blog post.
 <br>
+
 ### Data cleaning
 <br>
 Loading of libraries. For this part I like to use [packman](https://cran.r-project.org/web/packages/pacman/index.html) package
 ```{r message=FALSE, warning=FALSE}
 # load libs
-pacman::p_load(rmdformats,
-               rio,
+pacman::p_load(rio,
                gridExtra,
                tidyverse,
                tidymodels,
@@ -57,7 +61,8 @@ stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price
 ```
 
 <br>
-Next step is to load the analysed data. Usually for imports I use [rio](https://cran.r-project.org/web/packages/rio/index.html) package. <br>
+Next step is to load the analysed data. Usually for imports I use [rio](https://cran.r-project.org/web/packages/rio/index.html) package.
+<br>
 As you can see, data is stored in RDS format. I prefer this format due to several reasons: 
 * size of the file is lower compared to csv or xlsx, which are usually the ones that we as data analysts are provided with.
 * RDS format preserves the entire R object structure, including data frames, matrices, lists, functions, and metadata.Therefore you can save objects like dataframes with factors, trained models, etc. 
@@ -215,12 +220,11 @@ rm(list = setdiff(ls(), "scraped_cleaned_no_outliers"))
 gc()
 ```
 
-### EDA {.tabset}
+### EDA {.tabset .tabset-pills}
 
 #### Overview
 <br>
 Let's check how the data look like
-<br>
 ```{r}
 head(scraped_cleaned_no_outliers) %>% 
   gt() %>% 
@@ -248,27 +252,39 @@ I like to start the EDA with base summary function.
 <br>
 Generally, there is a lot of missing data. This issue will be handled by imputation directly in model steps set up.
 <br>
+<br>
 Most of the advertisements are from western part of Slovakia, we can see clear dominance of Bratislava city districts. Looking at the top 5 municipalities, only Banská Bystrica is located outside of the western part of country.
 <br>
+For municipalities I will not do EDA since there are more than 200 unique values. Only to put this variable into perspective, there is 2890 municipalities (considering Bratislava and Košice as single entities without split to city districts). Only around 150 of them have more than 5000 inhabitants.
+More interesting information on cities and towns in Slovakia can be found on [this](https://www.sodbtn.sk/) webpage.
+<br>
+<br>
 Price has quite big range from 1000 to almost 700k, but the middle 50 % lies within 70k range from 105,000 to 179,000. We will check the distribution later in histogram.
+<br>
 <br>
 Index can have values from 0 to 10 and it is prepared by slovak startup [City Performer](https://cityperformer.com/). It is made up of six categories: environment, quality of housing, safety, transport, services and relaxation. That being said, it is not available for all places.
 Middle 50 % are within 7.1 to 8.1.
 <br>
+<br>
 There are 6 possible conditions + NA. The most common is complete reconstruction followed by partial reconstruction and new construction.
+<br>
 <br>
 Area is one of the most important attributes impacting the price. As we can see, we it ranges from 1 squared meter to 215,000, both are obviously incorrect values. Similarily to price, we will look at distribution in histogram.
 <br>
+<br>
 Provision tells us whether the provision of real estate agency is included. Mostly it is not (only part of the apartments are sold via real estate agency).
+<br>
 <br>
 Information on energy certificate is mostly missing or the property does not have one. But in cases of high grade certificates we can expect positive impact on price.
 <br>
+<br>
 Type and rooms are two variables showing very similar characteristic. Most common are apartments with 3 and 2 rooms. 
+<br>
 <br>
 Mean index value of district is used as additional feature to evaluate the location quality for places where local index is not available. Still, there are places where even this could not be calculated, nor by grouping or spatial lag.
 
 #### Price
-
+<br>
 Price is the most important variable in this dataset and it is the one I will try to predict.
 
 ```{r message=FALSE, warning=FALSE}
@@ -305,7 +321,7 @@ As we can see, the distribution is skewed to the right, but this was expected si
 Log transformation help with this issue to some extent. 
 
 #### District
-
+<br>
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 top_bottom_10_districts <- scraped_cleaned_no_outliers %>% 
   group_by(district) %>% 
@@ -333,14 +349,8 @@ top_bottom_10_districts %>%
 <br>
 Again, we can see that most expensive apartments are from western part of Slovakia with exceptions of Košice I and Poprad. On the other hand all of the bottom 10 districts are located in eastern part. There I need to note, that most of these districts have very low number of advertisements. This can tell us two things. Firstly, the low prices can be due to chance. Secondly, the real estate market in this part of Slovakia is less developed.
 
-#### Municipality
-<br>
-For municipalities I will not do EDA since there are more than 200 unique values. Only to put in to perspective, there is 2890 municipalities (considering Bratislava and Košice as single entities without split to city districts). Only around 150 of them have more than 5000 inhabitants.
-More interesting information on cities and towns in Slovakia can be found on [this](https://www.sodbtn.sk/) webpage.
-
-
 #### Index
-
+<br>
 ```{r}
 scraped_cleaned_no_outliers %>% 
   select(index) %>% 
@@ -363,7 +373,23 @@ scraped_cleaned_no_outliers %>%
   theme_minimal() +
   scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma)
 ```
+#### Mean District Index
+<br>
+```{r message=FALSE, warning=FALSE}
+scraped_cleaned_no_outliers %>% 
+  select(price, index_mean_district) %>% 
+  drop_na() %>% 
+  ggplot(aes(x = index_mean_district, y = price)) +
+  geom_point(col = 'steelblue') + 
+  geom_smooth(method = "lm", se = FALSE, color = "red", aes(group = 1)) +
+  stat_regline_equation(label.x = 1.5, label.y = 650000) + # for regression equation 
+  stat_cor(aes(method = "pearson", label = after_stat(rr.label)), label.x = 1.5, label.y = 600000) + # for R^2 
+  theme_minimal() +
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma)
+```
+
 #### Condition
+<br>
 
 #### Area
 <br>
@@ -381,6 +407,7 @@ scraped_cleaned_no_outliers %>%
 Area explains 24% of variance in price.
 
 #### Provision
+<br>
 
 #### Certificate
 <br>
@@ -409,6 +436,7 @@ cert1 <- scraped_cleaned_no_outliers %>%
 
 ggplotly(cert1)
 ```
+
 #### Type
 <br>
 ```{r}
@@ -445,22 +473,8 @@ ggplotly(type1)
 ```
 
 
-#### Mean District Index
-```{r message=FALSE, warning=FALSE}
-scraped_cleaned_no_outliers %>% 
-  select(price, index_mean_district) %>% 
-  drop_na() %>% 
-  ggplot(aes(x = index_mean_district, y = price)) +
-  geom_point(col = 'steelblue') + 
-  geom_smooth(method = "lm", se = FALSE, color = "red", aes(group = 1)) +
-  stat_regline_equation(label.x = 1.5, label.y = 650000) + # for regression equation 
-  stat_cor(aes(method = "pearson", label = after_stat(rr.label)), label.x = 1.5, label.y = 600000) + # for R^2 
-  theme_minimal() +
-  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma)
-```
 
-
-#### {-}
+### {-}
 
 ### Correlation 
 <br>
