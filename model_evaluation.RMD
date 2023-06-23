@@ -3,7 +3,7 @@ title: "Real estate advertisements data EDA"
 author: "Arnold Kakaš"
 date: "`r Sys.Date()`"
 output: 
-  html_document:
+  rmdformats::readthedown:
     code_folding: hide
 ---
 
@@ -25,7 +25,8 @@ Data is scraped from [Nehnutelnosti](https://www.nehnutelnosti.sk/) website that
 Loading of libraries. For this part I like to use [packman](https://cran.r-project.org/web/packages/pacman/index.html) package
 ```{r message=FALSE, warning=FALSE}
 # load libs
-pacman::p_load(rio,
+pacman::p_load(rmdformats,
+               rio,
                gridExtra,
                tidyverse,
                tidymodels,
@@ -39,6 +40,20 @@ pacman::p_load(rio,
                vip,
                janitor,
                sf)
+```
+
+
+```{r}
+# help function for boxplots
+stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
+  return( 
+    data.frame(
+      y = 0.95 * upper_limit,
+      label = paste('count =', length(y), '\n',
+                    'mean =', round(mean(y), 0), '\n')
+    )
+  )
+}
 ```
 
 <br>
@@ -370,10 +385,25 @@ Area explains 24% of variance in price.
 #### Certificate
 <br>
 ```{r}
+stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
+  return( 
+    data.frame(
+      y = 0.95 * upper_limit,
+      label = paste('count =', length(y), '\n',
+                    'mean =', round(mean(y), 0), '\n')
+    )
+  )
+}
+
 cert1 <- scraped_cleaned_no_outliers %>% 
   ggplot(aes(x = factor(certificate), y = price)) +
   geom_boxplot(col = 'steelblue') + 
   scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
+  stat_summary(
+    fun.data = stat_box_data, 
+    geom = "text", 
+    size = 3
+  ) + 
   theme_minimal() +
   labs(x = "type")
 
@@ -382,9 +412,31 @@ ggplotly(cert1)
 #### Type
 <br>
 ```{r}
+stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
+  return( 
+    data.frame(
+      y = 0.95 * upper_limit,
+      label = paste('count =', length(y), '\n',
+                    'mean =', round(mean(y), 0), '\n')
+    )
+  )
+}
+
 type1 <- scraped_cleaned_no_outliers %>% 
-  ggplot(aes(x = factor(type), y = price)) +
+  ggplot(aes(x = factor(type, levels = c("1 izbový byt",
+                                         "2 izbový byt",
+                                         "3 izbový byt",
+                                         "4 izbový byt",
+                                         "5 a viac izbový byt",
+                                         "Garsónka",
+                                         "Dvojgarsónka")),
+             y = price)) +
   geom_boxplot(col = 'steelblue') + 
+  stat_summary(
+    fun.data = stat_box_data, 
+    geom = "text", 
+    size = 3
+  ) + 
   scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
   theme_minimal() +
   labs(x = "type")
@@ -401,8 +453,8 @@ scraped_cleaned_no_outliers %>%
   ggplot(aes(x = index_mean_district, y = price)) +
   geom_point(col = 'steelblue') + 
   geom_smooth(method = "lm", se = FALSE, color = "red", aes(group = 1)) +
-  stat_regline_equation(label.x = 3, label.y = 650000) + # for regression equation 
-  stat_cor(aes(method = "pearson", label = after_stat(rr.label)), label.x = 3, label.y = 600000) + # for R^2 
+  stat_regline_equation(label.x = 1.5, label.y = 650000) + # for regression equation 
+  stat_cor(aes(method = "pearson", label = after_stat(rr.label)), label.x = 1.5, label.y = 600000) + # for R^2 
   theme_minimal() +
   scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma)
 ```
