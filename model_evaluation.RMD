@@ -5,39 +5,43 @@ date: "`r Sys.Date()`"
 output: 
   html_document:
     code_folding: hide
-    toc: TRUE
-    toc_float:
-      collapsed: FALSE
-    toc_depth: 5
+    toc: true
+    toc_float: 
+        collapsed: false
+        smooth_scroll: true
+    toc_depth: 4
 ---
+<style>
+table {
+  white-space: nowrap;
+}
+</style>
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Advertisement data EDA Price prediction model
+# Advertisement data EDA Price prediction model
 
-### Introduction
-<br>
+## Introduction
+
 In this post I will go through <strong> Exploratory Data Analyses (EDA) </strong> of real estate advertisements data and evaluation of <strong> price prediction model </strong> based on this dataset.
 It is not a typical EDA, since there are already some variables excluded based on previous experience. I will examine only the variables that were proven to have reasonable impact on price prediction.
 <br>
 Data is scraped from [Nehnutelnosti](https://www.nehnutelnosti.sk/) website that specializes in real estate listings and services. I will go through the scraping process and initial data cleaning in more details in the next blog post.
 <br>
 
-### Data cleaning
-<br>
+## Data cleaning
+
 Loading of libraries. For this part I like to use [packman](https://cran.r-project.org/web/packages/pacman/index.html) package
 ```{r load_libs, message=FALSE, warning=FALSE}
 # load libs
 pacman::p_load(rio,
-               gridExtra,
                tidyverse,
-               tidymodels,
+               gridExtra,
                corrplot,
                ggpubr,
                plotly,
-               gt,
                DT,
                GGally,
                patchwork,
@@ -45,7 +49,6 @@ pacman::p_load(rio,
                janitor,
                sf)
 ```
-
 <br>
 Next step is to load the analysed data. Usually for imports I use [rio](https://cran.r-project.org/web/packages/rio/index.html) package.
 <br>
@@ -176,7 +179,10 @@ scraped_cleaned <- districts %>%
     name_nsi = as_factor(name_nsi)
   ) %>% 
   select(-n, -address1, -address2) %>% 
-  filter(!is.na(price))
+  filter(!is.na(price)) %>% 
+  mutate_if(is.numeric,
+            round,
+            digits = 1)
 
 
 scraped_cleaned_no_outliers <- scraped_cleaned %>% 
@@ -206,23 +212,21 @@ rm(list = setdiff(ls(), "scraped_cleaned_no_outliers"))
 gc()
 ```
 
-### EDA {.tabset .tabset-pills}
-
-#### Overview
-<br>
+## EDA {.tabset .tabset-pills}
+### Overview
 Let's check how the data look like
-```{r show_head}
+```{r show_head, echo=TRUE}
 head(scraped_cleaned_no_outliers) %>% 
-  gt() %>% 
-  tab_options(table.font.size = 10,
-              table.width = 1100,
-              table.layout = "auto")
+  datatable(options = list(scrollX = TRUE)) #%>% 
+  # tab_options(table.font.size = 10,
+  #             table.width = 1100,
+  #             table.layout = "auto")
 ```
 
 <br>
 I like to start the EDA with base summary function.
 <br>
-```{r summary, message=FALSE, warning=FALSE}
+```{r summary, echo=TRUE, message=FALSE, warning=FALSE}
  summary(scraped_cleaned_no_outliers) %>% 
   as.data.frame()  %>%
   select(-Var1) %>% 
@@ -230,10 +234,10 @@ I like to start the EDA with base summary function.
   unnest(everything()) %>% 
   dplyr::rename('district mean index' = 11) %>% 
   dplyr::rename(municipality = 2) %>% 
-  gt() %>% 
-  tab_options(table.font.size = 10,
-              table.width = 1100,
-              table.layout = "auto")
+  datatable(options = list(scrollX = TRUE)) #%>% 
+  # tab_options(table.font.size = 10,
+  #             #table.width = 1100,
+  #             table.layout = "auto")
 ```
 <br>
 Generally, there is a lot of missing data. This issue will be handled by imputation directly in model steps set up.
@@ -269,11 +273,10 @@ Type and rooms are two variables showing very similar characteristic. Most commo
 <br>
 Mean index value of district is used as additional feature to evaluate the location quality for places where local index is not available. Nevertheless, there are places where even this aggregated index could not be calculated, nor by grouping or spatial lag.
 
-#### Price
-<br>
+### Price
 Price is the most important variable in this dataset and it is the one I will try to predict.
 
-```{r price_histo, message=FALSE, warning=FALSE}
+```{r price_histo, echo=TRUE, message=FALSE, warning=FALSE}
 price1 <- scraped_cleaned_no_outliers %>% 
   ggplot(aes(x = price)) +
         geom_histogram(fill = "steelblue", binwidth = 10000) +
@@ -288,7 +291,7 @@ price2 <- scraped_cleaned_no_outliers %>%
 grid.arrange(price1, price2, ncol = 1)
 ```
 <br>
-```{r price_boxplot, message=FALSE, warning=FALSE}
+```{r price_boxplot, echo=TRUE, message=FALSE, warning=FALSE}
 price3 <- scraped_cleaned_no_outliers %>% 
   ggplot(aes(y = price)) +
   geom_boxplot(col = 'steelblue') + 
@@ -303,21 +306,19 @@ price4 <- scraped_cleaned_no_outliers %>%
 grid.arrange(price3, price4, ncol = 2)
 ```
 
-```{r}
+```{r qq_price, echo=TRUE}
 qqnorm(scraped_cleaned_no_outliers$price, pch = 1, frame = FALSE)
 qqline(scraped_cleaned_no_outliers$price, col = "steelblue", lwd = 2)
 ```
 
-```{r}
+```{r qq_price_log, echo=TRUE}
 qqnorm(log10(scraped_cleaned_no_outliers$price), pch = 1, frame = FALSE)
 qqline(log10(scraped_cleaned_no_outliers$price), col = "steelblue", lwd = 2)
 ```
 As we can see, the distribution is skewed to the right, but this was expected since there are some expensive apartments in limited numbers.
 Log transformation help with this issue as confirmed by all plots in this section.
 
-
-#### District
-<br>
+### District
 Regional differences in Slovakia have west east gradient in many socio-cultural aspects. Therefore, it is reasonable to expect the same pattern also in the prices of apartments.
 
 ```{r top_10_districts, echo=TRUE, message=FALSE, warning=FALSE}
@@ -329,7 +330,7 @@ top_bottom_10_districts <- scraped_cleaned_no_outliers %>%
   arrange(desc(price))
 ```
 
-```{r top_10_districts_chart, message=FALSE, warning=FALSE}
+```{r top_10_districts_chart, echo=TRUE, message=FALSE, warning=FALSE}
 top_10_districts_chart <- top_bottom_10_districts %>% 
   ggplot(aes(x = reorder(district, -price), y = price, text = paste0("Price: ",
                                                                      format(round(price, 0),big.mark=" ",))
@@ -348,16 +349,16 @@ And indeed it is confirmed in the chart. We can see that most expensive apartmen
 * The low prices can be due to chance
 * The real estate market in this part of Slovakia is less developed.
 
-#### Index
+### Index
 As mentioned earlier, Index gives us aggregated value that aims to evaluate the quality of place where the apartment listed in the advertisement is located.
-```{r}
+```{r index_isna, echo=TRUE}
 sum(is.na(scraped_cleaned_no_outliers$index))
 sum(is.na(scraped_cleaned_no_outliers$index))/nrow(scraped_cleaned_no_outliers)
 ```
 <br>
 There is 2055 (16.1% of total) advertisements where index was not available. 
 <br>
-```{r index_histo, message=FALSE, warning=FALSE}
+```{r index_histo, echo=TRUE, message=FALSE, warning=FALSE}
 scraped_cleaned_no_outliers %>% 
   select(index) %>% 
   drop_na() %>% 
@@ -368,7 +369,7 @@ scraped_cleaned_no_outliers %>%
 <br>
 Distribution of the values is concentrated around higher values (7.5+) with significant skewness to the left side.
 <br>
-```{r index_price, message=FALSE, warning=FALSE}
+```{r index_price, echo=TRUE, message=FALSE, warning=FALSE}
 scraped_cleaned_no_outliers %>% 
   select(price, index) %>% 
   drop_na() %>% 
@@ -383,15 +384,39 @@ scraped_cleaned_no_outliers %>%
 <br>
 Looking at the linear regression model, index explains roughly 10% of variance in price. I will check the correlation and p-values later in the EDA.
 
-#### Condition
-<br>
+### Condition
+```{r condition_boxplot, echo=TRUE, message=FALSE, warning=FALSE}
+stat_box_data_prov <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.08) {
+  return(
+    data.frame(
+      y = 0.95 * upper_limit,
+      label = paste('n =', length(y), '\n',
+                    'x\u0305', ' =', round(mean(y), 0), '\n')
+    )
+  )
+}
 
+prov1 <- scraped_cleaned_no_outliers %>% 
+  ggplot(aes(x = factor(condition), y = price)) +
+  geom_boxplot(col = 'steelblue') + 
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
+  stat_summary(
+    fun.data = stat_box_data_prov, 
+    geom = "text", 
+    size = 3
+  ) + 
+  theme_minimal() +
+  labs(x = "type")
 
-#### Area
-<br>
+ggplotly(prov1)
+```
+
+text
+
+### Area
 I expect the area to be one of the most important features impacting the price. The greater is the living area, the higher is the price. Obviously area is closely tied with e.g. type of apartments. More rooms usually means more space. 
 <br>
-```{r area_histo, message=FALSE, warning=FALSE}
+```{r area_histo, echo=TRUE, message=FALSE, warning=FALSE}
 scraped_cleaned_no_outliers %>% 
   filter(area < 200 & area > 10) %>% 
   select(area) %>% 
@@ -403,7 +428,7 @@ scraped_cleaned_no_outliers %>%
 
 Distribution of area reminds the normal distribution the most out of all predictors we have in dataset. These is a skeweness to the right due to limited number of apartments with large living area. As you probably noticed, I filtered out all advertisements with area lower or equal to 10 and higher or equal to 200. I suspect that these are mistakes/intentionally wrong records.
 <br>
-```{r}
+```{r qq_area, echo=TRUE}
 qq_area <- scraped_cleaned_no_outliers %>% 
   select(area) %>% 
   filter(area > 10 & area < 200)
@@ -414,7 +439,7 @@ qqline(qq_area$area, col = "steelblue", lwd = 2)
 <br>
 QQ plot is another way how to check the normality of distribution. Again, the skewness to the right is clearly visible.
 <br>
-```{r area_price, message=FALSE, warning=FALSE}
+```{r area_price, echo=TRUE, message=FALSE, warning=FALSE}
 scraped_cleaned_no_outliers %>% 
   filter(area < 200 & area > 10) %>% 
   ggplot(aes(x = area, y = price)) +
@@ -430,9 +455,8 @@ Area explains 24% of variance in price. This is much more compared to other nume
 On the other hand, at first glance it seems like the correlation is probably quite low. Price varies a lot in all area sizes.
 I read it as there is more than area what comes into price determination. Two apartments with the same area can have very different price e.g. due to location, equipment of the apartment, age, condition etc..
 
-#### Provision
-<br>
-```{r}
+### Provision
+```{r provision_boxplot, echo=TRUE, message=FALSE, warning=FALSE}
 stat_box_data_prov <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.08) {
   return(
     data.frame(
@@ -460,9 +484,11 @@ ggplotly(prov1)
 
 Interestingly enough it seems like the apartments with provision included in price have lower price then those without it. This may be due to fact that, real estate agencies know the market better than private advertisers and keep the price more reasonable. Also it can be due to mix of types in both baskets. Nevertheless, both groups have similar values of all statistical measures displayed in boxplots.
 
-#### Certificate
-<br>
-```{r}
+### Certificate
+
+text 
+
+```{r cert_boxplot, echo=TRUE, message=FALSE, warning=FALSE}
 stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
   return(
     data.frame(
@@ -488,9 +514,10 @@ cert1 <- scraped_cleaned_no_outliers %>%
 ggplotly(cert1)
 ```
 
-#### Type
-<br>
-```{r}
+### Type
+
+text
+```{r type_boxplot, echo=TRUE, message=FALSE, warning=FALSE}
 stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
   return(
     data.frame(
@@ -523,18 +550,17 @@ type1 <- scraped_cleaned_no_outliers %>%
 ggplotly(type1)
 ```
 
-#### Mean District Index
-<br>
+### Mean District Index
 As already mentioned, this variable serves as a extra feature for advertisements where index was not available. The assumption of this thought is that there is a spatial autocorrelation of features stepping into calculation of index.
 <br>
-```{r}
+```{r index_district_isna, echo=TRUE}
 sum(is.na(scraped_cleaned_no_outliers$index_mean_district))
 sum(is.na(scraped_cleaned_no_outliers$index_mean_district))/nrow(scraped_cleaned_no_outliers)
 ```
 <br>
 Since there is 1391 rows (10.9% of total) with missing value, this feature covers approx. 700 cases of missing index value.
 <br>
-```{r index_district_histo, message=FALSE, warning=FALSE}
+```{r index_district_histo, echo=TRUE, message=FALSE, warning=FALSE}
 scraped_cleaned_no_outliers %>% 
   select(index_mean_district) %>% 
   drop_na() %>% 
@@ -544,7 +570,7 @@ scraped_cleaned_no_outliers %>%
 ```
 <br>
 Compared to index, district mean distribution resembles the normal distribution to higher extent, however is it still heavily skewed to the felt.
-```{r index_districts_price, message=FALSE, warning=FALSE}
+```{r index_districts_price, echo=TRUE, message=FALSE, warning=FALSE}
 scraped_cleaned_no_outliers %>% 
   select(price, index_mean_district) %>% 
   drop_na() %>% 
@@ -559,10 +585,9 @@ scraped_cleaned_no_outliers %>%
 <br>
 It explains only 7% of price variance. Again, the correlation and p-values are discussed in next part of EDA.
 
-### Correlation 
-<br>
+## Correlation 
 ADD P VALUES
-```{r}
+```{r corr, echo=TRUE}
 all_num_pred <- select_if(scraped_cleaned_no_outliers, is.numeric) %>% drop_na()
 
 M <- cor(all_num_pred)
