@@ -61,6 +61,7 @@ apartments <- apartments_analysis_data %>%
          ) %>% 
   ungroup() %>% 
   filter(price >= lower & price <= upper) %>% 
+  filter(area > 10 & area < 200) %>% 
   select(-lower, -upper, -median, -IQR)
 
 

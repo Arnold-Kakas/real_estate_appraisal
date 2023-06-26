@@ -354,12 +354,12 @@ top_10_districts_chart <- top_bottom_10_districts %>%
   ggplot(aes(x = reorder(district, -price), y = price, text = paste0("Price: ",
                                                                      format(round(price, 0),big.mark=" ",))
   )) + 
-  geom_bar(stat='summary', fun.y = "mean", fill='steelblue') +
+  geom_bar(stat='summary', fun.y = "mean", fill = 'steelblue') +
   theme_minimal() + 
   theme(axis.text.x = element_text(angle = 45)) + 
   scale_y_continuous(breaks = seq(0, 350000, by = 50000), labels = comma) + 
   geom_text(aes(x = reorder(district, -price) ,y = price + 25000, label = adverts_count), size = 3) +
-  geom_hline(yintercept = 135900, linetype="dashed", color = "red") + #dashed line is median price 
+  geom_hline(yintercept = 135900, linetype = "dashed", color = "red") + #dashed line is median price 
   labs(x = "district")
 
 ggplotly(top_10_districts_chart, tooltip = "text")
