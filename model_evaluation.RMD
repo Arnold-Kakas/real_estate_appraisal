@@ -217,14 +217,19 @@ gc()
 ### Overview
 Let's check how the data look like
 
-DT WRAP TEXT
-
 ```{r show_head, echo=TRUE}
 head(scraped_cleaned_no_outliers) %>% 
   mutate_if(is.numeric,
             round,
             digits = 1) %>% 
-  datatable(options = list(scrollX = TRUE)) #%>% 
+  datatable(
+            rownames = FALSE,
+            options = list(scrollX = TRUE,
+                           autoWidth = TRUE,
+                           columnDefs = list(list(width = '125px', targets = c(0, 1, 8))
+                                             )
+                           )
+            )#%>% 
   # tab_options(table.font.size = 10,
   #             table.width = 1100,
   #             table.layout = "auto")
@@ -246,10 +251,12 @@ DT WRAP TEXT
   unnest(everything()) %>% 
   dplyr::rename('district mean index' = 11) %>% 
   dplyr::rename(municipality = 2) %>% 
-  datatable(options = list(scrollX = TRUE)) #%>% 
-  # tab_options(table.font.size = 10,
-  #             #table.width = 1100,
-  #             table.layout = "auto")
+  datatable(rownames = FALSE,
+            options = list(scrollX = TRUE,
+                           autoWidth = TRUE,
+                           columnDefs = list(list(width = '125px', targets = "_all")
+                                             )
+                           ))
 ```
 <br>
 Generally, there is a lot of missing data. This issue will be handled by imputation directly in model steps set up.
@@ -347,11 +354,13 @@ top_10_districts_chart <- top_bottom_10_districts %>%
   ggplot(aes(x = reorder(district, -price), y = price, text = paste0("Price: ",
                                                                      format(round(price, 0),big.mark=" ",))
   )) + 
-  geom_bar(stat='summary', fun.y = "mean", fill='steelblue') + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  geom_bar(stat='summary', fun.y = "mean", fill='steelblue') +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45)) + 
   scale_y_continuous(breaks = seq(0, 350000, by = 50000), labels = comma) + 
   geom_text(aes(x = reorder(district, -price) ,y = price + 25000, label = adverts_count), size = 3) +
-  geom_hline(yintercept = 135900, linetype="dashed", color = "red") #dashed line is median price 
+  geom_hline(yintercept = 135900, linetype="dashed", color = "red") + #dashed line is median price 
+  labs(x = "district")
 
 ggplotly(top_10_districts_chart, tooltip = "text")
 ```
@@ -388,8 +397,8 @@ scraped_cleaned_no_outliers %>%
   ggplot(aes(x = index, y = price)) +
   geom_point(col = 'steelblue') + 
   geom_smooth(method = "lm", se = FALSE, color = "red", aes(group = 1)) +
-  stat_regline_equation(label.x = 3, label.y = 650000) + # for regression equation 
-  stat_cor(aes(method = "pearson", label = after_stat(rr.label)), label.x = 3, label.y = 600000) + # for R^2 
+  stat_regline_equation(label.x = 1.5, label.y = 650000) + # for regression equation 
+  stat_cor(aes(method = "pearson", label = after_stat(rr.label)), label.x = 1.5, label.y = 600000) + # for R^2 
   theme_minimal() +
   scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma)
 ```
@@ -424,8 +433,8 @@ prov1 <- scraped_cleaned_no_outliers %>%
 ggplotly(prov1)
 ```
 
-There are obvious differences in price among condition groups. Highest values are in three categories: In construction (Vo výstavbe), Developer project (Developerský projekt) and New (Novostavba). Not a big surprise that new and not yet finished apartments are the priciest.
-On the other hand, the cheapest are Original state (Pôvodný stav) and Partial reconstruction. Somewhere in the middle sits Complete reconstruction (Kompletná rekonštrukcia).
+There are obvious differences in price among condition groups. Highest values are in three categories: In construction ("Vo výstavbe"), Developer project ("Developerský projekt") and New ("Novostavba"). Not a big surprise that new and not yet finished apartments are the priciest.
+On the other hand, the cheapest are Original state ("Pôvodný stav") and Partial reconstruction. Somewhere in the middle sits Complete reconstruction ("Kompletná rekonštrukcia").
 
 This result is not a surprise, it makes sense and this variable should have significant impact on the prediction.
 
@@ -469,11 +478,11 @@ scraped_cleaned_no_outliers %>%
 <br>
 Area explains 24% of variance in price. This is much more compared to other numeric variables.
 On the other hand, at first glance it seems like the correlation is probably quite low. Price varies a lot in all area sizes.
-I read it as there is more than area what comes into price determination. Two apartments with the same area can have very different price e.g. due to location, equipment of the apartment, age, condition etc..
+I read it as there is more than only area what comes into price determination. Two apartments with the same area can have very different price e.g. due to location, equipment of the apartment, age, condition etc..
 
 ### Provision
 ```{r provision_boxplot, echo=TRUE, message=FALSE, warning=FALSE}
-stat_box_data_prov <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.08) {
+stat_box_data_prov <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
   return(
     data.frame(
       y = 0.95 * upper_limit,
@@ -493,12 +502,12 @@ prov1 <- scraped_cleaned_no_outliers %>%
     size = 3
   ) + 
   theme_minimal() +
-  labs(x = "type")
+  labs(x = "provision")
 
 ggplotly(prov1)
 ```
 <br>
-Interestingly enough it seems like the apartments with provision included in price have lower price then those without it. This may be due to fact that, real estate agencies know the market better than private advertisers and keep the price more reasonable. Also it can be due to mix of types in both baskets. Nevertheless, both groups have similar values of all statistical measures displayed in box-plots.
+Interestingly enough it seems like the apartments with provision included in price ("Áno") have lower price then those without it ("Nie"). This may be due to fact that, real estate agencies know the market better than private advertisers and keep the price more reasonable. Also it can be due to mix of types in both baskets. Nevertheless, both groups have similar values of all statistical measures displayed in box-plots.
 <br>
 Whether the differences really significant, we can do a one way ANOVA.
 <br>
@@ -506,6 +515,7 @@ Whether the differences really significant, we can do a one way ANOVA.
 res.aov <- aov(price ~ provision, data = scraped_cleaned_no_outliers)
 summary(res.aov)
 ```
+<br>
 We can conclude that there are significant differences between the groups.
 <br>
 Now we need to check the assumptions of ANOVA
@@ -535,22 +545,38 @@ Data are independent.
 On the first glance, we failed to reject the null hypothesis since the assumptions were violated. Nevertheless, since we have large dataframe and the difference is visible in all descriptive points (quantiles, mean, etc.), I feel confident to say that there is practical significance in this variable.
 
 ### Certificate
+<br>
+The energy certificate of a building (ECB) is a legal document that evaluates buildings in terms of energy efficiency and carbon dioxide emissions, resulting in their classification in energy scales from the most efficient class A to the wasteful class G.
+<br>
+The energy certificate evaluates buildings in terms of 4 points of energy consumption:
 
-text 
+* thermal protection of buildings
+* energy requirement for heating and preparation of hot water
+* energy need for air conditioning, air conditioning
+* energy need for built-in wiring, lighting
+
+Based on these points of consumption, the ECB recalculates the required amount of energy in kWh / m² per year for the entire building
 
 ```{r cert_boxplot, echo=TRUE, message=FALSE, warning=FALSE}
 stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
   return(
     data.frame(
       y = 0.95 * upper_limit,
-      label = paste('count =', length(y), '\n',
+      label = paste('n =', length(y), '\n',
                     'x\u0305', ' =', round(mean(y), 0), '\n')
     )
   )
 }
 
 cert1 <- scraped_cleaned_no_outliers %>% 
-  ggplot(aes(x = factor(certificate), y = price)) +
+  ggplot(aes(x = factor(certificate, levels = c("A",
+                                         "B",
+                                         "C",
+                                         "D",
+                                         "E",
+                                         "F",
+                                         "G",
+                                         "nemá")), y = price)) +
   geom_boxplot(col = 'steelblue') + 
   scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
   stat_summary(
@@ -563,16 +589,29 @@ cert1 <- scraped_cleaned_no_outliers %>%
 
 ggplotly(cert1)
 ```
+<br>
+The box-plot chart nicely illustrates the relationship between certificate level and price. With decreasing level of certificate, price drops as well. That being said, there are other factors as well. I suspect that A levels will be probably represented by relatively new apartments which have higher prices. Another topic is group with no certificate ("nemá") and without information on certificate (NA values). It could be tempting to merge them together, however there is quite significant difference in descriptive statistics of these two groups. I will not run the ANOVA in this case because of the distribution of values and sample size. Instead I will use imputation step in model recipe.
 
 ### Type
+<br>
+There are 7 types of apartments in this dataset:
 
-text
+* 1 room apartment*
+* 2 rooms apartment
+* 3 rooms apartment
+* 4 rooms apartment
+* 5+ rooms apartment
+* studio apartment ("Garsónka")
+* one-bedroom apartment ("Dvojgarsónka")*
+
+*The difference between 1 room apartment and one-bedroom apartment is that 1 room apartment has one living/bed room and separate kitchen and one-bedroom apartments has two separate rooms (typically bedroom and living room) and kitchen in part of one of them.
+<br>
 ```{r type_boxplot, echo=TRUE, message=FALSE, warning=FALSE}
 stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
   return(
     data.frame(
       y = 0.95 * upper_limit,
-      label = paste('count =', length(y), '\n',
+      label = paste('n =', length(y), '\n',
                     'x\u0305', ' =', round(mean(y), 0), '\n')
     )
   )
@@ -588,6 +627,7 @@ type1 <- scraped_cleaned_no_outliers %>%
                                          "Dvojgarsónka")),
              y = price)) +
   geom_boxplot(col = 'steelblue') + 
+  scale_x_discrete(labels = wrap_format(15)) +
   stat_summary(
     fun.data = stat_box_data, 
     geom = "text", 
@@ -599,6 +639,8 @@ type1 <- scraped_cleaned_no_outliers %>%
 
 ggplotly(type1)
 ```
+<br>
+There are two interesting findings from the chart above. First one, 2 and 3 rooms apartments have very similar prices. 3 rooms are obviously more expensive but the difference, especially when we consider price increase from 1 room to 2 rooms and from 3 rooms to 4 rooms, is very mild. Second finding, one-bedroom apartments seem to fit between 1 and 2 rooms apartments rather then being an alternative to 1 room apartments (I admit that number of observations is very small and this can be due to chance). 
 
 ### Mean District Index
 As already mentioned, this variable serves as a extra feature for advertisements where index was not available. The assumption of this thought is that there is a spatial autocorrelation of features stepping into calculation of index.
@@ -616,7 +658,8 @@ scraped_cleaned_no_outliers %>%
   drop_na() %>% 
   ggplot(aes(x = index_mean_district)) +
         geom_histogram(fill = "steelblue") +
-  theme_minimal()
+  theme_minimal() +
+  labs(x = "district mean index")
 ```
 <br>
 Compared to index, district mean distribution resembles the normal distribution to higher extent, however is it still heavily skewed to the felt.
@@ -630,19 +673,22 @@ scraped_cleaned_no_outliers %>%
   stat_regline_equation(label.x = 1.5, label.y = 650000) + # for regression equation 
   stat_cor(aes(method = "pearson", label = after_stat(rr.label)), label.x = 1.5, label.y = 600000) + # for R^2 
   theme_minimal() +
+  labs(x = "district mean index") +
   scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma)
 ```
 <br>
 It explains only 7% of price variance. Again, the correlation and p-values are discussed in next part of EDA.
 
-## Correlation 
-ADD P VALUES
+### Correlation 
+<br>
 ```{r corr, echo=TRUE}
 all_num_pred <- select_if(scraped_cleaned_no_outliers, is.numeric) %>% drop_na()
 
 M <- cor(all_num_pred)
 
-corrplot(M, method = 'number', order = 'AOE', type = 'upper', diag = FALSE)
+corrplot(M, method = 'color', order = 'AOE', type = 'upper', addCoef.col = 'black', diag = FALSE, )
 ```
 
 There is a strong multicollinearity between index and mean district index. SPOILER ALERT Since the final model is an XGBoost model, I don't consider this a big issue. On the other hand, it may be beneficial in cases where there is no index value available (approx. 700 cases).
+<br>
+No correlation between price and area is confirmed as well.
