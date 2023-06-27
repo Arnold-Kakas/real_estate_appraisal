@@ -214,6 +214,9 @@ gc()
 ```
 
 ## EDA {.tabset .tabset-pills}
+
+ADD PARETO CHART https://rpubs.com/dav1d00/ggpareto https://stackoverflow.com/questions/1735540/creating-a-pareto-chart-with-ggplot2-and-r
+
 ### Overview
 Let's check how the data look like
 
