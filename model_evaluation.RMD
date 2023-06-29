@@ -4,6 +4,8 @@ author: "Arnold Kakaš"
 date: "`r Sys.Date()`"
 output: 
   html_document:
+    theme: cosmo
+    highlight: tango
     code_folding: hide
     toc: true
     toc_float: 
@@ -11,17 +13,9 @@ output:
         smooth_scroll: true
     toc_depth: 4
 ---
-<style>
-table {
-  white-space: nowrap;
-}
-</style>
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-
-# Advertisement data EDA Price prediction model
 
 ## Introduction
 
@@ -36,21 +30,22 @@ Data is scraped from [Nehnutelnosti](https://www.nehnutelnosti.sk/) website that
 Loading of libraries. For this part I like to use [packman](https://cran.r-project.org/web/packages/pacman/index.html) package
 ```{r load_libs, message=FALSE, warning=FALSE}
 # load libs
-pacman::p_load(rio,
+pacman::p_load(bslib, # RMD theme
+               Hmisc, # rcorr
+               rio,
                tidyverse,
-               gridExtra,
-               corrplot,
+               gridExtra, #plots alignment
+               corrplot, # corrplot
                ggpubr,
                ggQC, # pareto chart
                rstatix, # welch test
-               plotly,
-               scales,
-               DT,
+               plotly, # interactive charts
+               scales, # scales
+               DT, # interactive tables
                GGally,
                patchwork,
-               vip,
-               janitor,
-               sf)
+               janitor, # clean_names
+               sf) # second imported dataframe contains multipolygons
 ```
 <br>
 Next step is to load the analysed data. Usually for imports I use [rio](https://cran.r-project.org/web/packages/rio/index.html) package.
@@ -217,8 +212,6 @@ gc()
 
 ## EDA {.tabset .tabset-pills}
 
-ADD PARETO CHART https://rpubs.com/dav1d00/ggpareto https://stackoverflow.com/questions/1735540/creating-a-pareto-chart-with-ggplot2-and-r
-
 ### Overview
 Let's check how the data look like
 
@@ -243,11 +236,6 @@ head(scraped_cleaned_no_outliers) %>%
 <br>
 I like to start the EDA with base summary function.
 <br>
-
-DT WRAP TEXT
-
-
-
 ```{r summary, echo=TRUE, message=FALSE, warning=FALSE}
  summary(scraped_cleaned_no_outliers) %>% 
   as.data.frame()  %>%
@@ -265,40 +253,22 @@ DT WRAP TEXT
 ```
 <br>
 Generally, there is a lot of missing data. This issue will be handled by imputation directly in model steps set up.
-<br>
-<br>
-Most of the advertisements are from western part of Slovakia, we can see clear dominance of Bratislava city districts. Looking at the top 5 municipalities, only Banská Bystrica is located outside of the western part of country.
-<br>
-For municipalities I will not do EDA since there are more than 200 unique values. Only to put this variable into perspective, there is 2890 municipalities (considering Bratislava and Košice as single entities without split to city districts). Only around 150 of them have more than 5000 inhabitants.
+
+* Most of the advertisements are from western part of Slovakia, we can see clear dominance of Bratislava city districts. Looking at the top 5 municipalities, only Banská Bystrica is located outside of the western part of country.
+* For municipalities I will not do EDA since there are more than 200 unique values. Only to put this variable into perspective, there is 2890 municipalities (considering Bratislava and Košice as single entities without split to city districts). Only around 150 of them have more than 5000 inhabitants.
 More interesting information on cities and towns in Slovakia can be found on [this](https://www.sodbtn.sk/) webpage.
-<br>
-<br>
-Price has quite big range from 1000 to almost 700k, but the middle 50 % lies within 70k range from 105,000 to 179,000. We will check the distribution later in histogram.
-<br>
-<br>
-Index can have values from 0 to 10 and it is prepared by slovak startup [City Performer](https://cityperformer.com/). It is made up of six categories: environment, quality of housing, safety, transport, services and relaxation. That being said, it is not available for all places.
+*Price has quite big range from 1000 to almost 700k, but the middle 50 % lies within 70k range from 105,000 to 179,000. We will check the distribution later in histogram.
+* Index can have values from 0 to 10 and it is prepared by slovak startup [City Performer](https://cityperformer.com/). It is made up of six categories: environment, quality of housing, safety, transport, services and relaxation. That being said, it is not available for all places.
 Middle 50 % are within 7.1 to 8.1. Mean index is 7.3 points.
-<br>
-<br>
-There are 6 possible conditions + NA. The most common is complete reconstruction followed by partial reconstruction and new construction.
-<br>
-<br>
-Area is one of the most important attributes impacting the price. As we can see, we it ranges from 1 squared meter to 215,000, both are obviously incorrect values. Similarly to price, we will look at distribution in histogram.
-<br>
-<br>
-Provision tells us whether the provision of real estate agency is included. Mostly it is not (only part of the apartments are sold via real estate agency).
-<br>
-<br>
-Information on energy certificate is mostly missing or the property does not have one. But in cases of high grade certificates we can expect positive impact on price.
-<br>
-<br>
-Type and rooms are two variables showing very similar characteristic. Most common are apartments with 3 and 2 rooms. 
-<br>
-<br>
-Mean index value of district is used as additional feature to evaluate the location quality for places where local index is not available. Nevertheless, there are places where even this aggregated index could not be calculated, nor by grouping or spatial lag.
+* There are 6 possible conditions + NA. The most common is complete reconstruction followed by partial reconstruction and new construction.
+* Area is one of the most important attributes impacting the price. As we can see, we it ranges from 1 squared meter to 215,000, both are obviously incorrect values. Similarly to price, we will look at distribution in histogram.
+* Provision tells us whether the provision of real estate agency is included. Mostly it is not (only part of the apartments are sold via real estate agency).
+* Information on energy certificate is mostly missing or the property does not have one. But in cases of high grade certificates we can expect positive impact on price.
+* Type and rooms are two variables showing very similar characteristic. Most common are apartments with 3 and 2 rooms. 
+* Mean index value of district is used as additional feature to evaluate the location quality for places where local index is not available. Nevertheless, there are places where even this aggregated index could not be calculated, nor by grouping or spatial lag.
 
 ### Price
-Price is the most important variable in this dataset and it is the one I will try to predict.
+Price is the most important variable in this dataset and it is the one I will try to predict with ML model.
 
 ```{r price_histo, echo=TRUE, message=FALSE, warning=FALSE}
 price1 <- scraped_cleaned_no_outliers %>% 
@@ -339,6 +309,7 @@ qqline(scraped_cleaned_no_outliers$price, col = "steelblue", lwd = 2)
 qqnorm(log10(scraped_cleaned_no_outliers$price), pch = 1, frame = FALSE)
 qqline(log10(scraped_cleaned_no_outliers$price), col = "steelblue", lwd = 2)
 ```
+<br>
 As we can see, the distribution is skewed to the right, but this was expected since there are some expensive apartments in limited numbers.
 Log transformation help with this issue as confirmed by all plots in this section.
 
@@ -369,14 +340,14 @@ top_10_districts_chart <- top_bottom_10_districts %>%
 ggplotly(top_10_districts_chart, tooltip = "text")
 ```
 <br>
-And indeed it is confirmed in the chart. We can see that most expensive apartments are from western part of Slovakia with exceptions of Košice I and Poprad which are regional centers in the east. On the other hand all of the bottom 10 districts are located in eastern part. There I need to note, that most of these districts have very low number of observations (advertisements). This can tell us two things:
+It is confirmed in the chart. We can see that most expensive apartments are from western part of Slovakia with exceptions of Košice I and Poprad which are regional centers in the east. On the other hand, all of the bottom 10 districts are located in eastern part. There I need to note, that most of these districts have very low number of observations (advertisements). This can tell us two things:
 
 * The low prices can be due to chance
 * The real estate market in this part of Slovakia is less developed.
 
 ### Index
 As mentioned earlier, Index gives us aggregated value that aims to evaluate the quality of place where the apartment listed in the advertisement is located.
-```{r index_isna, echo=TRUE}
+```{r index_isna, echo=TRUE, message=FALSE, warning=FALSE}
 sum(is.na(scraped_cleaned_no_outliers$index))
 sum(is.na(scraped_cleaned_no_outliers$index))/nrow(scraped_cleaned_no_outliers)
 ```
@@ -392,7 +363,7 @@ scraped_cleaned_no_outliers %>%
   theme_minimal()
 ```
 <br>
-Distribution of the values is concentrated around higher values (7.5+) with significant skewness to the left side.
+Distribution of the values is concentrated around higher values (7.5+) with significant negative skewness.
 <br>
 ```{r index_price, echo=TRUE, message=FALSE, warning=FALSE}
 scraped_cleaned_no_outliers %>% 
@@ -407,7 +378,7 @@ scraped_cleaned_no_outliers %>%
   scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma)
 ```
 <br>
-Looking at the linear regression model, index explains roughly 10% of variance in price. I will check the correlation and p-values later in the EDA.
+Looking at the linear regression model, index explains roughly 9% of variance in price. I will check the correlation and p-values later in the EDA.
 
 ### Condition
 ```{r cond_pareto, message=FALSE, warning=FALSE}
@@ -458,6 +429,15 @@ There are obvious differences in price among condition groups. Highest values ar
 On the other hand, the cheapest are Original state and Partial reconstruction. Somewhere in the middle sits Complete reconstruction.
 All Condition groups have outliers in higher price ranges. Distribution is positively skewed.
 <br>
+```{r condition_sd, message=FALSE, warning=FALSE}
+scraped_cleaned_no_outliers %>% 
+  group_by(condition) %>% 
+  get_summary_stats(price, type = "mean_sd") %>%
+  datatable(
+    rownames = FALSE,
+    )
+```
+<br>
 Let's check the differences in means of these groups. Even though the normality assumption is violated, we have reasonably large sample sizes and the ANOVA can give us useful insight. I ran this test with log transformed prices and results were the same.
 <br>
 ```{r condition_price_log_df, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
@@ -474,15 +454,6 @@ summary(cond_AOV)
 <br>
 Since the F-value is much bigger then 1 and p-value is lower then 0.05 we can conclude that there is significant difference between groups. Now we need to make a post hoc analysis to check which groups are different.
 <br>
-```{r condition_sd, message=FALSE, warning=FALSE}
-scraped_cleaned_no_outliers %>% 
-  group_by(condition) %>% 
-  get_summary_stats(price, type = "mean_sd") %>%
-  datatable(
-    rownames = FALSE,
-    )
-```
-
 ```{r condition_pwc, message=FALSE, warning=FALSE}
 cond_res.aov <- scraped_cleaned_no_outliers %>%
   filter(!is.na(condition)) %>%
@@ -540,7 +511,7 @@ scraped_cleaned_no_outliers %>%
   theme_minimal() +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ```
-
+<br>
 Distribution of area reminds the normal distribution the most out of all predictors we have in dataset. These is a skeweness to the right due to limited number of apartments with large living area. As you probably noticed, I filtered out all advertisements with area lower or equal to 10 and higher or equal to 200. I suspect that these are mistakes/intentionally wrong records.
 <br>
 ```{r qq_area, echo=TRUE}
@@ -628,6 +599,7 @@ Homogenity of variance:
 ```{r}
 plot(res.aov, 1)
 ```
+<br>
 Outliers are discovered in multiple points, which can have a significant impact on normality and homogeneity of variance and it can be beneficial to remove these outliers.
 <br>
 Independence:
@@ -636,6 +608,17 @@ Data are independent.
 On the first glance, we failed to reject the null hypothesis since the assumptions were violated. Nevertheless, since we have large dataframe and the difference is visible in all descriptive points (quantiles, mean, etc.), I feel confident to say that there is practical significance in this variable.
 
 ### Certificate
+<br>
+The energy certificate of a building (ECB) is a legal document that evaluates buildings in terms of energy efficiency and carbon dioxide emissions, resulting in their classification in energy scales from the most efficient class A to the wasteful class G.
+<br>
+The energy certificate evaluates buildings in terms of 4 points of energy consumption:
+
+* thermal protection of buildings
+* energy requirement for heating and preparation of hot water
+* energy need for air conditioning, air conditioning
+* energy need for built-in wiring, lighting
+
+Based on these points of consumption, the ECB recalculates the required amount of energy in kWh / m² per year for the entire building
 <br>
 ```{r cert_pareto, message=FALSE, warning=FALSE}
 scraped_cleaned_no_outliers %>% 
@@ -652,16 +635,7 @@ scraped_cleaned_no_outliers %>%
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ```
 <br>
-The energy certificate of a building (ECB) is a legal document that evaluates buildings in terms of energy efficiency and carbon dioxide emissions, resulting in their classification in energy scales from the most efficient class A to the wasteful class G.
-<br>
-The energy certificate evaluates buildings in terms of 4 points of energy consumption:
-
-* thermal protection of buildings
-* energy requirement for heating and preparation of hot water
-* energy need for air conditioning, air conditioning
-* energy need for built-in wiring, lighting
-
-Based on these points of consumption, the ECB recalculates the required amount of energy in kWh / m² per year for the entire building
+66% of the advertised apartments do not have listed the ECB. Almost 21% does not have any certificate. The least frequent certificates are E and F with only 1 observation for each. 
 <br>
 ```{r cert_boxplot, echo=TRUE, message=FALSE, warning=FALSE}
 stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
@@ -674,13 +648,12 @@ stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price
   )
 }
 
-cert1 <- scraped_cleaned_no_outliers %>% 
+cert1 <- scraped_cleaned_no_outliers %>%
+  filter(!certificate %in% c("E", "F")) %>% 
   ggplot(aes(x = factor(certificate, levels = c("A",
                                          "B",
                                          "C",
                                          "D",
-                                         "E",
-                                         "F",
                                          "G",
                                          "nemá")), y = price)) +
   geom_boxplot(col = 'steelblue') + 
@@ -698,6 +671,16 @@ ggplotly(cert1)
 <br>
 The box-plot chart nicely illustrates the relationship between certificate level and price. With decreasing level of certificate, price drops as well. That being said, there are other factors as well. I suspect that A levels will be probably represented by relatively new apartments which have higher prices. Another topic is group with no certificate ("nemá") and without information on certificate (NA values). It could be tempting to merge them together, however there is quite significant difference in descriptive statistics of these two groups. I will use imputation step in model recipe to replace missing values.
 <br>
+```{r cert_sd, message=FALSE, warning=FALSE}
+scraped_cleaned_no_outliers %>% 
+  filter(!certificate %in% c("E", "F")) %>% 
+  group_by(certificate) %>% 
+  get_summary_stats(price, type = "mean_sd") %>%
+  datatable(
+    rownames = FALSE,
+    )
+```
+<br>
 Normality assumption for ANOVA is violated also in this case but in smaller extend as in Condition groups. Again, I ran this test with log transformed prices and results were the same. I excluded "E", "F" (only 1 observation) and NA groups. Also in this case I ran the analysis with log transformed price with similar results.
 <br>
 ```{r cert_price_log_df, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
@@ -712,16 +695,6 @@ summary(cert_AOV)
 ```
 <br>
 The F-value is much bigger then 1 and p-value is lower then 0.05, we can conclude that there is significant difference between groups. Let's continue with a post hoc analysis to check which groups are different.
-<br>
-```{r cert_sd, message=FALSE, warning=FALSE}
-scraped_cleaned_no_outliers %>% 
-  filter(!certificate %in% c("E", "F")) %>% 
-  group_by(certificate) %>% 
-  get_summary_stats(price, type = "mean_sd") %>%
-  datatable(
-    rownames = FALSE,
-    )
-```
 <br>
 ```{r cert_pwc, message=FALSE, warning=FALSE}
 cert_res.aov <- scraped_cleaned_no_outliers %>%
@@ -838,6 +811,16 @@ ggplotly(type1)
 <br>
 There are two interesting findings from the chart above. First one, 2 and 3 rooms apartments have very similar prices. 3 rooms are obviously more expensive but the difference, especially when we consider price increase from 1 room to 2 rooms and from 3 rooms to 4 rooms, is very mild. Second finding, one-bedroom apartments seem to fit between 1 and 2 rooms apartments rather then being an alternative to 1 room apartments (I admit that number of observations is very small and this can be due to chance). 
 <br>
+```{r type_sd, message=FALSE, warning=FALSE}
+scraped_cleaned_no_outliers %>% 
+  filter(!type %in% c("E", "F")) %>% 
+  group_by(type) %>% 
+  get_summary_stats(price, type = "mean_sd") %>%
+  datatable(
+    rownames = FALSE,
+    )
+```
+<br>
 Yet again, normality assumption for ANOVA is violated. Log transformation of price and consecutive ANOVA returned similar results as the ones below.
 <br>
 ```{r type_price_log_df, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
@@ -852,16 +835,6 @@ summary(type_AOV)
 ```
 <br>
 The F-value is much bigger then 1 and p-value is lower then 0.05, we can conclude that there is significant difference between groups. Let's continue with a post hoc analysis to check which groups are different.
-<br>
-```{r type_sd, message=FALSE, warning=FALSE}
-scraped_cleaned_no_outliers %>% 
-  filter(!type %in% c("E", "F")) %>% 
-  group_by(type) %>% 
-  get_summary_stats(price, type = "mean_sd") %>%
-  datatable(
-    rownames = FALSE,
-    )
-```
 <br>
 ```{r type_pwc, message=FALSE, warning=FALSE}
 type_res.aov <- scraped_cleaned_no_outliers %>%
@@ -954,9 +927,20 @@ all_num_pred <- select_if(scraped_cleaned_no_outliers, is.numeric) %>% drop_na()
 
 M <- cor(all_num_pred)
 
-corrplot(M, method = 'color', order = 'AOE', type = 'upper', addCoef.col = 'black', diag = FALSE, )
+corrplot(M, method = 'color', type = 'upper', addCoef.col = 'black', diag = FALSE, )
 ```
 
 There is a strong multicollinearity between index and mean district index. SPOILER ALERT Since the final model is an XGBoost model, I don't consider this a big issue. On the other hand, it may be beneficial in cases where there is no index value available (approx. 700 cases).
 <br>
 No correlation between price and area is confirmed as well.
+Below are the p-values:
+```{r corr_table, message=FALSE, warning=FALSE}
+rcorr(as.matrix(all_num_pred), type = "pearson")[[3]] %>% 
+  unlist() %>% 
+  as.data.frame() %>% 
+  mutate_if(is.numeric,
+            round,
+            digits = 3) %>% 
+  datatable()
+```
+
