@@ -4,7 +4,7 @@ author: "Arnold Kakaš"
 date: "`r Sys.Date()`"
 output: 
   html_document:
-    theme: cosmo
+    theme: flatly
     highlight: tango
     code_folding: hide
     toc: true
@@ -13,6 +13,13 @@ output:
         smooth_scroll: true
     toc_depth: 4
 ---
+
+<style>
+table {
+  white-space: nowrap;
+}
+</style>
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -927,20 +934,13 @@ all_num_pred <- select_if(scraped_cleaned_no_outliers, is.numeric) %>% drop_na()
 
 M <- cor(all_num_pred)
 
-corrplot(M, method = 'color', type = 'upper', addCoef.col = 'black', diag = FALSE, )
+corrplot(M, method = 'color', order = 'AOE', type = 'upper', addCoef.col = 'black', diag = FALSE, )
 ```
 
 There is a strong multicollinearity between index and mean district index. SPOILER ALERT Since the final model is an XGBoost model, I don't consider this a big issue. On the other hand, it may be beneficial in cases where there is no index value available (approx. 700 cases).
 <br>
 No correlation between price and area is confirmed as well.
-Below are the p-values:
+Below are the results including p-values:
 ```{r corr_table, message=FALSE, warning=FALSE}
-rcorr(as.matrix(all_num_pred), type = "pearson")[[3]] %>% 
-  unlist() %>% 
-  as.data.frame() %>% 
-  mutate_if(is.numeric,
-            round,
-            digits = 3) %>% 
-  datatable()
+rcorr(as.matrix(all_num_pred), type = "pearson")
 ```
-
