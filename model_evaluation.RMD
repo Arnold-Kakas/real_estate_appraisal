@@ -41,6 +41,8 @@ pacman::p_load(rio,
                gridExtra,
                corrplot,
                ggpubr,
+               ggQC, # pareto chart
+               rstatix, # welch test
                plotly,
                scales,
                DT,
@@ -281,7 +283,7 @@ Middle 50 % are within 7.1 to 8.1. Mean index is 7.3 points.
 There are 6 possible conditions + NA. The most common is complete reconstruction followed by partial reconstruction and new construction.
 <br>
 <br>
-Area is one of the most important attributes impacting the price. As we can see, we it ranges from 1 squared meter to 215,000, both are obviously incorrect values. Similarily to price, we will look at distribution in histogram.
+Area is one of the most important attributes impacting the price. As we can see, we it ranges from 1 squared meter to 215,000, both are obviously incorrect values. Similarly to price, we will look at distribution in histogram.
 <br>
 <br>
 Provision tells us whether the provision of real estate agency is included. Mostly it is not (only part of the apartments are sold via real estate agency).
@@ -342,7 +344,6 @@ Log transformation help with this issue as confirmed by all plots in this sectio
 
 ### District
 Regional differences in Slovakia have west east gradient in many socio-cultural aspects. Therefore, it is reasonable to expect the same pattern also in the prices of apartments.
-
 ```{r top_10_districts, echo=TRUE, message=FALSE, warning=FALSE}
 top_bottom_10_districts <- scraped_cleaned_no_outliers %>% 
   group_by(district) %>% 
@@ -351,7 +352,7 @@ top_bottom_10_districts <- scraped_cleaned_no_outliers %>%
    filter(!between(dense_rank(price), 10 + 1, n() - 10)) %>% 
   arrange(desc(price))
 ```
-
+<br>
 ```{r top_10_districts_chart, echo=TRUE, message=FALSE, warning=FALSE}
 top_10_districts_chart <- top_bottom_10_districts %>% 
   ggplot(aes(x = reorder(district, -price), y = price, text = paste0("Price: ",
@@ -409,6 +410,23 @@ scraped_cleaned_no_outliers %>%
 Looking at the linear regression model, index explains roughly 10% of variance in price. I will check the correlation and p-values later in the EDA.
 
 ### Condition
+```{r cond_pareto, message=FALSE, warning=FALSE}
+scraped_cleaned_no_outliers %>% 
+  group_by(condition) %>% 
+  summarize(count = n()) %>% 
+  ggplot(aes(x = condition, y = count)) +
+  ggQC::stat_pareto(point.color = "red",
+                   point.size = 2,
+                   line.color = "black",
+                   bars.fill = "steelblue") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  scale_x_discrete(labels = wrap_format(10)) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+<br>
+Pareto diagram shows that the decline in group size is very moderate and regular. Bigger drop is only in the group In construction ("Vo výstavbe") and Developer project ("Developerský projekt"). Most common are Complete reconstruction ("Kompletná rekonštrukcia") and Partial reconstruction ("Čiastočná rekonštrukcia"), followed by New construction ("Novostavba") and Original state ("Pôvodný stav"). 
+<br>
 ```{r condition_boxplot, echo=TRUE, message=FALSE, warning=FALSE}
 stat_box_data_prov <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
   return(
@@ -420,7 +438,7 @@ stat_box_data_prov <- function(y, upper_limit = max(scraped_cleaned_no_outliers$
   )
 }
 
-prov1 <- scraped_cleaned_no_outliers %>% 
+cond1 <- scraped_cleaned_no_outliers %>% 
   ggplot(aes(x = factor(condition), y = price)) +
   geom_boxplot(col = 'steelblue') + 
   scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
@@ -433,13 +451,81 @@ prov1 <- scraped_cleaned_no_outliers %>%
   theme_minimal() +
   labs(x = "type")
 
-ggplotly(prov1)
+ggplotly(cond1)
 ```
 
-There are obvious differences in price among condition groups. Highest values are in three categories: In construction ("Vo výstavbe"), Developer project ("Developerský projekt") and New ("Novostavba"). Not a big surprise that new and not yet finished apartments are the priciest.
-On the other hand, the cheapest are Original state ("Pôvodný stav") and Partial reconstruction. Somewhere in the middle sits Complete reconstruction ("Kompletná rekonštrukcia").
+There are obvious differences in price among condition groups. Highest values are in three categories: In construction, Developer project and New construction. Not a big surprise that new and not yet finished apartments are the priciest.
+On the other hand, the cheapest are Original state and Partial reconstruction. Somewhere in the middle sits Complete reconstruction.
+All Condition groups have outliers in higher price ranges. Distribution is positively skewed.
+<br>
+Let's check the differences in means of these groups. Even though the normality assumption is violated, we have reasonably large sample sizes and the ANOVA can give us useful insight. I ran this test with log transformed prices and results were the same.
+<br>
+```{r condition_price_log_df, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+cond_anova_df <- scraped_cleaned_no_outliers %>% 
+  select(price, condition) %>% 
+  mutate(price = log10(price))
+```
 
-This result is not a surprise, it makes sense and this variable should have significant impact on the prediction.
+
+```{r condition_AOV, message=FALSE, warning=FALSE}
+cond_AOV <- aov(price ~ condition, data = scraped_cleaned_no_outliers)
+summary(cond_AOV)
+```
+<br>
+Since the F-value is much bigger then 1 and p-value is lower then 0.05 we can conclude that there is significant difference between groups. Now we need to make a post hoc analysis to check which groups are different.
+<br>
+```{r condition_sd, message=FALSE, warning=FALSE}
+scraped_cleaned_no_outliers %>% 
+  group_by(condition) %>% 
+  get_summary_stats(price, type = "mean_sd") %>%
+  datatable(
+    rownames = FALSE,
+    )
+```
+
+```{r condition_pwc, message=FALSE, warning=FALSE}
+cond_res.aov <- scraped_cleaned_no_outliers %>%
+  filter(!is.na(condition)) %>%
+  anova_test(price ~ condition)
+
+cond_pwc <- scraped_cleaned_no_outliers %>%
+  filter(!is.na(condition)) %>%
+  pairwise_t_test(price ~ condition,
+    p.adjust.method = "bonferroni"
+  ) %>%
+  mutate(
+    p = round(p, 5),
+    p.adj = round(p.adj, 5)
+  )
+
+cond_pwc %>%
+  datatable(
+    rownames = FALSE,
+    options = list(
+      scrollX = TRUE,
+      autoWidth = TRUE,
+      columnDefs = list(list(width = "125px", targets = c(1, 2)))
+    )
+  )
+```
+```{r}
+cond_pwc <- cond_pwc %>% add_xy_position(x = "condition")
+
+ggboxplot(scraped_cleaned_no_outliers %>% 
+            filter(!is.na(condition)), 
+          x = "condition", 
+          y = "price", col = 'steelblue') +
+  stat_pvalue_manual(cond_pwc, hide.ns = TRUE, label = "p.adj.signif") +
+  labs(
+    subtitle = get_test_label(cond_res.aov, detailed = TRUE),
+    caption = get_pwc_label(cond_pwc)
+    ) +
+   scale_x_discrete(labels = wrap_format(10)) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+<br>
+From the table and chart it can be seen that there are significant differences between groups which are highlighted with “*“.
 
 ### Area
 I expect the area to be one of the most important features impacting the price. The greater is the living area, the higher is the price. Obviously area is closely tied with e.g. type of apartments. More rooms usually means more space. 
@@ -451,7 +537,8 @@ scraped_cleaned_no_outliers %>%
   drop_na() %>% 
   ggplot(aes(x = area)) +
         geom_histogram(fill = "steelblue") +
-  theme_minimal()
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ```
 
 Distribution of area reminds the normal distribution the most out of all predictors we have in dataset. These is a skeweness to the right due to limited number of apartments with large living area. As you probably noticed, I filtered out all advertisements with area lower or equal to 10 and higher or equal to 200. I suspect that these are mistakes/intentionally wrong records.
@@ -476,6 +563,7 @@ scraped_cleaned_no_outliers %>%
   stat_regline_equation(label.x = 3, label.y = 650000) + # for regression equation 
   stat_cor(aes(method = "pearson", label = after_stat(rr.label)), label.x = 3, label.y = 600000) + # for R^2 
   theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
   scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma)
 ```
 <br>
@@ -549,6 +637,21 @@ On the first glance, we failed to reject the null hypothesis since the assumptio
 
 ### Certificate
 <br>
+```{r cert_pareto, message=FALSE, warning=FALSE}
+scraped_cleaned_no_outliers %>% 
+  group_by(certificate) %>% 
+  summarize(count = n()) %>% 
+  ggplot(aes(x = certificate, y = count)) +
+  ggQC::stat_pareto(point.color = "red",
+                   point.size = 2,
+                   line.color = "black",
+                   bars.fill = "steelblue") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  scale_x_discrete(labels = wrap_format(10)) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+<br>
 The energy certificate of a building (ECB) is a legal document that evaluates buildings in terms of energy efficiency and carbon dioxide emissions, resulting in their classification in energy scales from the most efficient class A to the wasteful class G.
 <br>
 The energy certificate evaluates buildings in terms of 4 points of energy consumption:
@@ -559,7 +662,7 @@ The energy certificate evaluates buildings in terms of 4 points of energy consum
 * energy need for built-in wiring, lighting
 
 Based on these points of consumption, the ECB recalculates the required amount of energy in kWh / m² per year for the entire building
-
+<br>
 ```{r cert_boxplot, echo=TRUE, message=FALSE, warning=FALSE}
 stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
   return(
@@ -593,7 +696,80 @@ cert1 <- scraped_cleaned_no_outliers %>%
 ggplotly(cert1)
 ```
 <br>
-The box-plot chart nicely illustrates the relationship between certificate level and price. With decreasing level of certificate, price drops as well. That being said, there are other factors as well. I suspect that A levels will be probably represented by relatively new apartments which have higher prices. Another topic is group with no certificate ("nemá") and without information on certificate (NA values). It could be tempting to merge them together, however there is quite significant difference in descriptive statistics of these two groups. I will not run the ANOVA in this case because of the distribution of values and sample size. Instead I will use imputation step in model recipe.
+The box-plot chart nicely illustrates the relationship between certificate level and price. With decreasing level of certificate, price drops as well. That being said, there are other factors as well. I suspect that A levels will be probably represented by relatively new apartments which have higher prices. Another topic is group with no certificate ("nemá") and without information on certificate (NA values). It could be tempting to merge them together, however there is quite significant difference in descriptive statistics of these two groups. I will use imputation step in model recipe to replace missing values.
+<br>
+Normality assumption for ANOVA is violated also in this case but in smaller extend as in Condition groups. Again, I ran this test with log transformed prices and results were the same. I excluded "E", "F" (only 1 observation) and NA groups. Also in this case I ran the analysis with log transformed price with similar results.
+<br>
+```{r cert_price_log_df, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+cert_anova_df <- scraped_cleaned_no_outliers %>% 
+  select(price, certificate) %>% 
+  mutate(price = log10(price))
+```
+<br>
+```{r cert_AOV, message=FALSE, warning=FALSE}
+cert_AOV <- aov(price ~ certificate, data = scraped_cleaned_no_outliers)
+summary(cert_AOV)
+```
+<br>
+The F-value is much bigger then 1 and p-value is lower then 0.05, we can conclude that there is significant difference between groups. Let's continue with a post hoc analysis to check which groups are different.
+<br>
+```{r cert_sd, message=FALSE, warning=FALSE}
+scraped_cleaned_no_outliers %>% 
+  filter(!certificate %in% c("E", "F")) %>% 
+  group_by(certificate) %>% 
+  get_summary_stats(price, type = "mean_sd") %>%
+  datatable(
+    rownames = FALSE,
+    )
+```
+<br>
+```{r cert_pwc, message=FALSE, warning=FALSE}
+cert_res.aov <- scraped_cleaned_no_outliers %>%
+  filter(!is.na(certificate)) %>%
+  filter(!certificate %in% c("E", "F")) %>% 
+  anova_test(price ~ certificate)
+
+cert_pwc <- scraped_cleaned_no_outliers %>%
+  filter(!certificate %in% c("E", "F")) %>% 
+  filter(!is.na(certificate)) %>%
+  pairwise_t_test(price ~ certificate,
+    p.adjust.method = "bonferroni"
+  ) %>%
+  mutate(
+    p = round(p, 5),
+    p.adj = round(p.adj, 5)
+  )
+
+cert_pwc %>%
+  datatable(
+    rownames = FALSE,
+    options = list(
+      scrollX = TRUE,
+      autoWidth = TRUE,
+      columnDefs = list(list(width = "125px", targets = c(1, 2)))
+    )
+  )
+```
+<br>
+```{r}
+cert_pwc <- cert_pwc %>% add_xy_position(x = "certificate")
+
+ggboxplot(scraped_cleaned_no_outliers %>% 
+            filter(!is.na(certificate)) %>% 
+            filter(!certificate %in% c("E", "F")), 
+          x = "certificate", 
+          y = "price", col = 'steelblue') +
+  stat_pvalue_manual(cert_pwc, hide.ns = TRUE, label = "p.adj.signif") +
+  labs(
+    subtitle = get_test_label(cert_res.aov, detailed = TRUE),
+    caption = get_pwc_label(cert_pwc)
+    ) +
+   scale_x_discrete(labels = wrap_format(10)) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+<br>
+From the table and chart it can be seen that there are significant differences between groups which are highlighted with “*“.
 
 ### Type
 <br>
@@ -608,6 +784,23 @@ There are 7 types of apartments in this dataset:
 * one-bedroom apartment ("Dvojgarsónka")*
 
 *The difference between 1 room apartment and one-bedroom apartment is that 1 room apartment has one living/bed room and separate kitchen and one-bedroom apartments has two separate rooms (typically bedroom and living room) and kitchen in part of one of them.
+<br>
+```{r cert_pareto, message=FALSE, warning=FALSE}
+scraped_cleaned_no_outliers %>% 
+  group_by(type) %>% 
+  summarize(count = n()) %>% 
+  ggplot(aes(x = type, y = count)) +
+  ggQC::stat_pareto(point.color = "red",
+                   point.size = 2,
+                   line.color = "black",
+                   bars.fill = "steelblue") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  scale_x_discrete(labels = wrap_format(10)) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+<br>
+The most common types are 3 rooms (40.3%) and 2 rooms (35.6%) apartments. Following 1 room apartments count drops by almost 2/3. 
 <br>
 ```{r type_boxplot, echo=TRUE, message=FALSE, warning=FALSE}
 stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
@@ -644,6 +837,78 @@ ggplotly(type1)
 ```
 <br>
 There are two interesting findings from the chart above. First one, 2 and 3 rooms apartments have very similar prices. 3 rooms are obviously more expensive but the difference, especially when we consider price increase from 1 room to 2 rooms and from 3 rooms to 4 rooms, is very mild. Second finding, one-bedroom apartments seem to fit between 1 and 2 rooms apartments rather then being an alternative to 1 room apartments (I admit that number of observations is very small and this can be due to chance). 
+<br>
+Yet again, normality assumption for ANOVA is violated. Log transformation of price and consecutive ANOVA returned similar results as the ones below.
+<br>
+```{r type_price_log_df, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+type_anova_df <- scraped_cleaned_no_outliers %>% 
+  select(price, type) %>% 
+  mutate(price = log10(price))
+```
+<br>
+```{r type_AOV, message=FALSE, warning=FALSE}
+type_AOV <- aov(price ~ type, data = scraped_cleaned_no_outliers)
+summary(type_AOV)
+```
+<br>
+The F-value is much bigger then 1 and p-value is lower then 0.05, we can conclude that there is significant difference between groups. Let's continue with a post hoc analysis to check which groups are different.
+<br>
+```{r type_sd, message=FALSE, warning=FALSE}
+scraped_cleaned_no_outliers %>% 
+  filter(!type %in% c("E", "F")) %>% 
+  group_by(type) %>% 
+  get_summary_stats(price, type = "mean_sd") %>%
+  datatable(
+    rownames = FALSE,
+    )
+```
+<br>
+```{r type_pwc, message=FALSE, warning=FALSE}
+type_res.aov <- scraped_cleaned_no_outliers %>%
+  filter(!is.na(type)) %>%
+  #filter(!type %in% c("E", "F")) %>% 
+  anova_test(price ~ type)
+
+type_pwc <- scraped_cleaned_no_outliers %>%
+  #filter(!type %in% c("E", "F")) %>% 
+  filter(!is.na(type)) %>%
+  pairwise_t_test(price ~ type,
+    p.adjust.method = "bonferroni"
+  ) %>%
+  mutate(
+    p = round(p, 5),
+    p.adj = round(p.adj, 5)
+  )
+
+type_pwc %>%
+  datatable(
+    rownames = FALSE,
+    options = list(
+      scrollX = TRUE,
+      autoWidth = TRUE,
+      columnDefs = list(list(width = "125px", targets = c(1, 2)))
+    )
+  )
+```
+<br>
+```{r}
+type_pwc <- type_pwc %>% add_xy_position(x = "type")
+
+ggboxplot(scraped_cleaned_no_outliers %>% 
+            filter(!is.na(type)),# %>% 
+            #filter(!type %in% c("E", "F")), 
+          x = "type", 
+          y = "price", col = 'steelblue') +
+  stat_pvalue_manual(type_pwc, hide.ns = TRUE, label = "p.adj.signif") +
+  labs(
+    subtitle = get_test_label(type_res.aov, detailed = TRUE),
+    caption = get_pwc_label(type_pwc)
+    ) +
+   scale_x_discrete(labels = wrap_format(10)) +
+  theme_minimal()
+```
+<br>
+From the table and chart it can be seen that there are significant differences between groups which are highlighted with “*“.
 
 ### Mean District Index
 As already mentioned, this variable serves as a extra feature for advertisements where index was not available. The assumption of this thought is that there is a spatial autocorrelation of features stepping into calculation of index.
@@ -682,7 +947,7 @@ scraped_cleaned_no_outliers %>%
 <br>
 It explains only 7% of price variance. Again, the correlation and p-values are discussed in next part of EDA.
 
-### Correlation 
+### Correlation matrix
 <br>
 ```{r corr, echo=TRUE}
 all_num_pred <- select_if(scraped_cleaned_no_outliers, is.numeric) %>% drop_na()
