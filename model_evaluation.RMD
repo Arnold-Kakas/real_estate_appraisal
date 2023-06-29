@@ -785,7 +785,7 @@ There are 7 types of apartments in this dataset:
 
 *The difference between 1 room apartment and one-bedroom apartment is that 1 room apartment has one living/bed room and separate kitchen and one-bedroom apartments has two separate rooms (typically bedroom and living room) and kitchen in part of one of them.
 <br>
-```{r cert_pareto, message=FALSE, warning=FALSE}
+```{r type_pareto, message=FALSE, warning=FALSE}
 scraped_cleaned_no_outliers %>% 
   group_by(type) %>% 
   summarize(count = n()) %>% 
