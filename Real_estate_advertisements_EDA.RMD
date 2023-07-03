@@ -26,11 +26,37 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction
 
-In this post I will go through <strong> Exploratory Data Analyses (EDA) </strong> of real estate advertisements data and evaluation of <strong> price prediction model </strong> based on this dataset.
+In this post I will go through <strong> Exploratory Data Analyses (EDA) </strong> of real estate advertisements data.
 It is not a typical EDA, since there are already some variables excluded based on previous experience. I will examine only the variables that were proven to have reasonable impact on price prediction.
 <br>
-Data is scraped from [Nehnutelnosti](https://www.nehnutelnosti.sk/) website that specializes in real estate listings and services. I will go through the scraping process and initial data cleaning in more details in the next blog post.
+Data is scraped from [Nehnutelnosti](https://www.nehnutelnosti.sk/) website that specializes in real estate listings and services. I went through the scraping process and initial data cleaning in more details in my earlier [blog post]().
 <br>
+
+## EDA
+<br>
+<strong>Exploratory data analysis</strong> is an integral part of data analytics/data science.
+<br>
+<center>
+![EDA in data science project. Source: https://commons.wikimedia.org/wiki/File:Data_visualization_process_v1.png](data/EDA.PNG)
+</center>
+<br>
+The purpose of EDA is to summarize main characteristics of dataset, discovering patterns and relationships between the variables and identify trends. It should lead us to understanding of the data and identification of critical variables in respect to our goals.
+As shown in the image, it is an iterative process. Based on your findings you can either continue with modeling/hypothesis testing and reporting or going back to data cleaning/data processing.
+<br>
+EDA usually starts with reading the data and checking couple of rows to get the "feeling" of data along with checking of data structure, size of the sample, data types, missing values etc.. Afterwards we continue with more detailed analysis that helps us understand the relationships and identify outliers and important variables. In EDA we use different techniques and tools. In general they can be divided into several groups:
+
+* Summary (univariate) statistics - min, max, mean, median, quartiles, IQR, standard deviation, counts, frequency etc.
+* Data visualization - histogram, boxplot, pareto chart, scatter plots, correlation matrix, line charts (for time series), heatmaps etc.
+* Bi-/multi- variate statistics - t-test, chi-square test, ANOVA, Kruskal-Wallis test etc.
+
+Lastly we create conclusion based on the findings and either continue in our data journey or go back to additional data cleaning.
+<br>
+Even though I prefer doing EDA manually, there are several R packages for automated EDA. I find them useful for the initial data examination and identification of e.g. data types, variables with large portion of NAs and other high level characteristics. To mention some of these packages:
+
+* DataExplorer
+* ExPanDaR
+* dataMaid
+* dlookr
 
 ## Data cleaning
 
@@ -217,7 +243,7 @@ rm(list = setdiff(ls(), "scraped_cleaned_no_outliers"))
 gc()
 ```
 
-## EDA {.tabset .tabset-pills}
+## EDA of advertisements dataset {.tabset .tabset-pills}
 
 ### Overview
 Let's check how the data look like
@@ -265,7 +291,7 @@ Generally, there is a lot of missing data. This issue will be handled by imputat
 * For municipalities I will not do EDA since there are more than 200 unique values. Only to put this variable into perspective, there is 2890 municipalities (considering Bratislava and Košice as single entities without split to city districts). Only around 150 of them have more than 5000 inhabitants.
 More interesting information on cities and towns in Slovakia can be found on [this](https://www.sodbtn.sk/) webpage.
 *Price has quite big range from 1000 to almost 700k, but the middle 50 % lies within 70k range from 105,000 to 179,000. We will check the distribution later in histogram.
-* Index can have values from 0 to 10 and it is prepared by slovak startup [City Performer](https://cityperformer.com/). It is made up of six categories: environment, quality of housing, safety, transport, services and relaxation. That being said, it is not available for all places.
+* Index can have value from 0 to 10 and it is prepared by slovak startup [City Performer](https://cityperformer.com/). It is made up of six categories: environment, quality of housing, safety, transport, services and relaxation. That being said, it is not available for all places.
 Middle 50 % are within 7.1 to 8.1. Mean index is 7.3 points.
 * There are 6 possible conditions + NA. The most common is complete reconstruction followed by partial reconstruction and new construction.
 * Area is one of the most important attributes impacting the price. As we can see, we it ranges from 1 squared meter to 215,000, both are obviously incorrect values. Similarly to price, we will look at distribution in histogram.
@@ -944,3 +970,15 @@ Below are the results including p-values:
 ```{r corr_table, message=FALSE, warning=FALSE}
 rcorr(as.matrix(all_num_pred), type = "pearson")
 ```
+
+## Conclusion
+<br>
+EDA provided us with valuable insights, that will be considered in the prediction model:
+
+* Price distribution is skewed to the right - there are limited offers of expensive apartments
+* Geospatial distribution has west east gradient - lower prices are in the east, with exception of few regional centers.
+* Most locations in our dataset has quite high level of Index of living. But in general there is a positive relation between its value and price.
+* Surprisingly, Area itself does not impact the price as much as I expected. Even though $R^2$ is 0.24, the p value is high. I assume this is due to wider context of pricing. Other qualitative characteristics over perform the area size.
+* There are proven differences between prices of apartments with different Conditions. It is not surprising that new apartments have the highest prices. There are more then 1,400 NAs, which need to be imputed.
+* Also certificate has proven impact, in this case the issue with NA is more serious as more then 8400 advertisements of not contains this information. I will still impute this variable as I assume that there is a connection between Certificate and Condition
+* Vast majority of apartments in data set have 2 and 3 rooms. The price is growing with increasing size group. Price increase from 2 rooms to 3 rooms group is quite low on average. I can see two possible reasons - demand for 2 rooms apartments (as they are still cheaper than 3 rooms) and location. If majority of 2 rooms apartments would be located in the west, they price would be on average for whole country higher compared to equal spatial distribution.
