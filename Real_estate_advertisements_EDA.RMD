@@ -26,7 +26,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction
 
-In this post I will go through <strong> Exploratory Data Analyses (EDA) </strong> of real estate advertisements data.
+In this post I will go through <strong> Exploratory Data Analysis (EDA) </strong> of real estate advertisements data.
 It is not a typical EDA, since there are already some variables excluded based on previous experience. I will examine only the variables that were proven to have reasonable impact on price prediction.
 <br>
 Data is scraped from [Nehnutelnosti](https://www.nehnutelnosti.sk/) website that specializes in real estate listings and services. I went through the scraping process and initial data cleaning in more details in my earlier [blog post]().
@@ -290,7 +290,7 @@ Generally, there is a lot of missing data. This issue will be handled by imputat
 * Most of the advertisements are from western part of Slovakia, we can see clear dominance of Bratislava city districts. Looking at the top 5 municipalities, only Banská Bystrica is located outside of the western part of country.
 * For municipalities I will not do EDA since there are more than 200 unique values. Only to put this variable into perspective, there is 2890 municipalities (considering Bratislava and Košice as single entities without split to city districts). Only around 150 of them have more than 5000 inhabitants.
 More interesting information on cities and towns in Slovakia can be found on [this](https://www.sodbtn.sk/) webpage.
-*Price has quite big range from 1000 to almost 700k, but the middle 50 % lies within 70k range from 105,000 to 179,000. We will check the distribution later in histogram.
+* Price has quite big range from 1000 to almost 700k, but the middle 50 % lies within 70k range from 105,000 to 179,000. We will check the distribution later in histogram.
 * Index can have value from 0 to 10 and it is prepared by slovak startup [City Performer](https://cityperformer.com/). It is made up of six categories: environment, quality of housing, safety, transport, services and relaxation. That being said, it is not available for all places.
 Middle 50 % are within 7.1 to 8.1. Mean index is 7.3 points.
 * There are 6 possible conditions + NA. The most common is complete reconstruction followed by partial reconstruction and new construction.
