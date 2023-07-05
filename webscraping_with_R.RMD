@@ -51,27 +51,41 @@ In this article I will scrape data from [Nehnutelnosti](https://www.nehnutelnost
 </center>
 <br>
 
-## Scraping process
+## Scraping process {.tabset .tab-pills}
+<br>
+### Packages
+<br>
+As usual, I start with loading packages necessary for this project. I am using [packman](https://cran.r-project.org/web/packages/pacman/index.html) package and function _p_load()_ to do this. I has two advantages compared to traditional _library()_:
 
-
+* if the library is not installed, it will do it automatically
+* you can load multiple libraries at once
 
 ```{r cars, eval=FALSE, include=FALSE}
 if (!require("pacman")) {
   install.packages("pacman")
 }
-
-
 pacman::p_load(
   rio,
   tidyverse,
-  rvest,
-  httr,
-  doParallel,
-  furrr,
-  RSelenium,
-  netstat
+  rvest, # scraping
+  httr, # working with html
+  RSelenium, # scraping in Google Chrome
+  netstat, # free_port()
+  doParallel, # parallel processing
+  furrr # future map
 )
+```
 
+There are three groups of packages in this project:
+
+* for data loading and data wrangling - rio, tidyverse
+* for web scraping - rvest, RSelenium, netstat, httr
+* for parallel processing - doParallel and furrr
+
+
+### Scraping part I.
+
+```{r}
 # apartments page
 site <- "https://www.nehnutelnosti.sk/slovensko/byty/predaj/?p[param1][from]=1000&p[param1][to]=&p[page]="
 
