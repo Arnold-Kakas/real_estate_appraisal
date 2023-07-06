@@ -2,11 +2,24 @@
 title: "Web Scraping with R - Real estate data"
 author: "Arnold Kakaš"
 date: "`r Sys.Date()`"
-output: html_document
+output: 
+  html_document:
+    theme: flatly
+    highlight: tango
+    code_folding: hide
+    toc: true
+    toc_float: 
+        collapsed: false
+        smooth_scroll: true
+    toc_depth: 4
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
 ```
 
 ## Caution
@@ -83,9 +96,9 @@ There are three groups of packages in this project:
 * for parallel processing - doParallel and furrr
 
 
-### Scraping part I.
+### Scraping part I. - rvest
 
-```{r}
+```{r rvest_scraping}
 # apartments page
 site <- "https://www.nehnutelnosti.sk/slovensko/byty/predaj/?p[param1][from]=1000&p[param1][to]=&p[page]="
 
@@ -118,11 +131,10 @@ advertisements <- future_map_dfr(1:number_of_pages, function(i) {
   tibble(price = price, type_of_real_estate = type_of_real_estate, address = address, link = link)
 })
 
-# Delete all cookies from the last 24 hours
-clearCookies <- function(remDr) {
-  remDr$deleteAllCookies()
-}
+```
 
+### Scraping part II. - RSelenium
+```{r helper_functions}
 # Define a function that handles the errors in page load
 navigate_with_retry <- function(link, remDr) {
   success <- FALSE
@@ -163,10 +175,11 @@ get_text_or_na <- function(nodes) {
     }
   )
 }
+```
 
-
+```{r RSelenium_scraping}
 # Additional info from web
-################################################################################################
+
 # number of splits
 num_splits <- 10
 split_size <- ceiling(nrow(advertisements) / num_splits)
@@ -179,7 +192,6 @@ for (i in seq_along(advertisments_list)) {
 }
 
 
-################################################################################################
 # create empty dataframeoutside of the loop to hold additional info
 additional_info_df <- tibble(
   link = character(),
@@ -191,7 +203,7 @@ additional_info_df <- tibble(
 )
 
 
-for (i in 2:10) { #10, if ok, go to 2:10
+for (i in 1:10) {
   # get the current dataframe
   current_df <- get(paste0("advertisements_", i))
 
@@ -299,16 +311,10 @@ for (i in 2:10) { #10, if ok, go to 2:10
   rm(rs_driver_object, remDr)
   gc()
 }
+```
 
-
-saveRDS(additional_info_df, "data/additional_info_df.RDS")
-saveRDS(advertisements, "data/advertisements.RDS")
-
-additional_info_df <- read_rds("data/additional_info_df.RDS")
-advertisements <- read_rds("data/advertisements.RDS")
-
-# clean advertisements data
-
+### Data wrangling
+```{r data_wrangling}
 advertisements_cleaned <- advertisements %>%
   separate(type_of_real_estate, c("type", "area"), sep = " • ", remove = TRUE) %>% 
   separate(address, c("a", "b", "c"), sep = ", ", remove = TRUE) %>%
@@ -413,8 +419,14 @@ advertisements_complete <- advertisements_cleaned %>%
   left_join(additional_info_df_complete, by = "link", multiple = "first") %>%
   filter(!is.na(flag)) %>% 
   select(-flag, -c, -type)
+```
 
-# save the old file advertisements_complete to histo folder for further use in predictive analyses
+
+```{r save_data}
+saveRDS(additional_info_df, "data/additional_info_df.RDS")
+saveRDS(advertisements, "data/advertisements.RDS")
+
+# save the old file advertisements_complete to histo folder for further use in web app
 if (file.exists("data/advertisements_complete.rds")) {
   histo_rds <- import("data/advertisements_complete.rds") %>%
     mutate(timestamp = as.Date(file.info("data/advertisements_complete.rds")$mtime))
@@ -428,7 +440,7 @@ if (file.exists("data/advertisements_complete.rds")) {
 # create separate df for text analyses
 text_long <- advertisements_complete$info_text
 
-# save the old file text_long to histo folder for further use in predictive analyses
+# save the old file text_long to histo folder for further use in web app
 if (file.exists("data/text_long.rds")) {
   histo_rds <- import("data/text_long.rds") %>%
     as.data.frame() %>% 
@@ -439,14 +451,9 @@ if (file.exists("data/text_long.rds")) {
     str_replace_all("-", "_")
   saveRDS(histo_rds, paste0("data/histo/text_long", histo_date, ".rds"))
 }
-saveRDS(text_long, file = "data/text_long.rds") # instead of csv due to size reduction
-saveRDS(advertisements_complete, file = "data/advertisements_complete.rds") # instead of csv due to size reduction
 
+saveRDS(text_long, file = "data/text_long.rds")
+saveRDS(advertisements_complete, file = "data/advertisements_complete.rds")
 advertisements_complete <- read_rds("data/advertisements_complete.rds")
-
-print(colnames(advertisements_complete))
-
-print(colnames(advertisements_complete_07_05_2023))
-
 ```
 
