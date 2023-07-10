@@ -119,7 +119,7 @@ additional_info_df <- tibble(
 )
 
 
-for (i in 2:10) { #10, if ok, go to 2:10
+for (i in 1:10) { #10, if ok, go to 2:10
   # get the current dataframe
   current_df <- get(paste0("advertisements_", i))
 
