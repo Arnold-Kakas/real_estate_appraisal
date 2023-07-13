@@ -80,7 +80,7 @@ if (!require("pacman")) {
 pacman::p_load(
   rio,
   tidyverse,
-  rvest, # scraping
+  rvest, # scraping, part of tidyverse
   httr, # working with html
   RSelenium, # scraping in Google Chrome
   netstat, # free_port()
@@ -95,9 +95,42 @@ There are three groups of packages in this project:
 * for web scraping - rvest, RSelenium, netstat, httr
 * for parallel processing - doParallel and furrr
 
+### Web elements
+<br>
+Regardless of what programming language or which package you choose for webscraping, you need to be able to find the elements in web page source code.
+This can be easily done in you web browser (for this blog purposes I am using Google Chrome). You need to press *CRTL* + *SHIFT* + *I* to open DevTools. Now, when you hover over the code in the window, it will dynamically show you in browser which part of the page is it related to. Easier way how to get the correct element (or other web part) reference is to press *CRTL* + *SHIFT* + *C* and select the element directly on page.
+<br>
+<center>
+![DevTools in Google Chrome](data/DevTools.JPG)
+</center>
+<br>
+
+Once you found the correct element, you need to copy the CSS selector or XPath. Both can be used as arguments in rvest and RSelenium.
+<br>
+<center>
+![Copying web element XPath](data/Web element Xpath-CSS selector.JPG)
+</center>
+<br>
+
+Now you are ready to retrieve the content from page. Result, if you did everything correctly, can have different forms. It can be a single value, string, list etc.. Based on this you either specify more precisely what part of the content you need, or work with the result in R and use data wrangling functions to get the information you are looking for.
 
 ### Scraping part I. - rvest
+<br>
+One of the most common web scraping packages in R is [rvest](https://rvest.tidyverse.org/). It provides functions to access a public web page and query-specific elements using CSS selectors and XPath. This package does not run javascript, meaning that it retrieves the page html faster, but will miss any elements loaded with javascript after the initial page load.
+Therefore this package is good option if you are scraping static pages.
 
+In this example I start with creating a variable to store the source url: *https://www.nehnutelnosti.sk/slovensko/byty/predaj/?p[param1][from]=1000&p[param1][to]=&p[page]=*
+
+Next I check the number of pages
+<br>
+<center>
+![Number of pages with search results](data/Number of pages.jpg)
+</center>
+<br>
+
+And lastly I prepare and run multisession to retrieve price, address, type of real estate and most important - link to the advertisement which will be used in next part with RSelenium package.
+I also added *plan(sequential)* to stop the multisession, but I have to admit, I am not as familiar with parallel programming in R to fully understand the importance of this step.
+<br>
 ```{r rvest_scraping}
 # apartments page
 site <- "https://www.nehnutelnosti.sk/slovensko/byty/predaj/?p[param1][from]=1000&p[param1][to]=&p[page]="
@@ -114,26 +147,41 @@ plan(multisession, workers = 6)
 
 advertisements <- future_map_dfr(1:number_of_pages, function(i) {
   page_content <- read_html(paste0(site, i))
-  Sys.sleep(6) # wait 6 seconds
+  
   price <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__price col-auto pl-0 pl-md-3 pr-0 text-right mt-2 mt-md-0 align-self-end"]') %>%
     html_attr("data-adv-price")
+  
   type_of_real_estate <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__info"]') %>%
     html_text2()
+  
   address <- page_content %>%
     html_nodes(xpath = '//*[@class="advertisement-item--content__info d-block text-truncate"]') %>%
     html_text2()
+  
   link <- page_content %>%
     html_nodes(xpath = '//*[@class="mb-0 d-none d-md-block"]') %>%
     html_nodes("a") %>%
     html_attr("href")
+  
   tibble(price = price, type_of_real_estate = type_of_real_estate, address = address, link = link)
 })
 
+plan(sequential)
 ```
 
 ### Scraping part II. - RSelenium
+<br>
+[RSelenium](https://cran.r-project.org/web/packages/RSelenium/index.html) Provides a set of R bindings for the *Selenium 2.0 WebDriver*. Unlike rvest, it runs a real web browser, so it will load any javascript contained in the webpage.
+With this package you will be able to interact with web page e.g. scroll, click on button, fill in input forms etc..
+On the other hand, use of this package requires specific set up, installed Java on your system and I faced multiple issues before I got it running properly. More on this topic will be covered in one of the future blogs.
+<br>
+I start with defining several helper functions. 
+One is for unsuccessful navigation to page, this usually happened when I read too many pages and I had to delete browsing history. Sometimes this function created loop running several hours before I noticed (e.g. during night) but at least the code did crashed. I also tried creating function to delete the history in case of unsuccessful navigation, but it did not work and I am fine with this solution for the time being. 
+Second one is for handling error in element search. In such cases this function returns NA.
+Last one is similar to the previous, however in this case it returns NA in case when element is not found.
+<br>
 ```{r helper_functions}
 # Define a function that handles the errors in page load
 navigate_with_retry <- function(link, remDr) {
@@ -159,7 +207,7 @@ safe_find_element <- possibly(function(page, xpath) {
   page$findElement(using = "xpath", xpath)
 }, NA)
 
-# function to get text or return NA if not found
+# function to get text or return NA if element not found
 get_text_or_na <- function(nodes) {
   tryCatch(
     {
@@ -176,8 +224,11 @@ get_text_or_na <- function(nodes) {
   )
 }
 ```
-
-```{r RSelenium_scraping}
+<br>
+Now I am splitting links to 10 batches. This does not has to be done since the code is working, but I keep it in case of some unexpected error occurrence during the scraping process in order to save at least part of the data. This may seem paranoid, but I learned to be causes the hard way. The next part of web scraping takes more than two days and you don't want to lose whole progress because of WiFi outage. 
+I am also creating empty dataframe with all possible columns which will be fed later in the process.
+<br>
+```{r scrape_prep}
 # Additional info from web
 
 # number of splits
@@ -191,8 +242,7 @@ for (i in seq_along(advertisments_list)) {
   assign(paste0("advertisements_", i), advertisments_list[[i]])
 }
 
-
-# create empty dataframeoutside of the loop to hold additional info
+# create empty dataframe outside of the loop to hold additional info
 additional_info_df <- tibble(
   link = character(),
   info_text = character(),
@@ -202,7 +252,26 @@ additional_info_df <- tibble(
   stringsAsFactors = FALSE
 )
 
+```
+<br>
+Now I am getting to actual scraping with RSelenium. As already mentioned, to get it running I need to follow several steps. I am using only RSelenium, there is also possibility to use Docker to run the Selenium server and connect to this instance using RSelenium.
 
+To setup the Selenium server and browser you need to use `rsDriver()` function and call $client to create the client. rsDriver functions expects several arguments:
+
+* browser - I use chrome so I input "chrome",
+* chromever - this is often the cause of error. I will go through the solution is separate blog, but in this case I input Chrome version "113.0.5672.63",
+* verbose - I dont want any status messages so it is FALSE,
+* port - port to run on. I use netstat package function free_port(random = TRUE) to automatically select free port
+
+Afterwards I open the browser, maximizing the window, navigate to Nehnutelnosti page and accept cookies.
+When all this is done, the actual scraping runs in for loop. I will not go through all details, but the logic is quite simple: 
+1. I navigate to the link in the loop. 
+2. Scroll to page height/10*4.2 so the javascript returning index of living will run (this scroll depth is based on manual testing, nevertheless I need to find other method or run multiple scrolls to really execute the script on all loaded pages).
+3. wait for 3 seconds to execute the javascript and slow down the process
+4. 
+
+<br>
+```{r RSelenium_scraping}
 for (i in 1:10) {
   # get the current dataframe
   current_df <- get(paste0("advertisements_", i))
@@ -221,7 +290,6 @@ for (i in 1:10) {
   # open a browser
   remDr$open()
   remDr$maxWindowSize()
-  #remDr$deleteAllCookies()
   
   # navigate to a website
   remDr$navigate("https://www.nehnutelnosti.sk/")
@@ -239,10 +307,8 @@ for (i in 1:10) {
     info_details <- NA
 
     navigate_with_retry(link, remDr)
-    #remDr$executeScript("document.body.style.zoom = '50%';")
     height <- as.numeric(remDr$executeScript("return document.documentElement.scrollHeight"))/10*4.2 # Scroll to load index of living
     remDr$executeScript(paste("window.scrollTo(0, ", height, ");")) # scroll to living index
-    
     
     Sys.sleep(3)
     page <- safe_find_element(remDr, '//*[@id="map-filter-container"]')
