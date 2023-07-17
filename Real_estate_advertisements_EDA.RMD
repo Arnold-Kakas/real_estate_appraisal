@@ -304,7 +304,7 @@ Generally, there is a lot of missing data. This issue will be handled by imputat
 * For municipalities I will not do EDA since there are more than 200 unique values. Only to put this variable into perspective, there is 2890 municipalities (considering Bratislava and Košice as single entities without split to city districts). Only around 150 of them have more than 5000 inhabitants.
 More interesting information on cities and towns in Slovakia can be found on [this](https://www.sodbtn.sk/) webpage.
 * Price has quite big range from 1000 to almost 700k, but the middle 50 % lies within 75k range from 105,000 to 180,000. We will check the distribution later in histogram.
-* Index can have value from 0 to 10 and it is prepared by slovak startup [City Performer](https://cityperformer.com/). It is made up of six categories: environment, quality of housing, safety, transport, services and relaxation. That being said, it is not available for all places.
+* Index can have value from 0 to 10 and it is calculated by slovak startup [City Performer](https://cityperformer.com/). It is made up of six categories: environment, quality of housing, safety, transport, services and relaxation. That being said, it is not available for all places.
 Middle 50 % are within 7.1 to 8.1. Mean index is 7.3 points.
 * There are 6 possible conditions + NA. The most common is complete reconstruction followed by partial reconstruction and new construction.
 * Area is one of the most important attributes impacting the price. As we can see, we it ranges from 1 squared meter to 59,000, both are obviously incorrect values. Similarly to price, we will look at distribution in histogram.

@@ -182,6 +182,8 @@ One is for unsuccessful navigation to page, this usually happened when I read to
 Second one is for handling error in element search. In such cases this function returns NA.
 Last one is similar to the previous, however in this case it returns NA in case when element is not found.
 <br>
+I also use `tryCatch()` function in scraping script to return NA in case of error.
+<br>
 ```{r helper_functions}
 # Define a function that handles the errors in page load
 navigate_with_retry <- function(link, remDr) {
@@ -261,14 +263,22 @@ To setup the Selenium server and browser you need to use `rsDriver()` function a
 * browser - I use chrome so I input "chrome",
 * chromever - this is often the cause of error. I will go through the solution is separate blog, but in this case I input Chrome version "113.0.5672.63",
 * verbose - I dont want any status messages so it is FALSE,
-* port - port to run on. I use netstat package function free_port(random = TRUE) to automatically select free port
+* port - port to run on. I use netstat package function `free_port(random = TRUE)` to automatically select free port
 
 Afterwards I open the browser, maximizing the window, navigate to Nehnutelnosti page and accept cookies.
 When all this is done, the actual scraping runs in for loop. I will not go through all details, but the logic is quite simple: 
-1. I navigate to the link in the loop. 
-2. Scroll to page height/10*4.2 so the javascript returning index of living will run (this scroll depth is based on manual testing, nevertheless I need to find other method or run multiple scrolls to really execute the script on all loaded pages).
-3. wait for 3 seconds to execute the javascript and slow down the process
-4. 
+1. Navigate to the link in the loop. 
+2. Scroll to page height/10*4.2 so the javascript returning index of living will run (this scroll depth is based on manual testing, nevertheless I need to find other method or run multiple scrolls to really execute the script on all loaded pages)
+3. Wait for 3 seconds to execute the javascript and slow down the process
+4. Read the page content
+5. If page could not be read and is NA, add blank record to the dataframe
+6. Otherwise read page html, scrape following information and bind the new rows to the dataframe:
+  * info_text - full text from advertisement. Not used currently in ML model, but I plan to use NLP to obtain keywords/topics and create a word cloud in Shiny app
+  * info_details - contains 4 variables and will be cleaned in following steps. Variables are delimited by "\n".
+  * index_of_living - value from 0 to 10, it is calculated by slovak startup [City Performer](https://cityperformer.com/). It considers six categories: environment, quality of housing, safety, transport, services and relaxation
+  * additional_characteristics - contains multiple variables, I select 12 of them in following steps. Variables are delimited by "\n".
+
+7. Close client and stop server
 
 <br>
 ```{r RSelenium_scraping}
@@ -321,7 +331,6 @@ for (i in 1:10) {
         index_of_living = NA,
         info_details = NA
       )
-
       # bind new row to additional info dataframe
       additional_info_df <- rbind(additional_info_df, new_row)
     } else {
@@ -371,7 +380,7 @@ for (i in 1:10) {
     }
   }
 
-  # close remote driver
+  # close client and stop server
   rs_driver_object$client$close()
   rs_driver_object$server$stop()
   rm(rs_driver_object, remDr)
@@ -380,6 +389,10 @@ for (i in 1:10) {
 ```
 
 ### Data wrangling
+<br>
+Scraping is done and I continue with data wrangling to adjust the data to usable form. 
+Firstly, I deal with address to keep all districts in first column. This address is later used for geocoding. I also adjust the price to integer so it can be used in ML model.
+<br>
 ```{r data_wrangling}
 advertisements_cleaned <- advertisements %>%
   separate(type_of_real_estate, c("type", "area"), sep = " • ", remove = TRUE) %>% 
@@ -392,7 +405,14 @@ advertisements_cleaned <- advertisements %>%
   ) %>%
   separate(address0, c("district", "municipality", "street"), sep = ", ") %>%
   select(-street)
-
+```
+<br>
+Now, I need to split the additional_characteristics and info_details columns values into more meaningful variables. For this I created two lists: characteristics1 and characteristics2. Each of them contains name of the variable I want to extract. I use these lists to create empty dataframe to ensure that all columns are present.
+From additional_info_df (dataframe with scraped data) I select additional_characteristics and info_details and slit the values using "/n" as delimiter.
+Next I define two functions: get_characteristics1 and get_characteristics2 which retrieve the values and map these functions to respective columns.
+Finally I bind together output_df_characteristics1, output_df_characteristics2 and selected columns from additional_info_df and join them to advertisements_cleaned by link.
+<br>
+```{r}
 # get additional information from scraped data
 # First list of additional info details
 characteristics1 <- c(
@@ -486,8 +506,9 @@ advertisements_complete <- advertisements_cleaned %>%
   filter(!is.na(flag)) %>% 
   select(-flag, -c, -type)
 ```
-
-
+<br>
+Last step is saving the data in RDS format. I also keep the historical data for future price development analysis.
+<br>
 ```{r save_data}
 saveRDS(additional_info_df, "data/additional_info_df.RDS")
 saveRDS(advertisements, "data/advertisements.RDS")
