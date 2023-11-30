@@ -19,7 +19,7 @@ site <- "https://www.nehnutelnosti.sk/slovensko/byty/predaj/?p[param1][from]=100
 
 # scrape the number of pages
 number_of_pages <- read_html(paste0(site, 1)) %>%
-  html_nodes(xpath = '//*[@id="content"]/div[8]/div/div/div[1]/div[17]/div/div/ul/li[5]') %>%
+  html_nodes(xpath = '//*[@id="content"]/div[7]/div/div/div[1]/div[17]/div/div/ul/li[5]') %>%
   html_elements("a") %>%
   html_text(trim = TRUE) %>%
   as.numeric()
@@ -126,7 +126,7 @@ for (i in 1:10) { #10, if ok, go to 2:10
   # start the server
   rs_driver_object <- rsDriver(
     browser = "chrome",
-    chromever = "113.0.5672.63",
+    chromever = "119.0.6045.105",
     verbose = FALSE,
     port = free_port(random = TRUE)
   )
@@ -374,4 +374,7 @@ advertisements_complete <- read_rds("data/advertisements_complete.rds")
 
 print(colnames(advertisements_complete))
 
-print(colnames(advertisements_complete_07_05_2023))
+advertisements_complete <- !is.na(advertisements_complete$`Počet izieb/miestností`)
+
+advertisements_complete <- filter(!is.na(advertisements_complete$`Počet izieb/miestností`))
+
