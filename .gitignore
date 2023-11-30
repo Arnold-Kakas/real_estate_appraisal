@@ -42,6 +42,9 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
+# histo folder
+/data/histo/
+
 # pkgdown site
 docs/
 
