@@ -108,50 +108,73 @@ for (i in seq_along(advertisments_list)) {
 
 
 ################################################################################################
-# create empty dataframeoutside of the loop to hold additional info
+# create empty dataframe outside of the loop to hold additional info
 additional_info_df <- tibble(
   link = character(),
   info_text = character(),
   additional_characteristics = character(),
   index_of_living = character(),
+  environment = character(),
+  quanlity_of_living = character(),
+  safety = character(),
+  transport = character(),
+  services = character(),
+  relax = character(),
   info_details = character(),
   stringsAsFactors = FALSE
 )
 
+# starting from this part, the code had been inside of fir i 1:10 loop
+
+# start the server
+rs_driver_object <- rsDriver(
+  browser = "chrome",
+  chromever = "119.0.6045.105",
+  verbose = FALSE,
+  port = free_port(random = TRUE)
+)
+
+# create a client object
+remDr <- rs_driver_object$client
+
+# open a browser
+remDr$open()
+remDr$maxWindowSize()
+
+# navigate to a website
+remDr$navigate("https://www.nehnutelnosti.sk/")
+Sys.sleep(5) # wait for 5 seconds
+
+# accept cookies
+# switch to cookie iframe
+remDr$switchToFrame(remDr$findElement(using = "xpath", '//*[@id="sp_message_iframe_920334"]'))
+remDr$findElement(using = "xpath", '//*[@id="notice"]/div[2]/button')$clickElement()
+
+# switch back to default frame
+remDr$switchToFrame(NA)
+
+# manually log in with azet acc
+
+# code originally inside for loop ends here
 
 for (i in 1:10) { #10, if ok, go to 2:10
   # get the current dataframe
   current_df <- get(paste0("advertisements_", i))
 
-  # start the server
-  rs_driver_object <- rsDriver(
-    browser = "chrome",
-    chromever = "119.0.6045.105",
-    verbose = FALSE,
-    port = free_port(random = TRUE)
-  )
-
-  # create a client object
-  remDr <- rs_driver_object$client
-
-  # open a browser
-  remDr$open()
-  remDr$maxWindowSize()
-  #remDr$deleteAllCookies()
-  
-  # navigate to a website
-  remDr$navigate("https://www.nehnutelnosti.sk/")
-  Sys.sleep(5) # wait for 5 seconds
-
-  # accept cookies
-  remDr$switchToFrame(remDr$findElement(using = "xpath", '//*[@id="sp_message_iframe_710573"]'))
-  remDr$findElement(using = "xpath", '//*[@id="notice"]/div[5]/div[2]/button')$clickElement()
-
   # loop through each link in the current dataframe
+  # testing link
+  #link <- 'https://www.nehnutelnosti.sk/5335404/slnecny-3-izbovy-byt-na-prenajom-volny-od-01-02-2024-tn-zlatovce/'
+  
   for (link in current_df$link) {
     info_text <- NA
     additional_characteristics <- NA
     index_of_living <- NA
+    environment <- NA
+    quanlity_of_living <- NA
+    safety <- NA
+    transport <- NA
+    services <- NA
+    relax <- NA
     info_details <- NA
 
     navigate_with_retry(link, remDr)
@@ -169,6 +192,12 @@ for (i in 1:10) { #10, if ok, go to 2:10
         info_text = NA,
         additional_characteristics = NA,
         index_of_living = NA,
+        environment = NA,
+        quanlity_of_living = NA,
+        safety = NA,
+        transport = NA,
+        services = NA,
+        relax = NA,
         info_details = NA
       )
 
@@ -199,6 +228,72 @@ for (i in 1:10) { #10, if ok, go to 2:10
 
       tryCatch(
         {
+          environment <- page_html %>%
+            html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[1]/div[1]/div[2]/span[1]/span') %>%
+            get_text_or_na()
+        },
+        error = function(e) {
+          environment <- NA
+        }
+      )
+      
+      tryCatch(
+        {
+          quanlity_of_living <- page_html %>%
+            html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[1]/div[2]/div[2]/span[1]/span') %>%
+            get_text_or_na()
+        },
+        error = function(e) {
+          quanlity_of_living <- NA
+        }
+      )
+      
+      tryCatch(
+        {
+          safety <- page_html %>%
+            html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[1]/div[3]/div[2]/span[1]/span') %>%
+            get_text_or_na()
+        },
+        error = function(e) {
+          safety <- NA
+        }
+      )
+      
+      tryCatch(
+        {
+          transport <- page_html %>%
+            html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[2]/div[1]/div[2]/span[1]/span') %>%
+            get_text_or_na()
+        },
+        error = function(e) {
+          transport <- NA
+        }
+      )
+      
+      tryCatch(
+        {
+          services <- page_html %>%
+            html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[2]/div[2]/div[2]/span[1]/span') %>%
+            get_text_or_na()
+        },
+        error = function(e) {
+          services <- NA
+        }
+      )
+      
+      tryCatch(
+        {
+          relax <- page_html %>%
+            html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[2]/div[3]/div[2]/span[1]/span') %>%
+            get_text_or_na()
+        },
+        error = function(e) {
+          relax <- NA
+        }
+      )
+      
+     tryCatch(
+        {
           additional_characteristics <- page_html %>%
             html_nodes(xpath = '//*[@id="additional-features-modal-button"]/ul') %>%
             html_text2() # %>%
@@ -213,6 +308,12 @@ for (i in 1:10) { #10, if ok, go to 2:10
         link = link, info_text = info_text,
         additional_characteristics = additional_characteristics,
         index_of_living = index_of_living,
+        environment = environment,
+        quanlity_of_living = quanlity_of_living,
+        safety = safety,
+        transport = transport,
+        services = services,
+        relax = relax,
         info_details = info_details
       )
 
@@ -221,12 +322,222 @@ for (i in 1:10) { #10, if ok, go to 2:10
     }
   }
 
-  # close remote driver
-  rs_driver_object$client$close()
-  rs_driver_object$server$stop()
-  rm(rs_driver_object, remDr)
-  gc()
 }
+
+#code below was last before curly bracket
+
+# close remote driver
+rs_driver_object$client$close()
+rs_driver_object$server$stop()
+rm(rs_driver_object, remDr)
+gc()
+
+# until here
+
+advertisements_round_2 <- additional_info_df %>% 
+  filter(!is.na(index_of_living) & is.na(relax)) %>% 
+  select(link)
+
+additional_info_df_round_2 <- tibble(
+  link = character(),
+  info_text = character(),
+  additional_characteristics = character(),
+  index_of_living = character(),
+  environment = character(),
+  quanlity_of_living = character(),
+  safety = character(),
+  transport = character(),
+  services = character(),
+  relax = character(),
+  info_details = character(),
+  stringsAsFactors = FALSE
+)
+
+# start the server
+rs_driver_object <- rsDriver(
+  browser = "chrome",
+  chromever = "119.0.6045.105",
+  verbose = FALSE,
+  port = free_port(random = TRUE)
+)
+
+# create a client object
+remDr <- rs_driver_object$client
+
+# open a browser
+remDr$open()
+remDr$maxWindowSize()
+
+# navigate to a website
+remDr$navigate("https://www.nehnutelnosti.sk/")
+Sys.sleep(5) # wait for 5 seconds
+
+# accept cookies
+# switch to cookie iframe
+remDr$switchToFrame(remDr$findElement(using = "xpath", '//*[@id="sp_message_iframe_920334"]'))
+remDr$findElement(using = "xpath", '//*[@id="notice"]/div[2]/button')$clickElement()
+
+# switch back to default frame
+remDr$switchToFrame(NA)
+
+# manually log in with azet acc
+
+
+for (link in advertisements_round_2$link) {
+  info_text <- NA
+  additional_characteristics <- NA
+  index_of_living <- NA
+  environment <- NA
+  quanlity_of_living <- NA
+  safety <- NA
+  transport <- NA
+  services <- NA
+  relax <- NA
+  info_details <- NA
+  
+  navigate_with_retry(link, remDr)
+  #remDr$executeScript("document.body.style.zoom = '50%';")
+  height <- as.numeric(remDr$executeScript("return document.documentElement.scrollHeight"))/10*4.2 # Scroll to load index of living
+  remDr$executeScript(paste("window.scrollTo(0, ", height, ");")) # scroll to living index
+  
+  
+  Sys.sleep(1)
+  page <- safe_find_element(remDr, '//*[@id="map-filter-container"]')
+  
+  if (is.na(page)) {
+    new_row <- tibble(
+      link = link,
+      info_text = NA,
+      additional_characteristics = NA,
+      index_of_living = NA,
+      environment = NA,
+      quanlity_of_living = NA,
+      safety = NA,
+      transport = NA,
+      services = NA,
+      relax = NA,
+      info_details = NA
+    )
+    
+    # bind new row to additional info dataframe
+    additional_info_df <- rbind(additional_info_df, new_row)
+  } else {
+    page_html <- page$getElementAttribute("outerHTML")
+    page_html <- read_html(page_html[[1]])
+    
+    info_text <- page_html %>%
+      html_nodes(xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "text-inner", " " ))]') %>%
+      get_text_or_na()
+    
+    info_details <- page_html %>%
+      html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[2]/div[5]/ul') %>%
+      html_text2()
+    
+    tryCatch(
+      {
+        index_of_living <- page_html %>%
+          html_nodes(xpath = '//*[@id="totalCityperformerWrapper"]/div/p[1]/span') %>%
+          get_text_or_na()
+      },
+      error = function(e) {
+        index_of_living <- NA
+      }
+    )
+    
+    tryCatch(
+      {
+        environment <- page_html %>%
+          html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[5]/div[1]/div[1]/div/div[2]/div[2]/div[1]/div[1]/div[2]/span[1]/span') %>%
+          get_text_or_na()
+      },
+      error = function(e) {
+        environment <- NA
+      }
+    )
+    
+    tryCatch(
+      {
+        quanlity_of_living <- page_html %>%
+          html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[5]/div[1]/div[1]/div/div[2]/div[2]/div[1]/div[2]/div[2]/span[1]/span') %>%
+          get_text_or_na()
+      },
+      error = function(e) {
+        quanlity_of_living <- NA
+      }
+    )
+    
+    tryCatch(
+      {
+        safety <- page_html %>%
+          html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[5]/div[1]/div[1]/div/div[2]/div[2]/div[1]/div[3]/div[2]/span[1]/span') %>%
+          get_text_or_na()
+      },
+      error = function(e) {
+        safety <- NA
+      }
+    )
+    
+    tryCatch(
+      {
+        transport <- page_html %>%
+          html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[5]/div[1]/div[1]/div/div[2]/div[2]/div[2]/div[1]/div[2]/span[1]/span') %>% 
+          get_text_or_na()
+      },
+      error = function(e) {
+        transport <- NA
+      }
+    )
+    
+    tryCatch(
+      {
+        services <- page_html %>%
+          html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[5]/div[1]/div[1]/div/div[2]/div[2]/div[2]/div[2]/div[2]/span[1]/span') %>%
+          get_text_or_na()
+      },
+      error = function(e) {
+        services <- NA
+      }
+    )
+    
+    tryCatch(
+      {
+        relax <- page_html %>%
+          html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[5]/div[1]/div[1]/div/div[2]/div[2]/div[2]/div[3]/div[2]/span[1]/span') %>%
+          get_text_or_na()
+      },
+      error = function(e) {
+        relax <- NA
+      }
+    )
+    
+    tryCatch(
+      {
+        additional_characteristics <- page_html %>%
+          html_nodes(xpath = '//*[@id="additional-features-modal-button"]/ul') %>%
+          html_text2() # %>%
+        # str_squish()
+      },
+      error = function(e) {
+        additional_characteristics <- NA
+      }
+    )
+    
+    new_row <- tibble(
+      link = link, info_text = info_text,
+      additional_characteristics = additional_characteristics,
+      index_of_living = index_of_living,
+      environment = environment,
+      quanlity_of_living = quanlity_of_living,
+      safety = safety,
+      transport = transport,
+      services = services,
+      relax = relax,
+      info_details = info_details
+    )
+    
+    # bind new row to additional info dataframe
+    additional_info_df_round_2 <- rbind(additional_info_df_round_2, new_row)
+  }}
 
 
 saveRDS(additional_info_df, "data/additional_info_df.RDS")
@@ -332,7 +643,15 @@ output_df_characteristics2 <- map_dfr(characteristics_wrangler$chars2_list, get_
 additional_info_df_complete <- cbind(
   additional_info_df %>%
     mutate(index_of_living = str_replace_all(index_of_living, " /", "")) %>%
-    select(c(link, info_text, index_of_living)) %>% 
+    select(c(link, 
+             info_text, 
+             index_of_living,
+             environment,
+             quanlity_of_living,
+             safety,
+             transport,
+             services,
+             relax)) %>% 
     mutate(flag = "x"), 
   output_df_characteristics1,
   output_df_characteristics2
