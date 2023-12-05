@@ -28,8 +28,8 @@ pacman::p_load(
   colorRamps,
   plotly,
   spdep,
-  rgeos,
-  rgdal,
+  #rgeos,
+  #rgdal,
   sfdep
 )
 ```
