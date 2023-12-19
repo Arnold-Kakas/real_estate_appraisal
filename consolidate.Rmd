@@ -40,7 +40,9 @@ advertisements <- readRDS("data/advertisements.RDS")
 advertisements <- advertisements %>% separate(type_of_real_estate, c("type", "area"), sep = " • ", remove = TRUE) %>% select(link, type)
 
 
-scraped_data <- readRDS("data/advertisements_complete_geocoded.RDS") %>% 
+scraped_data <- readRDS("data/advertisements_complete_geocoded.RDS") %>% filter(!is.na(link))
+
+scraped_data <- scraped_data %>% 
   left_join(advertisements, by = "link", multiple = "first", keep = FALSE) %>% 
   clean_names() %>%
   mutate(pocet_izieb_miestnosti = as.numeric(pocet_izieb_miestnosti),

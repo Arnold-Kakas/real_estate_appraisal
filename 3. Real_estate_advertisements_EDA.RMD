@@ -46,8 +46,8 @@ As shown in the image, it is an iterative process. Based on your findings you ca
 EDA usually starts with reading the data and checking couple of rows to get the "feeling" of data along with checking of data structure, size of the sample, data types, missing values etc.. Afterwards we continue with more detailed analysis that helps us understand the relationships and identify outliers and important variables. In EDA we use different techniques and tools. In general they can be divided into several groups:
 
 * Summary (univariate) statistics - min, max, mean, median, quartiles, IQR, standard deviation, counts, frequency etc.
+* Bi-/multi- variate statistics - correlation, t-test, chi-square test, ANOVA, Kruskal-Wallis test etc.
 * Data visualization - histogram, boxplot, pareto chart, scatter plots, correlation matrix, line charts (for time series), heatmaps etc.
-* Bi-/multi- variate statistics - t-test, chi-square test, ANOVA, Kruskal-Wallis test etc.
 
 Lastly we create conclusion based on the findings and either continue in our data journey or go back to additional data cleaning.
 <br>

@@ -115,7 +115,7 @@ additional_info_df <- tibble(
   additional_characteristics = character(),
   index_of_living = character(),
   environment = character(),
-  quanlity_of_living = character(),
+  quality_of_living = character(),
   safety = character(),
   transport = character(),
   services = character(),
@@ -170,7 +170,7 @@ for (i in 1:10) { #10, if ok, go to 2:10
     additional_characteristics <- NA
     index_of_living <- NA
     environment <- NA
-    quanlity_of_living <- NA
+    quality_of_living <- NA
     safety <- NA
     transport <- NA
     services <- NA
@@ -193,7 +193,7 @@ for (i in 1:10) { #10, if ok, go to 2:10
         additional_characteristics = NA,
         index_of_living = NA,
         environment = NA,
-        quanlity_of_living = NA,
+        quality_of_living = NA,
         safety = NA,
         transport = NA,
         services = NA,
@@ -239,12 +239,12 @@ for (i in 1:10) { #10, if ok, go to 2:10
       
       tryCatch(
         {
-          quanlity_of_living <- page_html %>%
+          quality_of_living <- page_html %>%
             html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[1]/div[2]/div[2]/span[1]/span') %>%
             get_text_or_na()
         },
         error = function(e) {
-          quanlity_of_living <- NA
+          quality_of_living <- NA
         }
       )
       
@@ -309,7 +309,7 @@ for (i in 1:10) { #10, if ok, go to 2:10
         additional_characteristics = additional_characteristics,
         index_of_living = index_of_living,
         environment = environment,
-        quanlity_of_living = quanlity_of_living,
+        quality_of_living = quality_of_living,
         safety = safety,
         transport = transport,
         services = services,
@@ -344,7 +344,7 @@ additional_info_df_round_2 <- tibble(
   additional_characteristics = character(),
   index_of_living = character(),
   environment = character(),
-  quanlity_of_living = character(),
+  quality_of_living = character(),
   safety = character(),
   transport = character(),
   services = character(),
@@ -388,7 +388,7 @@ for (link in advertisements_round_2$link) {
   additional_characteristics <- NA
   index_of_living <- NA
   environment <- NA
-  quanlity_of_living <- NA
+  quality_of_living <- NA
   safety <- NA
   transport <- NA
   services <- NA
@@ -411,7 +411,7 @@ for (link in advertisements_round_2$link) {
       additional_characteristics = NA,
       index_of_living = NA,
       environment = NA,
-      quanlity_of_living = NA,
+      quality_of_living = NA,
       safety = NA,
       transport = NA,
       services = NA,
@@ -457,12 +457,12 @@ for (link in advertisements_round_2$link) {
     
     tryCatch(
       {
-        quanlity_of_living <- page_html %>%
+        quality_of_living <- page_html %>%
           html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[5]/div[1]/div[1]/div/div[2]/div[2]/div[1]/div[2]/div[2]/span[1]/span') %>%
           get_text_or_na()
       },
       error = function(e) {
-        quanlity_of_living <- NA
+        quality_of_living <- NA
       }
     )
     
@@ -527,7 +527,7 @@ for (link in advertisements_round_2$link) {
       additional_characteristics = additional_characteristics,
       index_of_living = index_of_living,
       environment = environment,
-      quanlity_of_living = quanlity_of_living,
+      quality_of_living = quality_of_living,
       safety = safety,
       transport = transport,
       services = services,
@@ -647,7 +647,7 @@ additional_info_df_complete <- cbind(
              info_text, 
              index_of_living,
              environment,
-             quanlity_of_living,
+             quality_of_living,
              safety,
              transport,
              services,
