@@ -1,0 +1,570 @@
+---
+title: "Untitled"
+author: "Arnold Kakaš"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Advertisement data EDA Price prediction model
+
+## Introduction
+
+In this post I will go through <strong> Exploratory Data Analyses (EDA) </strong> of real estate advertisements data and evaluation of <strong> price prediction model </strong> based on this dataset.
+It is not a typical EDA, since there are already some variables excluded based on previous experience. I will examine only the variables that were proven to have reasonable impact on price prediction.
+<br>
+Data is scraped from [Nehnutelnosti](https://www.nehnutelnosti.sk/) website that specializes in real estate listings and services. I will go through the scraping process and initial data cleaning in more details in the next blog post.
+<br>
+
+## Data cleaning
+
+Loading of libraries. For this part I like to use [packman](https://cran.r-project.org/web/packages/pacman/index.html) package
+```{r load_libs, message=FALSE, warning=FALSE}
+# load libs
+pacman::p_load(rio,
+               gridExtra,
+               tidyverse,
+               tidymodels,
+               corrplot,
+               ggpubr,
+               plotly,
+               gt,
+               DT,
+               GGally,
+               patchwork,
+               vip,
+               janitor,
+               sf)
+```
+<br>
+Next step is to load the analysed data. Usually for imports I use [rio](https://cran.r-project.org/web/packages/rio/index.html) package.
+<br>
+As you can see, data is stored in RDS format. I prefer this format due to several reasons: 
+* size of the file is lower compared to csv or xlsx, which are usually the ones that we as data analysts are provided with.
+* RDS format preserves the entire R object structure, including data frames, matrices, lists, functions, and metadata.Therefore you can save objects like dataframes with factors, trained models, etc. 
+* RDS is optimized for reading and writing by the R. Therefore importing or exporting data is very quick.
+<br>
+Before the EDA, I need to clean up the scraped data.
+<br>
+I import two datasets. First one is advertisements.RDS file which contains links and basic information from the initial [webpage](https://www.nehnutelnosti.sk/byty/predaj/). I split one of the variables to obtain type of real estate.
+This dataframe is joined to second one, advertisements_complete_geocoded.RDS, that contains more detailed information of each of advertisements (these informations are visible after opening the links in first dataframe) and is already geocoded with [tidygeocoder](https://jessecambon.github.io/tidygeocoder/) package using OSM Nominatim API.
+<br>
+Afterwards follows the <strong> data cleaning </strong> and <strong> data wrangling </strong> using different methods:
+
+* replacing
+* filtering
+* imputing missing values
+* converting to correct data type/creating factors
+* removing redundant variables (based on further data analysis, e.g. due to high percentage of missing values or no correlation with price)
+* renaming of variables
+* grouping
+* using geospatial joins
+* removing outliers
+<br>
+This process is part of <strong> feature engineering </strong> for subsequent prediction model creation.
+```{r data_cleaning, echo=TRUE, message=FALSE, warning=FALSE}
+# load data for EDA
+advertisements <- import("data/advertisements.RDS")
+advertisements <- advertisements %>% separate(type_of_real_estate, c("type", "area"), sep = " • ", remove = TRUE) %>% select(link, type)
+
+
+scraped_cleaned <- import("data/advertisements_complete_geocoded.RDS") %>% 
+  left_join(advertisements, by = "link", multiple = "first", keep = FALSE) %>% 
+  clean_names() %>%
+  mutate(pocet_izieb_miestnosti = as.numeric(pocet_izieb_miestnosti),
+         uzit_plocha = str_replace(str_replace(uzit_plocha, ",", "."), " m2", ""),
+         energie = str_replace(str_replace(energie, ",", "."), " €/mesiac", ""),
+         provizia_zahrnuta_v_cene = str_replace_na(provizia_zahrnuta_v_cene, "Nie"),
+         rooms = case_when(type == "1 izbový byt" ~ 1,
+                           type == "2 izbový byt" ~ 2,
+                           type == "3 izbový byt" ~ 3,
+                           type == "4 izbový byt" ~ 4,
+                           type == "5 a viac izbový byt" ~ 5,
+                           type == "Garsónka" ~ 1,
+                           type == "Dvojgarsónka" ~ 2, 
+                           .default = NA),
+         pocet_izieb_miestnosti = coalesce(pocet_izieb_miestnosti, rooms, pocet_izieb_miestnosti)) %>% 
+  mutate_at(c('index_of_living',
+              'uzit_plocha',
+              'energie',
+              'pocet_nadzemnych_podlazi', 
+              'podlazie', 
+              'pocet_izieb_miestnosti', 
+              'rok_vystavby', 
+              'rok_poslednej_rekonstrukcie', 
+              'pocet_balkonov', 
+              'pocet_lodzii'), as.numeric) %>% 
+  select(-link, -info_text, -address) %>% 
+  filter(pocet_izieb_miestnosti < 10 & !is.na(pocet_izieb_miestnosti)) %>% 
+  mutate(
+         type = coalesce(type, case_when(pocet_izieb_miestnosti == 1 ~ "1 izbový byt",
+                           pocet_izieb_miestnosti == 2 ~ "2 izbový byt",
+                           pocet_izieb_miestnosti == 3 ~ "3 izbový byt",
+                           pocet_izieb_miestnosti == 4 ~ "4 izbový byt",
+                           pocet_izieb_miestnosti >= 5 ~ "5 a viac izbový byt"))) %>% 
+  select(-rooms) %>% 
+  filter(!(type %in% c("Apartmán", "Mezonet", "Iný byt", "Loft"))) %>% 
+  mutate(rooms = case_when(type == "1 izbový byt" ~ 1,
+                           type == "2 izbový byt" ~ 2,
+                           type == "3 izbový byt" ~ 3,
+                           type == "4 izbový byt" ~ 4,
+                           type == "5 a viac izbový byt" ~ 5,
+                           type == "Garsónka" ~ 1,
+                           type == "Dvojgarsónka" ~ 2, 
+                           .default = NA)) %>% 
+  select(-c(rok_vystavby,
+            rok_poslednej_rekonstrukcie,
+            typ_konstrukcie,
+            pocet_balkonov,
+            pocet_lodzii,
+            orientacia,
+            energie,
+            pivnica,
+            vytah,
+            pocet_izieb_miestnosti,
+            pocet_nadzemnych_podlazi,
+            podlazie)) %>% 
+  dplyr::rename(index = index_of_living) %>% 
+  dplyr::rename(condition = stav) %>% 
+  dplyr::rename(area = uzit_plocha) %>% 
+  dplyr::rename(provision = provizia_zahrnuta_v_cene) %>%
+  dplyr::rename(certificate = energeticky_certifikat)
+
+scraped_cleaned_wo_geometry <- scraped_cleaned
+st_geometry(scraped_cleaned_wo_geometry) <- NULL
+
+number_of_ads <- scraped_cleaned_wo_geometry %>% group_by(name_nsi) %>% tally() %>% arrange(n)
+
+index_district <- scraped_cleaned_wo_geometry %>% 
+  filter(!is.na(price)) %>%
+  group_by(name_nsi) %>% 
+  mutate(index_mean_name_nsi = mean(index, na.rm = TRUE)) %>%
+  ungroup() %>%
+  select(name_nsi, district, index_mean_name_nsi) %>% 
+  distinct() %>% 
+  mutate(index_mean_name_nsi = if_else(index_mean_name_nsi > 0, index_mean_name_nsi, NA)) %>% 
+  group_by(district) %>% 
+  summarize(index_mean_district = mean(index_mean_name_nsi, na.rm = TRUE))
+
+scraped_cleaned <- scraped_cleaned %>% 
+  left_join(number_of_ads, by = "name_nsi", keep = FALSE) %>% 
+  filter(n > 4) %>% 
+  left_join(index_district, by = "district", multiple = "first", keep = FALSE) %>% 
+  st_centroid()
+
+districts <- import("data/geospatial_data/districts.RDS")  
+
+scraped_cleaned <- districts %>% 
+  st_join(scraped_cleaned, join = st_contains) %>% 
+  select(-municipality, -district) %>% 
+  dplyr::rename(district = NAME) %>% 
+  mutate(district = as_factor(district),
+    condition = as_factor(condition),
+    type = as_factor(type),
+    provision = as_factor(provision),
+    certificate = as_factor(certificate),
+    name_nsi = as_factor(name_nsi)
+  ) %>% 
+  select(-n, -address1, -address2) %>% 
+  filter(!is.na(price))
+
+
+scraped_cleaned_no_outliers <- scraped_cleaned %>% 
+  group_by(name_nsi) %>% # group by municipality
+  mutate(index = mean(as.numeric(index),na.rm = TRUE), # index of municipality
+         index = if_else(index > 0, index, NA), # replace 0 index with NA
+         IQR = IQR(price), 
+         median_price = median(price),
+         lower = median_price - 1.5*IQR, 
+         upper = median_price + 1.5*IQR
+         ) %>% 
+  ungroup() %>% 
+  filter(price >= lower & price <= upper) %>% # filter out outliers
+  select(-lower, -upper, -median_price, -IQR)# remove variables
+
+st_geometry(scraped_cleaned_no_outliers) <- NULL
+
+# scraped_cleaned_no_outliers <- scraped_cleaned_no_outliers %>% 
+#   group_by(district) %>% 
+#   mutate(avg_price_district = mean(price, na.rm = TRUE),
+#          )
+```
+
+```{r remove_objects, message=FALSE, warning=FALSE, include=FALSE}
+# Remove all dataframes except of scraped_cleaned_no_outliers
+rm(list = setdiff(ls(), "scraped_cleaned_no_outliers"))
+gc()
+```
+
+## EDA {.tabset}
+
+### Overview
+
+Let's check how the data look like
+```{r show_head, echo=TRUE}
+head(scraped_cleaned_no_outliers) %>% 
+  gt() %>% 
+  tab_options(table.font.size = 10,
+              table.width = 1100,
+              table.layout = "auto")
+```
+
+<br>
+I like to start the EDA with base summary function.
+<br>
+```{r summary, echo=TRUE, message=FALSE, warning=FALSE}
+ summary(scraped_cleaned_no_outliers) %>% 
+  as.data.frame()  %>%
+  select(-Var1) %>% 
+  pivot_wider(names_from = Var2, values_from = Freq) %>% 
+  unnest(everything()) %>% 
+  dplyr::rename('district mean index' = 11) %>% 
+  dplyr::rename(municipality = 2) %>% 
+  gt() %>% 
+  tab_options(table.font.size = 10,
+              table.width = 1100,
+              table.layout = "auto")
+```
+<br>
+Generally, there is a lot of missing data. This issue will be handled by imputation directly in model steps set up.
+<br>
+<br>
+Most of the advertisements are from western part of Slovakia, we can see clear dominance of Bratislava city districts. Looking at the top 5 municipalities, only Banská Bystrica is located outside of the western part of country.
+<br>
+For municipalities I will not do EDA since there are more than 200 unique values. Only to put this variable into perspective, there is 2890 municipalities (considering Bratislava and Košice as single entities without split to city districts). Only around 150 of them have more than 5000 inhabitants.
+More interesting information on cities and towns in Slovakia can be found on [this](https://www.sodbtn.sk/) webpage.
+<br>
+<br>
+Price has quite big range from 1000 to almost 700k, but the middle 50 % lies within 70k range from 105,000 to 179,000. We will check the distribution later in histogram.
+<br>
+<br>
+Index can have values from 0 to 10 and it is prepared by slovak startup [City Performer](https://cityperformer.com/). It is made up of six categories: environment, quality of housing, safety, transport, services and relaxation. That being said, it is not available for all places.
+Middle 50 % are within 7.1 to 8.1. Mean index is 7.3 points.
+<br>
+<br>
+There are 6 possible conditions + NA. The most common is complete reconstruction followed by partial reconstruction and new construction.
+<br>
+<br>
+Area is one of the most important attributes impacting the price. As we can see, we it ranges from 1 squared meter to 215,000, both are obviously incorrect values. Similarily to price, we will look at distribution in histogram.
+<br>
+<br>
+Provision tells us whether the provision of real estate agency is included. Mostly it is not (only part of the apartments are sold via real estate agency).
+<br>
+<br>
+Information on energy certificate is mostly missing or the property does not have one. But in cases of high grade certificates we can expect positive impact on price.
+<br>
+<br>
+Type and rooms are two variables showing very similar characteristic. Most common are apartments with 3 and 2 rooms. 
+<br>
+<br>
+Mean index value of district is used as additional feature to evaluate the location quality for places where local index is not available. Nevertheless, there are places where even this aggregated index could not be calculated, nor by grouping or spatial lag.
+
+### Price
+
+Price is the most important variable in this dataset and it is the one I will try to predict.
+
+```{r price_histo, echo=TRUE, message=FALSE, warning=FALSE}
+price1 <- scraped_cleaned_no_outliers %>% 
+  ggplot(aes(x = price)) +
+        geom_histogram(fill = "steelblue", binwidth = 10000) +
+        scale_x_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
+  theme_minimal()
+        
+price2 <- scraped_cleaned_no_outliers %>% 
+  ggplot(aes(x = log10(price))) +
+        geom_histogram(fill = "steelblue") +
+  theme_minimal()
+
+grid.arrange(price1, price2, ncol = 1)
+```
+<br>
+```{r price_boxplot, echo=TRUE, message=FALSE, warning=FALSE}
+price3 <- scraped_cleaned_no_outliers %>% 
+  ggplot(aes(y = price)) +
+  geom_boxplot(col = 'steelblue') + 
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
+  theme_minimal()
+
+price4 <- scraped_cleaned_no_outliers %>% 
+  ggplot(aes(y = log10(price))) +
+  geom_boxplot(col = 'steelblue') + 
+  theme_minimal()
+
+grid.arrange(price3, price4, ncol = 2)
+```
+
+```{r qq_price, echo=TRUE}
+qqnorm(scraped_cleaned_no_outliers$price, pch = 1, frame = FALSE)
+qqline(scraped_cleaned_no_outliers$price, col = "steelblue", lwd = 2)
+```
+
+```{r qq_price_log, echo=TRUE}
+qqnorm(log10(scraped_cleaned_no_outliers$price), pch = 1, frame = FALSE)
+qqline(log10(scraped_cleaned_no_outliers$price), col = "steelblue", lwd = 2)
+```
+As we can see, the distribution is skewed to the right, but this was expected since there are some expensive apartments in limited numbers.
+Log transformation help with this issue as confirmed by all plots in this section.
+
+### District
+
+Regional differences in Slovakia have west east gradient in many socio-cultural aspects. Therefore, it is reasonable to expect the same pattern also in the prices of apartments.
+
+```{r top_10_districts, echo=TRUE, message=FALSE, warning=FALSE}
+top_bottom_10_districts <- scraped_cleaned_no_outliers %>% 
+  group_by(district) %>% 
+  summarize(price = mean(price, na.rm = TRUE),
+            adverts_count = n()) %>% 
+   filter(!between(dense_rank(price), 10 + 1, n() - 10)) %>% 
+  arrange(desc(price))
+```
+
+```{r top_10_districts_chart, echo=TRUE, message=FALSE, warning=FALSE}
+top_10_districts_chart <- top_bottom_10_districts %>% 
+  ggplot(aes(x = reorder(district, -price), y = price, text = paste0("Price: ",
+                                                                     format(round(price, 0),big.mark=" ",))
+  )) + 
+  geom_bar(stat='summary', fun.y = "mean", fill='steelblue') + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  scale_y_continuous(breaks = seq(0, 350000, by = 50000), labels = comma) + 
+  geom_text(aes(x = reorder(district, -price) ,y = price + 25000, label = adverts_count), size = 3) +
+  geom_hline(yintercept = 135900, linetype="dashed", color = "red") #dashed line is median price 
+
+ggplotly(top_10_districts_chart, tooltip = "text")
+```
+<br>
+And indeed it is confirmed in the chart. We can see that most expensive apartments are from western part of Slovakia with exceptions of Košice I and Poprad which are regional centers in the east. On the other hand all of the bottom 10 districts are located in eastern part. There I need to note, that most of these districts have very low number of observations (advertisements). This can tell us two things:
+
+* The low prices can be due to chance
+* The real estate market in this part of Slovakia is less developed.
+
+### Index
+
+As mentioned earlier, Index gives us aggregated value that aims to evaluate the quality of place where the apartment listed in the advertisement is located.
+```{r index_isna, echo=TRUE}
+sum(is.na(scraped_cleaned_no_outliers$index))
+sum(is.na(scraped_cleaned_no_outliers$index))/nrow(scraped_cleaned_no_outliers)
+```
+<br>
+There is 2055 (16.1% of total) advertisements where index was not available. 
+<br>
+```{r index_histo, echo=TRUE, message=FALSE, warning=FALSE}
+scraped_cleaned_no_outliers %>% 
+  select(index) %>% 
+  drop_na() %>% 
+  ggplot(aes(x = index)) +
+        geom_histogram(fill = "steelblue") +
+  theme_minimal()
+```
+<br>
+Distribution of the values is concentrated around higher values (7.5+) with significant skewness to the left side.
+<br>
+```{r index_price, echo=TRUE, message=FALSE, warning=FALSE}
+scraped_cleaned_no_outliers %>% 
+  select(price, index) %>% 
+  drop_na() %>% 
+  ggplot(aes(x = index, y = price)) +
+  geom_point(col = 'steelblue') + 
+  geom_smooth(method = "lm", se = FALSE, color = "red", aes(group = 1)) +
+  stat_regline_equation(label.x = 3, label.y = 650000) + # for regression equation 
+  stat_cor(aes(method = "pearson", label = after_stat(rr.label)), label.x = 3, label.y = 600000) + # for R^2 
+  theme_minimal() +
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma)
+```
+<br>
+Looking at the linear regression model, index explains roughly 10% of variance in price. I will check the correlation and p-values later in the EDA.
+
+### Condition
+
+```{r condition, echo=TRUE}
+i = 1
+```
+
+text
+
+### Area
+
+I expect the area to be one of the most important features impacting the price. The greater is the living area, the higher is the price. Obviously area is closely tied with e.g. type of apartments. More rooms usually means more space. 
+<br>
+```{r area_histo, echo=TRUE, message=FALSE, warning=FALSE}
+scraped_cleaned_no_outliers %>% 
+  filter(area < 200 & area > 10) %>% 
+  select(area) %>% 
+  drop_na() %>% 
+  ggplot(aes(x = area)) +
+        geom_histogram(fill = "steelblue") +
+  theme_minimal()
+```
+
+Distribution of area reminds the normal distribution the most out of all predictors we have in dataset. These is a skeweness to the right due to limited number of apartments with large living area. As you probably noticed, I filtered out all advertisements with area lower or equal to 10 and higher or equal to 200. I suspect that these are mistakes/intentionally wrong records.
+<br>
+```{r qq_area, echo=TRUE}
+qq_area <- scraped_cleaned_no_outliers %>% 
+  select(area) %>% 
+  filter(area > 10 & area < 200)
+
+qqnorm(qq_area$area, pch = 1, frame = FALSE)
+qqline(qq_area$area, col = "steelblue", lwd = 2)
+```
+<br>
+QQ plot is another way how to check the normality of distribution. Again, the skewness to the right is clearly visible.
+<br>
+```{r area_price, echo=TRUE, message=FALSE, warning=FALSE}
+scraped_cleaned_no_outliers %>% 
+  filter(area < 200 & area > 10) %>% 
+  ggplot(aes(x = area, y = price)) +
+  geom_point(col = 'steelblue') + 
+  geom_smooth(method = "lm", se = FALSE, color = "red", aes(group = 1)) +
+  stat_regline_equation(label.x = 3, label.y = 650000) + # for regression equation 
+  stat_cor(aes(method = "pearson", label = after_stat(rr.label)), label.x = 3, label.y = 600000) + # for R^2 
+  theme_minimal() +
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma)
+```
+<br>
+Area explains 24% of variance in price. This is much more compared to other numeric variables.
+On the other hand, at first glance it seems like the correlation is probably quite low. Price varies a lot in all area sizes.
+I read it as there is more than area what comes into price determination. Two apartments with the same area can have very different price e.g. due to location, equipment of the apartment, age, condition etc..
+
+### Provision
+
+```{r privsion_boxplot, echo=TRUE, message=FALSE, warning=FALSE}
+stat_box_data_prov <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.08) {
+  return(
+    data.frame(
+      y = 0.95 * upper_limit,
+      label = paste('n =', length(y), '\n',
+                    'x\u0305', ' =', round(mean(y), 0), '\n')
+    )
+  )
+}
+
+prov1 <- scraped_cleaned_no_outliers %>% 
+  ggplot(aes(x = factor(provision), y = price)) +
+  geom_boxplot(col = 'steelblue') + 
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
+  stat_summary(
+    fun.data = stat_box_data_prov, 
+    geom = "text", 
+    size = 3
+  ) + 
+  theme_minimal() +
+  labs(x = "type")
+
+ggplotly(prov1)
+```
+
+Interestingly enough it seems like the apartments with provision included in price have lower price then those without it. This may be due to fact that, real estate agencies know the market better than private advertisers and keep the price more reasonable. Also it can be due to mix of types in both baskets. Nevertheless, both groups have similar values of all statistical measures displayed in boxplots.
+
+### Certificate
+
+```{r cert_boxplot, echo=TRUE, message=FALSE, warning=FALSE}
+stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
+  return(
+    data.frame(
+      y = 0.95 * upper_limit,
+      label = paste('count =', length(y), '\n',
+                    'x\u0305', ' =', round(mean(y), 0), '\n')
+    )
+  )
+}
+
+cert1 <- scraped_cleaned_no_outliers %>% 
+  ggplot(aes(x = factor(certificate), y = price)) +
+  geom_boxplot(col = 'steelblue') + 
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
+  stat_summary(
+    fun.data = stat_box_data, 
+    geom = "text", 
+    size = 3
+  ) + 
+  theme_minimal() +
+  labs(x = "type")
+
+ggplotly(cert1)
+```
+
+### Type
+
+```{r type_boxplot, echo=TRUE, message=FALSE, warning=FALSE}
+stat_box_data <- function(y, upper_limit = max(scraped_cleaned_no_outliers$price) * 1.05) {
+  return(
+    data.frame(
+      y = 0.95 * upper_limit,
+      label = paste('count =', length(y), '\n',
+                    'x\u0305', ' =', round(mean(y), 0), '\n')
+    )
+  )
+}
+
+type1 <- scraped_cleaned_no_outliers %>% 
+  ggplot(aes(x = factor(type, levels = c("1 izbový byt",
+                                         "2 izbový byt",
+                                         "3 izbový byt",
+                                         "4 izbový byt",
+                                         "5 a viac izbový byt",
+                                         "Garsónka",
+                                         "Dvojgarsónka")),
+             y = price)) +
+  geom_boxplot(col = 'steelblue') + 
+  stat_summary(
+    fun.data = stat_box_data, 
+    geom = "text", 
+    size = 3
+  ) + 
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
+  theme_minimal() +
+  labs(x = "type")
+
+ggplotly(type1)
+```
+
+### Mean District Index
+
+As already mentioned, this variable serves as a extra feature for advertisements where index was not available. The assumption of this thought is that there is a spatial autocorrelation of features stepping into calculation of index.
+<br>
+```{r index_district_isna, echo=TRUE}
+sum(is.na(scraped_cleaned_no_outliers$index_mean_district))
+sum(is.na(scraped_cleaned_no_outliers$index_mean_district))/nrow(scraped_cleaned_no_outliers)
+```
+<br>
+Since there is 1391 rows (10.9% of total) with missing value, this feature covers approx. 700 cases of missing index value.
+<br>
+```{r index_district_histo, echo=TRUE, message=FALSE, warning=FALSE}
+scraped_cleaned_no_outliers %>% 
+  select(index_mean_district) %>% 
+  drop_na() %>% 
+  ggplot(aes(x = index_mean_district)) +
+        geom_histogram(fill = "steelblue") +
+  theme_minimal()
+```
+<br>
+Compared to index, district mean distribution resembles the normal distribution to higher extent, however is it still heavily skewed to the felt.
+```{r index_districts_price, echo=TRUE, message=FALSE, warning=FALSE}
+scraped_cleaned_no_outliers %>% 
+  select(price, index_mean_district) %>% 
+  drop_na() %>% 
+  ggplot(aes(x = index_mean_district, y = price)) +
+  geom_point(col = 'steelblue') + 
+  geom_smooth(method = "lm", se = FALSE, color = "red", aes(group = 1)) +
+  stat_regline_equation(label.x = 1.5, label.y = 650000) + # for regression equation 
+  stat_cor(aes(method = "pearson", label = after_stat(rr.label)), label.x = 1.5, label.y = 600000) + # for R^2 
+  theme_minimal() +
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma)
+```
+<br>
+It explains only 7% of price variance. Again, the correlation and p-values are discussed in next part of EDA.
+
+## Correlation 
+
+ADD P VALUES
+```{r corr, echo=TRUE}
+all_num_pred <- select_if(scraped_cleaned_no_outliers, is.numeric) %>% drop_na()
+
+M <- cor(all_num_pred)
+
+corrplot(M, method = 'number', order = 'AOE', type = 'upper', diag = FALSE)
+```
+
+There is a strong multicollinearity between index and mean district index. SPOILER ALERT Since the final model is an XGBoost model, I don't consider this a big issue. On the other hand, it may be beneficial in cases where there is no index value available (approx. 700 cases).
