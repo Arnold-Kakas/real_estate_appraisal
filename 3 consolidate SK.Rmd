@@ -81,6 +81,7 @@ pacman::p_load(
   janitor, # clean_names()
   skimr, # skim()
   sf,
+  tmap, # mapping
   bslib, # RMD theme
   cowplot, # plots alignment with plot_grid()
   ggpubr,
@@ -1207,6 +1208,35 @@ To nám môže povedať dve veci:
 
 - Nízke ceny môžu byť spôsobené náhodou (čo však zrejme nebude pravda, cena bude odrážať širšie ekonomické súvislosti)
 - Realitný trh v tejto časti Slovenska je málo rozvinutý.
+
+Na Mape nižšie vidíme zobrazené priemerné ceny v obciach (resp. mestských častiach) s aspoň piatimi inzerovanými bytmi.
+
+```{r}
+sf <- joined_data_cleaned %>% 
+  group_by(name_nsi) %>% 
+  summarise_all(list(mean), na.rm = TRUE)
+
+centroid <- st_centroid(sf)
+
+communes <- readRDS("data/geospatial_data/communes.RDS") %>% 
+  select(COMM_NAME) %>% 
+  clean_names() %>% 
+  st_join(centroid)
+
+create_custom_map <- function(data, fill_column) {
+  ggplot(data) +
+    geom_sf(aes(fill = !!rlang::ensym(fill_column))) +
+    theme_minimal() +
+    scale_fill_gradient(
+      low = "lightyellow",
+      high = "red",
+      labels = scales::comma_format(scale = 1)
+    )
+}
+
+create_custom_map(communes, "price") + labs(fill = "Priemerná cena")
+
+```
 
 ### Korelačná matica
 
