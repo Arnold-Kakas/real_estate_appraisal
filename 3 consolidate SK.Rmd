@@ -81,7 +81,6 @@ pacman::p_load(
   janitor, # clean_names()
   skimr, # skim()
   sf,
-  tmap, # mapping
   bslib, # RMD theme
   cowplot, # plots alignment with plot_grid()
   ggpubr,
@@ -105,7 +104,7 @@ Keďže sú z rôznych zdrojov, je potrebné niektoré hodnoty upraviť do rovna
 <br> Následne upravujem premenné do správnych typov, odfiltrujem preč záznamy, ktorých hodnoty sú odľahlé alebo úplne chýbajú a nemá zmysel ich imputovať.
 <br> Nie nevyhnutný je krok preloženia slovenských výrazov do angličtiny.
 Robím ho jednak z dôvodu, že som zvyknutý pracovať s anglickými výrazmi pri kódovaní a chcem aby aj dataset bol v tomto ohľade konzistentný.
-Druhým dôvodom je, že budem dataset nahrávať na [Kaggle](https://www.kaggle.com).
+Druhým dôvodom je, že budem dataset nahrávať na [Kaggle](https://www.kaggle.com/datasets/arnoldkakas/real-estate-dataset).
 <br> V poslednom kroku robím dve verzie datasetu.
 Jedna obsahuje premennú 'geometry' typu sfc_MULTIPOLYGON, ktorá robí problém alebo extrémne spomaluje výpočty niektorých sumačných funkciách ak sú aplikované na celý dataset.
 Preto na všetku EDA budem používať verziu bez nej.
@@ -279,7 +278,7 @@ joined_data <- joined_data %>%
 joined_data_wo_geom <- joined_data
 joined_data_wo_geom$geometry <- NULL
 
-write.csv(joined_data, "data/apartments_appraisal.csv")
+write.csv2(joined_data_wo_geom, "data/apartments_appraisal.csv", row.names = F)
 ```
 
 ```{r include=FALSE}
