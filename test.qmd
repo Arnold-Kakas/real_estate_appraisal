@@ -1,0 +1,259 @@
+---
+title: Exploratory data analysis
+author: Arnold Kakas
+format: html
+date: today
+theme: 
+  - flatly
+  - Style.scss
+toc: true
+toc-depth: 4
+execute:
+  warning: false  
+  echo: false
+---
+
+## Úvod
+
+V tomto blogu sa budem venovať <strong>Exploratory Data Analysis (EDA)</strong> čiže úvodnej analýze údajov, ktorej cieľom je zistiť aká je kvalita, obsah a štruktúra údajov. V tomto prípade ide o dáta z inzercií nehnuteľností. Dáta sú scrape-nuté z webu [Nehnutelnosti](https://www.nehnutelnosti.sk/). Podrobnejšie som prešiel procesom webscraping-u v mojom predchádzajúcom [blogovom príspevku](). <br> Komentáre v kódoch ponechávam v angličtine, je to best practice najmä ak pracujete v medzinárodnom prostredí.
+
+## Čo je EDA
+
+<br> <strong>Exploratory Data Analysis</strong> je neoddeliteľnou súčasťou dátovej analytiky (Data analysis)/dátovej vedy (Data science). <br>
+
+<centrum>![EDA v projekte vedy o údajoch. Zdroj: https://commons.wikimedia.org/wiki/File:Data_visualization_process_v1.png](data/EDA.PNG)
+
+</center>
+
+<br> Účelom EDA je zhrnúť hlavné charakteristiky súboru údajov (ako kvalita, obsah a štruktúra), objaviť vzorce a vzťahy medzi premennými a identifikovať trendy. Malo by nás to viesť k pochopeniu údajov a identifikácii kritických premenných vzhľadom na naše ciele. Ako je znázornené na obrázku, ide o iteratívny proces. Na základe vašich zistení môžete buď pokračovať v modelovaní/testovaní hypotéz a reportovaní, alebo sa vrátiť k čisteniu/spracovaniu údajov. <br> EDA zvyčajne začína načítaním údajov a kontrolou niekoľkých riadkov, aby ste získali prvotný "pocit" z údajov spolu s kontrolou štruktúry údajov, veľkosti vzorky, typov údajov, chýbajúcich hodnôt atď. Potom pokračujeme podrobnejšou analýzou čo nám pomáha pochopiť vzťahy a identifikovať odľahlé hodnoty a dôležité premenné. V EDA používame rôzne techniky a nástroje. Vo všeobecnosti ich možno rozdeliť do niekoľkých skupín:
+
+-   Súhrnné (jednopremenné) štatistiky - min, max, priemer, medián, kvartily, IQR, štandardná odchýlka, počty, frekvencia atď.
+-   Vizualizácia dát - histogram, boxplot, Paretov graf, bodové grafy, korelačná matica, čiarové grafy (pre časové rady), heatmapy atď.
+-   Bi-/viacpremenné štatistiky - korelácia, t-test, chí-kvadrát test, ANOVA, Kruskal-Wallisov test atď.
+
+Na základe zistení vytvoríme záver a buď pokračujeme v projekte, alebo sa vrátime k dodatočnému upratovaniu dát. Je to teda iteratívny proces. <br> Aj keď radšej robím EDA manuálne, existuje niekoľko R knižníc pre automatizované EDA. Sú užitočné pri prvotnom skúmaní údajov a identifikácii napr. dátových typov, premenných s veľkou časťou chýbajúcich hodnôt a iných "high-level" charakteristík. Sú to napríklad:
+
+-   DataExplorer
+-   ExPanDaR
+-   dataMaid
+-   dlookr
+
+## Úvodné čistenie dát
+
+<br>Pre načítanie knižníc rád používam funkciu `p_load` z knižnice [packman](https://cran.r-project.org/web/packages/pacman/index.html).
+
+```{r}
+#| include: false
+# import libraries
+if (!require("pacman")) {
+  install.packages("pacman")
+}
+
+pacman::p_load(
+  janitor, # clean_names()
+  skimr, # skim()
+  sf,
+  bslib, # RMD theme
+  cowplot, # plots alignment with plot_grid()
+  ggpubr,
+  ggQC, # pareto chart
+  plotly, # interactive charts
+  scales, # scales
+  GGally,
+  knitr,
+  modelsummary, # datasummary_correlation()
+  gtsummary,
+  ggstatsplot, # ggwithinstats()
+  effectsize, # interpret_kendalls_w()
+  tidyverse,
+  kableExtra
+)
+```
+
+<br> Nasleduje prvotné čistenie dát. V nasledujúcom kóde spájam 3 rôzne súbory. Keďže sú z rôznych zdrojov, je potrebné niektoré hodnoty upraviť do rovnakého tvaru (prípar názvov obcí). <br> Následne upravujem premenné do správnych typov, odfiltrujem preč záznamy, ktorých hodnoty sú odľahlé alebo úplne chýbajú a nemá zmysel ich imputovať. <br> Nie nevyhnutný je krok preloženia slovenských výrazov do angličtiny. Robím ho jednak z dôvodu, že som zvyknutý pracovať s anglickými výrazmi pri kódovaní a chcem aby aj dataset bol v tomto ohľade konzistentný. Druhým dôvodom je, že budem dataset nahrávať na [Kaggle](https://www.kaggle.com/datasets/arnoldkakas/real-estate-dataset). <br> V poslednom kroku robím dve verzie datasetu. Jedna obsahuje premennú 'geometry' typu sfc_MULTIPOLYGON, ktorá robí problém alebo extrémne spomaluje výpočty niektorých sumačných funkciách ak sú aplikované na celý dataset. Preto na všetku EDA budem používať verziu bez nej.
+
+```{r}
+#| include: false
+# Load advertisements data from RDS file
+advertisements <- readRDS("data/advertisements.RDS")
+
+# Clean and restructure advertisements data
+advertisements <- advertisements %>%
+  separate(type_of_real_estate, c("type", "area"), sep = " • ", remove = TRUE) %>%
+  select(link, type)
+
+# Load and process districts mapping data from Excel file
+districts_mapping <- openxlsx::read.xlsx("data/obce_okresy.xlsx") %>%
+  mutate(
+    municipality = str_replace(municipality, "Košice - ", "Košice - mestská časť "),
+    municipality = str_replace(municipality, "Bratislava - ", "Bratislava - mestská časť ")
+  )
+
+# Load and process scraped data with geocoding
+scraped_data <- readRDS("data/advertisements_complete_geocoded.RDS") %>%
+  filter(!is.na(link)) %>%
+  select(-c(address1, address2, info_text, district, municipality, address)) %>%
+  rename(quality_of_living = quanlity_of_living) %>%
+  mutate(
+    NAME_NSI = str_replace(NAME_NSI, "Hodruša-Hámre", "Hodruša - Hámre"),
+    NAME_NSI = str_replace(NAME_NSI, "Perín-Chym", "Perín - Chym"),
+    NAME_NSI = str_replace(NAME_NSI, "Šaštín-Stráže", "Šaštín - Stráže"),
+    NAME_NSI = str_replace(NAME_NSI, "Kostolná-Záriečie", "Kostolná - Záriečie")
+  )
+
+# Join advertisements and scraped data
+joined_data <- scraped_data %>%
+  left_join(advertisements, by = "link", multiple = "first", keep = FALSE) %>%
+  clean_names() %>%
+  filter(!is.na(price)) %>%
+  mutate(
+    # Convert relevant columns to numeric format
+    pocet_izieb_miestnosti = as.numeric(pocet_izieb_miestnosti),
+    uzit_plocha = str_replace(str_replace(uzit_plocha, ",", "."), " m2", ""),
+    energie = str_replace(str_replace(energie, ",", "."), " €/mesiac", ""),
+    provizia_zahrnuta_v_cene = str_replace_na(provizia_zahrnuta_v_cene, "Nie"),
+    # Create a 'rooms' column based on 'type' and handle missing values
+    rooms = case_when(type == "1 izbový byt" ~ 1,
+      type == "2 izbový byt" ~ 2,
+      type == "3 izbový byt" ~ 3,
+      type == "4 izbový byt" ~ 4,
+      type == "5 a viac izbový byt" ~ 5,
+      type == "Garsónka" ~ 1,
+      type == "Dvojgarsónka" ~ 2,
+      .default = NA
+    ),
+    pocet_izieb_miestnosti = coalesce(pocet_izieb_miestnosti, rooms, pocet_izieb_miestnosti)
+  ) %>%
+  mutate_at(c(
+    "index_of_living",
+    "uzit_plocha",
+    "energie",
+    "pocet_nadzemnych_podlazi",
+    "podlazie",
+    "pocet_izieb_miestnosti",
+    "rok_vystavby",
+    "rok_poslednej_rekonstrukcie",
+    "pocet_balkonov",
+    "pocet_lodzii"
+  ), as.numeric) %>%
+  select(-link) %>%
+  filter(pocet_izieb_miestnosti < 10 & !is.na(pocet_izieb_miestnosti)) %>%
+  mutate(
+    type = coalesce(type, case_when(
+      pocet_izieb_miestnosti == 1 ~ "1 izbový byt",
+      pocet_izieb_miestnosti == 2 ~ "2 izbový byt",
+      pocet_izieb_miestnosti == 3 ~ "3 izbový byt",
+      pocet_izieb_miestnosti == 4 ~ "4 izbový byt",
+      pocet_izieb_miestnosti >= 5 ~ "5 a viac izbový byt"
+    ))
+  ) %>%
+  select(-rooms) %>%
+  filter(!(type %in% c("Apartmán", "Mezonet", "Iný byt", "Loft"))) %>%
+  rename(
+    index = index_of_living,
+    condition = stav,
+    area = uzit_plocha,
+    provision = provizia_zahrnuta_v_cene,
+    certificate = energeticky_certifikat,
+    energy_costs = energie,
+    construction_type = typ_konstrukcie,
+    year_built = rok_vystavby,
+    last_reconstruction = rok_poslednej_rekonstrukcie,
+    total_floors = pocet_nadzemnych_podlazi,
+    floor = podlazie,
+    lift = vytah,
+    balkonies = pocet_balkonov,
+    loggia = pocet_lodzii,
+    cellar = pivnica,
+    orientation = orientacia
+  ) %>%
+  mutate(
+    # Recreate 'rooms' column after filtering and handle missing values
+    rooms = as.numeric(case_when(
+      type == "1 izbový byt" ~ 1,
+      type == "2 izbový byt" ~ 2,
+      type == "3 izbový byt" ~ 3,
+      type == "4 izbový byt" ~ 4,
+      type == "5 a viac izbový byt" ~ 5,
+      type == "Garsónka" ~ 1,
+      type == "Dvojgarsónka" ~ 2,
+      .default = NA
+    )),
+    # Transform 'provision' to binary
+    provision = as.numeric(case_when(
+      provision == "Áno" ~ 1,
+      provision == "Nie" ~ 0,
+      .default = NA
+    )),
+    # Transform 'lift' to binary
+    lift = as.numeric(case_when(
+      lift == "Áno" ~ 1,
+      .default = 0
+    )),
+    # Transform 'cellar' to binary
+    cellar = as.numeric(case_when(
+      cellar == "Áno" ~ 1,
+      .default = 0
+    )),
+    certificate = if_else(certificate == "nemá", "none", certificate)
+  ) %>%
+  select(-pocet_izieb_miestnosti) %>%
+  mutate(
+    # Convert relevant columns to numeric format
+    across(c(
+      "environment", "safety", "transport", "relax", "quality_of_living", "services"
+    ), na_if, "0"),
+    across(c(
+      "environment", "safety", "transport", "relax", "quality_of_living", "services"
+    ), as.numeric)
+  )
+
+# Translating Slovak terms into English
+# Define mapping vectors
+original_conditions <- c(
+  "Pôvodný stav", "Čiastočná rekonštrukcia", "Kompletná rekonštrukcia",
+  "Novostavba", "Vo výstavbe", "Developerský projekt"
+)
+english_conditions <- c(
+  "Original condition", "Partial reconstruction", "Complete reconstruction",
+  "New building", "Under construction", "Development project"
+)
+original_construction_type <- c("Tehlová", "Panelová", "Iná", "Kvádrová", "Zmiešaná", "Panelová, Tehlová", "Skeletová", "Tehlová, Železobetónová", "Kamenná", "Montovaná", "Drevená")
+english_construction_type <- c("Brick", "Panel", "Other", "Cube", "Mixed", "Panel, Brick", "Skeletal", "Brick, Reinforced concrete", "Stone", "Mounted", "Wooden")
+original_orientation <- c("Juhozápadná", "Južná", "Západná", "Východná", "Juhovýchodná", "Severovýchodná", "Severozápadná", "Severná")
+english_orientation <- c("Southwest", "South", "West", "East", "Southeast", "Northeast", "Northwest", "North")
+original_type <- c("3 izbový byt", "1 izbový byt", "2 izbový byt", "4 izbový byt", "Garsónka", "5 a viac izbový byt", "Dvojgarsónka")
+english_type <- c("3-room apartment", "1-room apartment", "2-room apartment", "4-room apartment", "Studio", "5 or more room apartment", "Two-room apartment")
+
+# Translate values
+joined_data <- joined_data %>%
+  mutate(
+    condition = recode(condition, !!!setNames(english_conditions, original_conditions)),
+    construction_type = recode(construction_type, !!!setNames(english_construction_type, original_construction_type)),
+    orientation = recode(orientation, !!!setNames(english_orientation, original_orientation)),
+    type = recode(type, !!!setNames(english_type, original_type))
+  )
+
+# Join with districts mapping data
+joined_data <- joined_data %>%
+  left_join(districts_mapping, join_by(name_nsi == municipality), keep = FALSE, multiple = "first")
+
+# Create a copy of joined data without geometry information
+joined_data_wo_geom <- joined_data
+joined_data_wo_geom$geometry <- NULL
+
+write.csv2(joined_data_wo_geom, "data/apartments_appraisal.csv", row.names = F)
+```
+
+```{r}
+#| include: false
+# remove objects from env and call garbage collection
+rm(advertisements, scraped_data, districts_mapping, english_conditions, original_conditions, english_construction_type, original_construction_type, english_orientation, original_orientation, english_type, original_type)
+gc(verbose = FALSE)
+```
+
+## EDA {.tabset .tabset-pills}
+
+### Sumárne informácie o datasete
+
+<br> Prvý krok v EDA je pozrieť sa na dáta ako celok. V jazyku R môžeme použiť napr. základnú funkciu `summary()`. Ja osobne používam rád funkciu `skim()` z knižnice skimr. Obe poskytujú zhrnutie a deskriptívne štatistiky premenných. Funkcia `skim()` je však podrobnejšia a vracia aj údaje o type premennej, formátovaní kompletnosti atď.

@@ -9,11 +9,9 @@ theme:
 toc: true
 toc-depth: 4
 code-fold: true
-code-summary: "Pozri kód"
 execute:
   warning: false  
   echo: false
-
 ---
 
 ## Úvod
@@ -656,7 +654,6 @@ gc(verbose = FALSE)
 ```
 
 ```{r}
-#| include: false
 skimmed_summary_cleaned %>%
   filter(skim_type == "character") %>%
   mutate(complete_rate = round(complete_rate, 1)) %>%
@@ -671,7 +668,6 @@ skimmed_summary_cleaned %>%
 ```
 
 ```{r}
-#| include: false
 skimmed_summary_cleaned %>%
   filter(skim_type == "numeric") %>%
   mutate(
