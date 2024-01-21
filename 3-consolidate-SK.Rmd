@@ -1,0 +1,1260 @@
+---
+title: "3. Consolidate"
+author: "Arnold Kakas"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    css: Style.scss
+    code_folding: hide
+    theme: flatly
+    highlight: tango
+    toc: true
+    toc_float: true
+    collapsed: false
+    smooth_scroll: true
+    toc_depth: 4
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+## Úvod
+
+V tomto blogu sa budem venovať <strong>Exploratory Data Analysis (EDA)</strong> čiže úvodnej analýze údajov, ktorej cieľom je zistiť aká je kvalita, obsah a štruktúra údajov.
+V tomto prípade ide o dáta z inzercií nehnuteľností.
+Dáta sú scrape-nuté z webu [Nehnutelnosti](https://www.nehnutelnosti.sk/).
+Podrobnejšie som prešiel procesom webscraping-u v mojom predchádzajúcom [blogovom príspevku]().
+<br> Komentáre v kódoch ponechávam v angličtine, je to best practice najmä ak pracujete v medzinárodnom prostredí.
+
+## Čo je EDA
+
+<br> <strong>Exploratory Data Analysis</strong> je neoddeliteľnou súčasťou dátovej analytiky (Data analysis)/dátovej vedy (Data science).
+<br>
+
+<centrum>![EDA v projekte vedy o údajoch. Zdroj: https://commons.wikimedia.org/wiki/File:Data_visualization_process_v1.png](data/EDA.PNG)
+
+</center>
+
+<br> Účelom EDA je zhrnúť hlavné charakteristiky súboru údajov (ako kvalita, obsah a štruktúra), objaviť vzorce a vzťahy medzi premennými a identifikovať trendy.
+Malo by nás to viesť k pochopeniu údajov a identifikácii kritických premenných vzhľadom na naše ciele.
+Ako je znázornené na obrázku, ide o iteratívny proces.
+Na základe vašich zistení môžete buď pokračovať v modelovaní/testovaní hypotéz a reportovaní, alebo sa vrátiť k čisteniu/spracovaniu údajov.
+<br> EDA zvyčajne začína načítaním údajov a kontrolou niekoľkých riadkov, aby ste získali prvotný "pocit" z údajov spolu s kontrolou štruktúry údajov, veľkosti vzorky, typov údajov, chýbajúcich hodnôt atď.
+Potom pokračujeme podrobnejšou analýzou čo nám pomáha pochopiť vzťahy a identifikovať odľahlé hodnoty a dôležité premenné.
+V EDA používame rôzne techniky a nástroje.
+Vo všeobecnosti ich možno rozdeliť do niekoľkých skupín:
+
+-   Súhrnné (jednopremenné) štatistiky - min, max, priemer, medián, kvartily, IQR, štandardná odchýlka, počty, frekvencia atď.
+-   Vizualizácia dát - histogram, boxplot, Paretov graf, bodové grafy, korelačná matica, čiarové grafy (pre časové rady), heatmapy atď.
+-   Bi-/viacpremenné štatistiky - korelácia, t-test, chí-kvadrát test, ANOVA, Kruskal-Wallisov test atď.
+
+Na základe zistení vytvoríme záver a buď pokračujeme v projekte, alebo sa vrátime k dodatočnému upratovaniu dát.
+Je to teda iteratívny proces.
+<br> Aj keď radšej robím EDA manuálne, existuje niekoľko R knižníc pre automatizované EDA.
+Sú užitočné pri prvotnom skúmaní údajov a identifikácii napr.
+dátových typov, premenných s veľkou časťou chýbajúcich hodnôt a iných "high-level" charakteristík.
+Sú to napríklad:
+
+-   DataExplorer
+-   ExPanDaR
+-   dataMaid
+-   dlookr
+
+## Úvodné čistenie dát
+
+<br>Pre načítanie knižníc rád používam funkciu `p_load` z knižnice [packman](https://cran.r-project.org/web/packages/pacman/index.html).
+
+```{r}
+# import libraries
+if (!require("pacman")) {
+  install.packages("pacman")
+}
+
+pacman::p_load(
+  janitor, # clean_names()
+  skimr, # skim()
+  sf,
+  bslib, # RMD theme
+  cowplot, # plots alignment with plot_grid()
+  ggpubr,
+  ggQC, # pareto chart
+  plotly, # interactive charts
+  scales, # scales
+  GGally,
+  knitr,
+  modelsummary, # datasummary_correlation()
+  gtsummary,
+  ggstatsplot, # ggwithinstats()
+  effectsize, # interpret_kendalls_w()
+  tidyverse,
+  kableExtra
+)
+```
+
+<br> Nasleduje prvotné čistenie dát.
+V nasledujúcom kóde spájam 3 rôzne súbory.
+Keďže sú z rôznych zdrojov, je potrebné niektoré hodnoty upraviť do rovnakého tvaru (prípar názvov obcí).
+<br> Následne upravujem premenné do správnych typov, odfiltrujem preč záznamy, ktorých hodnoty sú odľahlé alebo úplne chýbajú a nemá zmysel ich imputovať.
+<br> Nie nevyhnutný je krok preloženia slovenských výrazov do angličtiny.
+Robím ho jednak z dôvodu, že som zvyknutý pracovať s anglickými výrazmi pri kódovaní a chcem aby aj dataset bol v tomto ohľade konzistentný.
+Druhým dôvodom je, že budem dataset nahrávať na [Kaggle](https://www.kaggle.com/datasets/arnoldkakas/real-estate-dataset).
+<br> V poslednom kroku robím dve verzie datasetu.
+Jedna obsahuje premennú 'geometry' typu sfc_MULTIPOLYGON, ktorá robí problém alebo extrémne spomaluje výpočty niektorých sumačných funkciách ak sú aplikované na celý dataset.
+Preto na všetku EDA budem používať verziu bez nej.
+
+```{r}
+# Load advertisements data from RDS file
+advertisements <- readRDS("data/advertisements.RDS")
+
+# Clean and restructure advertisements data
+advertisements <- advertisements %>%
+  separate(type_of_real_estate, c("type", "area"), sep = " • ", remove = TRUE) %>%
+  select(link, type)
+
+# Load and process districts mapping data from Excel file
+districts_mapping <- openxlsx::read.xlsx("data/obce_okresy.xlsx") %>%
+  mutate(
+    municipality = str_replace(municipality, "Košice - ", "Košice - mestská časť "),
+    municipality = str_replace(municipality, "Bratislava - ", "Bratislava - mestská časť ")
+  )
+
+# Load and process scraped data with geocoding
+scraped_data <- readRDS("data/advertisements_complete_geocoded.RDS") %>%
+  filter(!is.na(link)) %>%
+  select(-c(address1, address2, info_text, district, municipality, address)) %>%
+  rename(quality_of_living = quanlity_of_living) %>%
+  mutate(
+    NAME_NSI = str_replace(NAME_NSI, "Hodruša-Hámre", "Hodruša - Hámre"),
+    NAME_NSI = str_replace(NAME_NSI, "Perín-Chym", "Perín - Chym"),
+    NAME_NSI = str_replace(NAME_NSI, "Šaštín-Stráže", "Šaštín - Stráže"),
+    NAME_NSI = str_replace(NAME_NSI, "Kostolná-Záriečie", "Kostolná - Záriečie")
+  )
+
+# Join advertisements and scraped data
+joined_data <- scraped_data %>%
+  left_join(advertisements, by = "link", multiple = "first", keep = FALSE) %>%
+  clean_names() %>%
+  filter(!is.na(price)) %>%
+  mutate(
+    # Convert relevant columns to numeric format
+    pocet_izieb_miestnosti = as.numeric(pocet_izieb_miestnosti),
+    uzit_plocha = str_replace(str_replace(uzit_plocha, ",", "."), " m2", ""),
+    energie = str_replace(str_replace(energie, ",", "."), " €/mesiac", ""),
+    provizia_zahrnuta_v_cene = str_replace_na(provizia_zahrnuta_v_cene, "Nie"),
+    # Create a 'rooms' column based on 'type' and handle missing values
+    rooms = case_when(type == "1 izbový byt" ~ 1,
+      type == "2 izbový byt" ~ 2,
+      type == "3 izbový byt" ~ 3,
+      type == "4 izbový byt" ~ 4,
+      type == "5 a viac izbový byt" ~ 5,
+      type == "Garsónka" ~ 1,
+      type == "Dvojgarsónka" ~ 2,
+      .default = NA
+    ),
+    pocet_izieb_miestnosti = coalesce(pocet_izieb_miestnosti, rooms, pocet_izieb_miestnosti)
+  ) %>%
+  mutate_at(c(
+    "index_of_living",
+    "uzit_plocha",
+    "energie",
+    "pocet_nadzemnych_podlazi",
+    "podlazie",
+    "pocet_izieb_miestnosti",
+    "rok_vystavby",
+    "rok_poslednej_rekonstrukcie",
+    "pocet_balkonov",
+    "pocet_lodzii"
+  ), as.numeric) %>%
+  select(-link) %>%
+  filter(pocet_izieb_miestnosti < 10 & !is.na(pocet_izieb_miestnosti)) %>%
+  mutate(
+    type = coalesce(type, case_when(
+      pocet_izieb_miestnosti == 1 ~ "1 izbový byt",
+      pocet_izieb_miestnosti == 2 ~ "2 izbový byt",
+      pocet_izieb_miestnosti == 3 ~ "3 izbový byt",
+      pocet_izieb_miestnosti == 4 ~ "4 izbový byt",
+      pocet_izieb_miestnosti >= 5 ~ "5 a viac izbový byt"
+    ))
+  ) %>%
+  select(-rooms) %>%
+  filter(!(type %in% c("Apartmán", "Mezonet", "Iný byt", "Loft"))) %>%
+  rename(
+    index = index_of_living,
+    condition = stav,
+    area = uzit_plocha,
+    provision = provizia_zahrnuta_v_cene,
+    certificate = energeticky_certifikat,
+    energy_costs = energie,
+    construction_type = typ_konstrukcie,
+    year_built = rok_vystavby,
+    last_reconstruction = rok_poslednej_rekonstrukcie,
+    total_floors = pocet_nadzemnych_podlazi,
+    floor = podlazie,
+    lift = vytah,
+    balkonies = pocet_balkonov,
+    loggia = pocet_lodzii,
+    cellar = pivnica,
+    orientation = orientacia
+  ) %>%
+  mutate(
+    # Recreate 'rooms' column after filtering and handle missing values
+    rooms = as.numeric(case_when(
+      type == "1 izbový byt" ~ 1,
+      type == "2 izbový byt" ~ 2,
+      type == "3 izbový byt" ~ 3,
+      type == "4 izbový byt" ~ 4,
+      type == "5 a viac izbový byt" ~ 5,
+      type == "Garsónka" ~ 1,
+      type == "Dvojgarsónka" ~ 2,
+      .default = NA
+    )),
+    # Transform 'provision' to binary
+    provision = as.numeric(case_when(
+      provision == "Áno" ~ 1,
+      provision == "Nie" ~ 0,
+      .default = NA
+    )),
+    # Transform 'lift' to binary
+    lift = as.numeric(case_when(
+      lift == "Áno" ~ 1,
+      .default = 0
+    )),
+    # Transform 'cellar' to binary
+    cellar = as.numeric(case_when(
+      cellar == "Áno" ~ 1,
+      .default = 0
+    )),
+    certificate = if_else(certificate == "nemá", "none", certificate)
+  ) %>%
+  select(-pocet_izieb_miestnosti) %>%
+  mutate(
+    # Convert relevant columns to numeric format
+    across(c(
+      "environment", "safety", "transport", "relax", "quality_of_living", "services"
+    ), na_if, "0"),
+    across(c(
+      "environment", "safety", "transport", "relax", "quality_of_living", "services"
+    ), as.numeric)
+  )
+
+# Translating Slovak terms into English
+# Define mapping vectors
+original_conditions <- c(
+  "Pôvodný stav", "Čiastočná rekonštrukcia", "Kompletná rekonštrukcia",
+  "Novostavba", "Vo výstavbe", "Developerský projekt"
+)
+english_conditions <- c(
+  "Original condition", "Partial reconstruction", "Complete reconstruction",
+  "New building", "Under construction", "Development project"
+)
+original_construction_type <- c("Tehlová", "Panelová", "Iná", "Kvádrová", "Zmiešaná", "Panelová, Tehlová", "Skeletová", "Tehlová, Železobetónová", "Kamenná", "Montovaná", "Drevená")
+english_construction_type <- c("Brick", "Panel", "Other", "Cube", "Mixed", "Panel, Brick", "Skeletal", "Brick, Reinforced concrete", "Stone", "Mounted", "Wooden")
+original_orientation <- c("Juhozápadná", "Južná", "Západná", "Východná", "Juhovýchodná", "Severovýchodná", "Severozápadná", "Severná")
+english_orientation <- c("Southwest", "South", "West", "East", "Southeast", "Northeast", "Northwest", "North")
+original_type <- c("3 izbový byt", "1 izbový byt", "2 izbový byt", "4 izbový byt", "Garsónka", "5 a viac izbový byt", "Dvojgarsónka")
+english_type <- c("3-room apartment", "1-room apartment", "2-room apartment", "4-room apartment", "Studio", "5 or more room apartment", "Two-room apartment")
+
+# Translate values
+joined_data <- joined_data %>%
+  mutate(
+    condition = recode(condition, !!!setNames(english_conditions, original_conditions)),
+    construction_type = recode(construction_type, !!!setNames(english_construction_type, original_construction_type)),
+    orientation = recode(orientation, !!!setNames(english_orientation, original_orientation)),
+    type = recode(type, !!!setNames(english_type, original_type))
+  )
+
+# Join with districts mapping data
+joined_data <- joined_data %>%
+  left_join(districts_mapping, join_by(name_nsi == municipality), keep = FALSE, multiple = "first")
+
+# Create a copy of joined data without geometry information
+joined_data_wo_geom <- joined_data
+joined_data_wo_geom$geometry <- NULL
+
+write.csv2(joined_data_wo_geom, "data/apartments_appraisal.csv", row.names = F)
+```
+
+```{r include=FALSE}
+# remove objects from env and call garbage collection
+rm(advertisements, scraped_data, districts_mapping, english_conditions, original_conditions, english_construction_type, original_construction_type, english_orientation, original_orientation, english_type, original_type)
+gc(verbose = FALSE)
+```
+
+## EDA {.tabset .tabset-pills}
+
+### Sumárne informácie o datasete
+
+<br> Prvý krok v EDA je pozrieť sa na dáta ako celok.
+V jazyku R môžeme použiť napr.
+základnú funkciu `summary()`.
+Ja osobne používam rád funkciu `skim()` z knižnice skimr.
+Obe poskytujú zhrnutie a deskriptívne štatistiky premenných.
+Funkcia `skim()` je však podrobnejšia a vracia aj údaje o type premennej, formátovaní kompletnosti atď.
+
+```{r echo=FALSE}
+skimmed_summary <- skim(joined_data_wo_geom)
+
+skimmed_summary %>%
+  filter(skim_type == "character") %>%
+  mutate(complete_rate = round(complete_rate, 1)) %>%
+  select(c(variable = skim_variable, missing = n_missing, complete_rate, empty = character.empty, unique = character.n_unique)) %>%
+  kable(format = "html", format.args = list(big.mark = " ")) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover"),
+    full_width = F,
+    font_size = 12,
+    position = "left"
+  )
+```
+
+```{r echo=FALSE}
+skimmed_summary %>%
+  filter(skim_type == "numeric") %>%
+  mutate(
+    complete_rate = round(complete_rate, 1),
+    numeric.mean = round(numeric.mean, 1),
+    numeric.sd = round(numeric.sd, 1)
+  ) %>%
+  select(c(variable = skim_variable, missing = n_missing, complete_rate, mean = numeric.mean, sd = numeric.sd, p0 = numeric.p0, p25 = numeric.p25, p50 = numeric.p50, p75 = numeric.p75, p100 = numeric.p100, hist = numeric.hist)) %>%
+  kable(format = "html", digits = 1, format.args = list(big.mark = " ")) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover"),
+    full_width = F,
+    font_size = 12,
+    position = "left"
+  )
+```
+
+<br> Prvých/posledných 5 riadkov si zobrazíme pomocou funkcií `head()` resp.
+`tail()` s parametrom 5.
+
+```{r echo=FALSE}
+head(joined_data_wo_geom, 5) %>%
+  mutate_if(is.numeric,
+    round,
+    digits = 1
+  ) %>%
+  kable(format = "html") %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover"),
+    full_width = F,
+    font_size = 12,
+    position = "left"
+  ) %>%
+  scroll_box(width = "100%")
+```
+
+```{r echo=FALSE}
+tail(joined_data_wo_geom, 5) %>%
+  mutate_if(is.numeric,
+    round,
+    digits = 1
+  ) %>%
+  kable(format = "html") %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover"),
+    full_width = F,
+    font_size = 12,
+    position = "left"
+  ) %>%
+  scroll_box(width = "100%")
+```
+
+```{r include=FALSE}
+rm(joined_data_wo_geom)
+gc(verbose = FALSE)
+```
+
+<br> Náš dataset pozostáva z 27 premenných.
+10 je kategorických (kvalitatívnych) a 17 kvantitatívnych.
+Z tabuliek je hneď vidieť prvý problém, ktorý bude nutné vyriešiť - <strong>chýbajúce dáta</strong>.
+Tu sa ponúka niekoľko možností ako sa k tomuto problému postaviť:
+
+-   *Odstránenie riadkov alebo stĺpcov s chýbajúcimi hodnotami*: Táto metóda je vhodná, ak počet chýbajúcich hodnôt je malý v porovnaní s celkovým počtom hodnôt v dátovom sete.
+    Avšak táto metóda môže viesť k strate informácií a môže ovplyvniť výsledky analýzy.
+
+-   *Imputácia hodnôt*: Táto metóda spočíva v nahradení chýbajúcich hodnôt inými hodnotami.
+    Existuje niekoľko spôsobov, ako to dosiahnuť, ako napríklad nahradenie chýbajúcich hodnôt priemerom, mediánom, modusom alebo inými štatistickými metódami.
+    Táto metóda môže byť vhodná, ak počet chýbajúcich hodnôt je relatívne malý a poznáme vlastnosti premennej (napr. rozloženie má veľký vplyv na hodnotu priemeru. Ak premenná obsahuje odľahlé hodnotz, medián je lepšou voľbou).
+    Výhodou týchto metód je rýchlosť aplikovania.
+
+-   *Použitie modelov strojového učenia*: Táto metóda spočíva v použití modelov strojového učenia (napr. KNN, LM, Random Forest) na predpovedanie chýbajúcich hodnôt.
+    Táto metóda môže byť vhodná, ak počet chýbajúcich hodnôt je vysoký a ak existuje dostatočné množstvo dát na trénovanie modelu.
+    Ich použitie je tiež vhodné ak predpokladáme komplexné vzťahy medzi premennými a máme niekoľko prediktorov s výrazným vplyvom na premennú s chýbajúcimi hodnotami.
+    Tiež je vhodné zvážit tieto metódy v prípade nelineárnych vzťahov medzi premennými.
+
+-   *Ponechanie chýbajúcich hodnôt*: Ponechanie chýbajúcich hodnôt a pristupovanie k nim ako ku špecifickej situácii je tiež možnosťou.
+
+Druhým problémom, ktorý treba bežne riešiť, je prítomnosť <strong>odľahlých hodnôt (outliers)</strong>.
+Opäť máme niekoľko možných riešení.
+
+-   *Odstránenie riadkov alebo stĺpcov s odľahlými hodnotami*: Keďže počet odľahlých hodnôt je malý (sú to extrémne hodnoty), táto metóda je schodnejšia než bola pri výskyte chýbajúcich hodnôt, ktorých počet je vysoký.
+
+-   *Nahradenie odľahlých hodnôt*: Na výber máme z viacerých možností.
+    Priemer, medián, použitie KNN imputácie.
+
+-   *Transformácia*: Existuje množstvo metód transformácie dát, ktoré môžeme použit.
+    Veľmi často sa používa *logaritmická transformácia*, v prípade ktorej aplikujeme logaritmus (najčastejšie prirodzený) na každú hodnotu vo vektore.
+    Ďalšou možnosťou je *štandardizácia* (z-skóre) ak naše dáta spĺňajú predpoklady pre túto metódu.
+    Použiť môžeme aj *winsorizáciu*, ktorá sa používa na nahradenie odľahlých hodnôt s hodnotami, ktoré sú bližšie k ostatným hodnotám v datasete (capping/trimming).
+    Môžeme použiť štandardnú winsorizáciu alebo winsorizáciu na základe percentilov.
+    *Binning* je posledná metóda, ktorú uvediem.
+    Je zaujímavá, lebo jej výsledkom nemusí byť nevyhnutne číselná hodnota, ale kategorická premenná.
+    Pôvodná hodnota sa nahradí intervalom (bin), do ktorého spadá (napr. osoba vo veku 32 rokov spadá do kategórie 30-34).
+    Môže sa však nahradiť aj strednou hodnotou v rámci tohto binu (napr. priemerom 33,2 alebo medianom 32,9).
+
+**Chýbajúce hodnoty**
+
+Ako prvé sa zbavíme stĺpcov, ktoré majú veľmi vysoký počet chýbajúcich záznamov a ich imputácia by mohla skresliť výsledky a spôsobiť nepresnosti v analýze.
+
+```{r include=FALSE}
+joined_data_cleaned <- joined_data %>%
+  select(-c(
+    construction_type,
+    lift,
+    cellar,
+    orientation,
+    energy_costs,
+    year_built,
+    last_reconstruction,
+    total_floors,
+    floor,
+    balkonies,
+    loggia
+  ))
+```
+
+```{r include=FALSE}
+rm(joined_data)
+gc(verbose = FALSE)
+```
+
+Následne môžeme vyriesiť tie prípady, kde imputácia dáva zmysel.
+<br> Je to napríklad stĺpec index a jeho šesť kategórií: environment, quality_of_living, safety, transport, services a relax.
+Index môže mať hodnotu od 0 do 10 a pripravuje ho slovenský startup [City Performer](https://cityperformer.com/).
+Tento údaj nie je k dispozícii pre všetky inzeráty.
+Môžeme však zoskupiť záznamy podľa obce a chýbajúce hodnoty doplniť priemerom.
+
+```{r}
+joined_data_cleaned_wo_geom <- joined_data_cleaned
+joined_data_cleaned_wo_geom$geometry <- NULL
+
+# price where we have index
+mun_ind_price <- joined_data_cleaned_wo_geom %>%
+  filter(!is.na(index)) %>%
+  group_by(name_nsi) %>%
+  summarize(price_with_before = mean(price, na.rm = TRUE)) %>%
+  summary() %>%
+  as.data.frame() %>%
+  filter(str_trim(Var2) != "name_nsi") %>%
+  separate(col = Freq, sep = ":", c("measure", "value")) %>%
+  mutate(value = as.numeric(str_squish(value))) %>%
+  select(
+    Measure = measure,
+    `Price with index before` = value
+  )
+
+# price where we don't have index
+mun_no_ind_price <- joined_data_cleaned_wo_geom %>%
+  filter(is.na(index)) %>%
+  group_by(name_nsi) %>%
+  summarize(price_without_before = mean(price, na.rm = TRUE)) %>%
+  summary() %>%
+  as.data.frame() %>%
+  filter(str_trim(Var2) != "name_nsi") %>%
+  separate(col = Freq, sep = ":", c("measure", "value")) %>%
+  mutate(value = as.numeric(str_squish(value))) %>%
+  select(`Price without index before` = value)
+
+# imputation on municipality level
+joined_data_cleaned <- joined_data_cleaned %>%
+  group_by(name_nsi) %>%
+  mutate(
+    index2 = mean(index, na.rm = TRUE),
+    environment2 = mean(environment, na.rm = TRUE),
+    quality_of_living2 = mean(quality_of_living, na.rm = TRUE),
+    safety2 = mean(safety, na.rm = TRUE),
+    transport2 = mean(transport, na.rm = TRUE),
+    services2 = mean(services, na.rm = TRUE),
+    relax2 = mean(relax, na.rm = TRUE),
+    price_after = mean(price, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+joined_data_cleaned_wo_geom <- joined_data_cleaned
+joined_data_cleaned_wo_geom$geometry <- NULL
+
+# price where we have index after imputation
+mun_imputed_ind_price <- joined_data_cleaned_wo_geom %>%
+  filter(!is.na(index2)) %>%
+  group_by(name_nsi) %>%
+  summarize(price_with_after = mean(price_after, na.rm = TRUE)) %>%
+  summary() %>%
+  as.data.frame() %>%
+  filter(str_trim(Var2) != "name_nsi") %>%
+  separate(col = Freq, sep = ":", c("measure", "value")) %>%
+  mutate(value = as.numeric(str_squish(value))) %>%
+  select(`Price with index after` = value)
+
+# price where we don't have index after imputation
+mun_imputed_no_ind_price <- joined_data_cleaned_wo_geom %>%
+  filter(is.na(index2)) %>%
+  group_by(name_nsi) %>%
+  summarize(price_with_after = mean(price_after, na.rm = TRUE)) %>%
+  summary() %>%
+  as.data.frame() %>%
+  filter(str_trim(Var2) != "name_nsi") %>%
+  separate(col = Freq, sep = ":", c("measure", "value")) %>%
+  mutate(value = as.numeric(str_squish(value))) %>%
+  select(`Price without index after` = value)
+
+comparison_mun_ind <- cbind(mun_ind_price, mun_imputed_ind_price, mun_no_ind_price, mun_imputed_no_ind_price)
+
+joined_data_cleaned <- joined_data_cleaned %>%
+  mutate(
+    index = coalesce(index, index2),
+    environment = coalesce(environment, environment2),
+    quality_of_living = coalesce(quality_of_living, quality_of_living2),
+    safety = coalesce(safety, safety2),
+    transport = coalesce(transport, transport2),
+    services = coalesce(services, services2),
+    relax = coalesce(relax, relax2)
+  ) %>%
+  select(-c(
+    index2,
+    environment2,
+    quality_of_living2,
+    safety2,
+    transport2,
+    services2,
+    relax2,
+    price_after
+  ))
+
+comparison_mun_ind %>%
+  kable(format = "html", format.args = list(big.mark = " ")) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover"),
+    full_width = F,
+    font_size = 12,
+    position = "left"
+  )
+```
+
+```{r include=FALSE}
+rm(joined_data_cleaned_wo_geom, comparison_mun_ind, mun_ind_price, mun_imputed_ind_price, mun_no_ind_price, mun_imputed_no_ind_price)
+gc(verbose = FALSE)
+```
+
+Ako vidíme, po imputácii sa distribúcia ceny nehnuteľnosti (ako premennej, pre ktorú budeme vytvárať predikčný model) zásadne nezmenila.
+
+**Odľahlé hodnoty**
+
+Podobne ako pri indexe, odľahlé hodnoty cien nehnuteľností odstraňujeme v kontexte obcí.
+Dáta agregujeme podľa názvu obce a pokiaľ niektorý záznam presahuje hodnotu mediánu +- 1,5 násobok medzikvartilového rozpätia, tak záznam odstránime.
+
+```{r}
+joined_data_cleaned <- joined_data_cleaned %>%
+  filter(!is.na(price)) %>%
+  group_by(name_nsi) %>%
+  mutate(
+    IQR = IQR(price),
+    median = median(price),
+    lower = median - 1.5 * IQR,
+    upper = median + 1.5 * IQR,
+  ) %>%
+  ungroup() %>%
+  filter(price >= lower & price <= upper) %>%
+  select(-lower, -upper, -median, -IQR)
+```
+
+Niekedy je potrebné ešte zvážiť jednotlivé prípady.
+Napr.
+po predchádzajúcom odfiltrovaní niektorých záznamov ostal v datasete záznam s cenou 888 888, celkom určite to nie je skutočná cena a tento riadok zmažeme tiež.
+
+```{r}
+# removing record with dummy price
+joined_data_cleaned <- joined_data_cleaned[joined_data_cleaned$price != max(joined_data_cleaned$price), ]
+```
+
+Rozloha tiež obsahuje záznamy, ktoré bude lepšie odstrániť.
+Keď sa pozrieme na hodnoty prvých a posledných piatich promile, je jasné, že odstraňovať budeme len veľmi malé množstvo záznamov.
+
+```{r}
+quantile(joined_data_cleaned$area, probs = seq(.0, 0.005, by = .001), na.rm = TRUE) %>%
+  as.data.frame() %>%
+  rownames_to_column() %>%
+  `colnames<-`(c("Percentil", "Rozloha")) %>%
+  kable(format = "html", digits = 1, format.args = list(big.mark = " ")) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover"),
+    full_width = F,
+    font_size = 12,
+    position = "left"
+  )
+```
+
+```{r}
+quantile(joined_data_cleaned$area, probs = seq(.95, 1, by = .01), na.rm = TRUE) %>%
+  as.data.frame() %>%
+  rownames_to_column() %>%
+  `colnames<-`(c("Percentil", "Rozloha")) %>%
+  kable(format = "html", digits = 1, format.args = list(big.mark = " ")) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover"),
+    full_width = F,
+    font_size = 12,
+    position = "left"
+  )
+```
+
+```{r}
+min_area <- quantile(joined_data_cleaned$area, 0.003, na.rm = TRUE)[[1]]
+max_area <- quantile(joined_data_cleaned$area, 0.999, na.rm = TRUE)[[1]]
+
+joined_data_cleaned <- joined_data_cleaned[joined_data_cleaned$area > min_area & joined_data_cleaned$area < max_area, ]
+```
+
+**Ostatné faktory**
+
+Nasleduje posledné dočistenie dát pred tým, než budeme pokračovať v detailnejšej EDA.
+V tomto kroku odstraňujeme záznamy z obcí, ktoré majú menej ako 5 inzerátov.
+Namiesto 5 by sme mohli vzbrať aj iné číslo, ale existuje "rule of thumb", ktoré tvrdí, že je 93,75% šanca, že medián populácie is medzi najnižšou a najvyššou hodnotou náhodne vybranej vzorky.
+
+```{r}
+# keep only municipalities with at least 5 ads, Rule of 5
+number_of_ads <- joined_data_cleaned %>%
+  group_by(name_nsi) %>%
+  tally() %>%
+  arrange(n)
+
+number_of_ads$geometry <- NULL
+
+joined_data_cleaned <- joined_data_cleaned %>%
+  left_join(number_of_ads, by = "name_nsi", keep = FALSE) %>%
+  filter(n > 4) %>%
+  select(-n) %>%
+  filter(!is.na(price))
+
+# keep the list of municipalities for app filter
+relevant_mun <- number_of_ads %>%
+  filter(n > 4) %>%
+  select(1)
+
+saveRDS(relevant_mun, file = "data/app_obce_filter_list.rds")
+```
+
+```{r include=FALSE}
+rm(relevant_mun, number_of_ads, skimmed_summary, min_area, max_area)
+gc(verbose = FALSE)
+```
+
+Po týchto pár zmenách je stav viditeľne lepší.
+Ostáva nám niekoľko premenných, ktoré obsahujú chýbajúce záznamy.
+O tie sa postaráme neskôr pri príprave <strong>ML modelu</strong>.
+
+```{r include=FALSE}
+joined_data_cleaned_wo_geom <- joined_data_cleaned
+joined_data_cleaned_wo_geom$geometry <- NULL
+
+skimmed_summary_cleaned <- skim(joined_data_cleaned_wo_geom)
+
+rm(joined_data_cleaned_wo_geom)
+gc(verbose = FALSE)
+```
+
+```{r echo=FALSE}
+skimmed_summary_cleaned %>%
+  filter(skim_type == "character") %>%
+  mutate(complete_rate = round(complete_rate, 1)) %>%
+  select(c(variable = skim_variable, missing = n_missing, complete_rate, empty = character.empty, unique = character.n_unique)) %>%
+  kable(format = "html", format.args = list(big.mark = " ")) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover"),
+    full_width = F,
+    font_size = 12,
+    position = "left"
+  )
+```
+
+```{r echo=FALSE}
+skimmed_summary_cleaned %>%
+  filter(skim_type == "numeric") %>%
+  mutate(
+    complete_rate = round(complete_rate, 1),
+    numeric.mean = round(numeric.mean, 1),
+    numeric.sd = round(numeric.sd, 1)
+  ) %>%
+  select(c(variable = skim_variable, missing = n_missing, complete_rate, mean = numeric.mean, sd = numeric.sd, p0 = numeric.p0, p25 = numeric.p25, p50 = numeric.p50, p75 = numeric.p75, p100 = numeric.p100, hist = numeric.hist)) %>%
+  kable(format = "html", digits = 1, format.args = list(big.mark = " ")) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover"),
+    full_width = F,
+    font_size = 12,
+    position = "left"
+  )
+
+rm(skimmed_summary_cleaned, skimmed_summary)
+```
+
+### Cena
+
+Cena je hlavná premenná, ktorá nás zaujíma a ktorú budeme neskôr predikovať pomocou natrénovaného ML modelu.
+
+```{r, echo=TRUE}
+price1 <- joined_data_cleaned %>%
+  ggplot(aes(x = price)) +
+  geom_histogram(fill = "steelblue", binwidth = 10000) +
+  scale_x_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
+  theme_minimal() +
+  labs(
+    y = "Počet",
+    x = NULL,
+    title = "Rozloženie cien nehnuteľností"
+  )
+
+
+price2 <- joined_data_cleaned %>%
+  ggplot(aes(y = price)) +
+  geom_boxplot(col = "steelblue", outlier.alpha = 0.1) +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
+  coord_flip() +
+  labs(y = "Cena")
+
+
+plot_grid(price1, price2, ncol = 1, align = "v")
+```
+
+Rozloženie hodnôt je asymetrické s pozitívnym (pravostranným) zošikmením.
+Toto sa dalo očakávať vzľadom na to, že drahé nehnuteľnosti sa nachádzajú v ponuke menej často.
+V prípade potreby môžeme využiť logaritmickú transformáciu aby sme získali normálne rozdelenie.
+
+```{r include=FALSE}
+rm(price1, price2)
+gc(verbose = FALSE)
+```
+
+### Index
+
+Index udáva agregované hodnotenie šiestich rôznych charakteristík miesta, kde sa nehnuteľnosť nachádza.
+
+<br> `r sum(is.na(joined_data_cleaned$index))` inzerátov ( `r round(sum(is.na(joined_data_cleaned$index))/nrow(joined_data_cleaned)*100,1)` % zo všetkých) nemá ani po imputácii dostupný tento údaj.
+<br>
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+index1 <- joined_data_cleaned %>%
+  select(index) %>%
+  drop_na() %>%
+  ggplot(aes(x = index)) +
+  geom_histogram(fill = "steelblue") +
+  theme_minimal() +
+  labs(
+    y = "Počet",
+    x = NULL,
+    title = "Rozloženie indexu bývania"
+  )
+
+index2 <- joined_data_cleaned %>%
+  select(index) %>%
+  drop_na() %>%
+  ggplot(aes(y = index)) +
+  geom_boxplot(col = "steelblue", outlier.alpha = 0.1) +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  coord_flip() +
+  labs(y = "Index")
+
+
+plot_grid(index1, index2, ncol = 1, align = "v")
+```
+
+<br> Na rozdiel od cien, index bývania má negatívne zošikmenie. Priemerná hodnota je `r round(mean(joined_data_cleaned$index, na.rm = TRUE),1)` bodu a medián `r round(median(joined_data_cleaned$index, na.rm = TRUE),1)` bodu. Medzi inzerátmi však nájdeme aj hodnoty nižšie ako 4 body.
+<br>
+Jednotlivé kategórie, ktoré sa podieľajú na výslednom indexe majú niekoľko spoločných vlasností. Všetky majú medián aj priemer v hornej polovici možných bodov. Je to do istej miery očakávateľné, keďže hodnotenie je zrejme zamerané najmä na mestá a väčšie obce. Je tam jednak dostatok ponúk na trhu s nehnuteľnosťami aby sa vôbec oplatilo venovať mu pozornosť a vzhľadom na veľkú ponuku, a teda pravdepodobne aj dopyt, bude občianska vybavenosť aspoň na uspokojivej úrovni. Zo šiestich kategórií sa mierne odchyľuje "životné prostredie" a celkom evidentne "relax", pri ktorom ani jedna lokalita nedosiahla maximálny počet bodov.
+
+```{r echo=FALSE}
+index_categories_df <- joined_data_cleaned %>%
+  select(environment, quality_of_living, safety, transport, services, relax) %>%
+  drop_na()
+
+index_categories_df$geometry <- NULL
+
+index_categories_df <- index_categories_df %>%
+  pivot_longer(
+    cols = c(environment, quality_of_living, safety, transport, services, relax),
+    names_to = "Category",
+    values_to = "value"
+  ) %>%
+  mutate(Category = factor(Category,
+    levels = c("environment", "quality_of_living", "safety", "transport", "services", "relax"), ordered = TRUE
+  ))
+
+index_categories_df %>%
+  summarize(
+    .by = Category,
+    Min = round(min(value), 1),
+    "1st Qu." = round(quantile(value, probs = 0.25), 1),
+    Median = round(median(value), 1),
+    Mean = round(mean(value), 1),
+    "3rd Qu." = round(quantile(value, probs = 0.75), 1),
+    Max = round(max(value), 1)
+  ) %>%
+  kable(format = "html", digits = 1, format.args = list(big.mark = " ")) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover"),
+    full_width = F,
+    font_size = 12,
+    position = "left"
+  )
+```
+
+```{r}
+index_vars <- joined_data_cleaned %>%
+  select(price, index, environment, quality_of_living, safety, transport, services, relax)
+
+index_vars$geometry <- NULL
+
+index_vars <- index_vars %>% drop_na()
+
+index_var_gathered <- index_vars %>% 
+  select(-index, -price) %>% 
+  rowid_to_column() %>% 
+  gather(key = "var", value = "score", environment:relax)
+
+set.seed(1)
+ggwithinstats(data = index_var_gathered,
+              x = var,
+              y = score,
+              type = "nonparametric")
+
+```
+<br>Napriek podobnostiam medzi kategóriami, rozdiely ich hodnôt sú štatisticky významne odlišné (p hodnota < 0.01) a táto odlišnosť je mierna (`r interpret_kendalls_w(0.49)`). Podľa Durbinovho testu párového porovnania sú všetky kategórie navzájom odlišné (podľa Holm adjustovaných p hodnôt).
+
+
+```{r}
+GGscatterPlot <- function(data, mapping, ...,
+                          method = "spearman") {
+  # Get correlation coefficient
+  x <- GGally::eval_data_col(data, mapping$x)
+  y <- GGally::eval_data_col(data, mapping$y)
+
+  cor <- cor(x, y, method = method)
+  # Assemble data frame
+  df <- data.frame(x = x, y = y)
+  # PCA
+  nonNull <- x != 0 & y != 0
+  dfpc <- prcomp(~ x + y, df[nonNull, ])
+  df$cols <- predict(dfpc, df)[, 1]
+  # Define the direction of color range based on PC1 orientation:
+  dfsum <- x + y
+  colDirection <- ifelse(dfsum[which.max(df$cols)] <
+    dfsum[which.min(df$cols)],
+  1,
+  -1
+  )
+  # Get 2D density for alpha
+  dens2D <- MASS::kde2d(df$x, df$y)
+  df$density <- fields::interp.surface(
+    dens2D,
+    df[, c("x", "y")]
+  )
+
+  if (any(df$density == 0)) {
+    mini2D <- min(df$density[df$density != 0]) # smallest non zero value
+    df$density[df$density == 0] <- mini2D
+  }
+  # Prepare plot
+  pp <- ggplot(df, aes(x = x, y = y, color = cols, alpha = 1 / density)) +
+    ggplot2::geom_point(shape = 16, show.legend = FALSE) +
+    ggplot2::scale_color_viridis_c(direction = colDirection) +
+    #                scale_color_gradient(low = "#0091ff", high = "#f0650e") +
+    ggplot2::scale_alpha(range = c(.05, .6)) +
+    ggplot2::geom_abline(intercept = 0, slope = 1, col = "darkred") +
+    ggplot2::geom_label(
+      data = data.frame(
+        xlabel = min(x, na.rm = TRUE),
+        ylabel = max(y, na.rm = TRUE),
+        lab = round(cor, digits = 3)
+      ),
+      mapping = ggplot2::aes(
+        x = xlabel,
+        y = ylabel,
+        label = lab
+      ),
+      hjust = 0, vjust = 1,
+      size = 3, fontface = "bold",
+      inherit.aes = FALSE # do not inherit anything from the ...
+    ) +
+    theme_minimal()
+
+  return(pp)
+}
+
+GGally::ggpairs(index_vars,
+  1:8,
+  lower = list(continuous = wrap(GGscatterPlot, method = "pearson")),
+  upper = "blank"
+) +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank())
+```
+<br>Pri pohľade na koreláciu indexu a jeho komponentov s cenou je zaujímavé, že samotný index má nižšiu koreláciu s cenou ako väčšina jednotlivých komponentov. Ak sa pozrieme na tie, tak negatívny vzťah vidíme len pri životnom prostredí, čo do veľkej miery dáva zmysel. Naopak najvyšší pozitívny vzťah s cenou majú relax, služby a transport.
+
+
+
+
+### Rozloha
+
+Rozloha bude zrejme jednou z najpodstatnejších premenných pri predikovaní ceny nehnuteľnosti. Tiež bude úzko súvisieť s typom nehnuteľnosti - viac izieb zväčša znamená väčšiu plochu (ale nie vždy, ako ukazuje histogram).
+<br>
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+area1 <- joined_data_cleaned %>%
+  drop_na() %>%
+  ggplot(aes(x = area, fill = type)) +
+  geom_histogram() +
+  theme_minimal() +
+  labs(
+    title = "Rozloženie rozlohy nehnuteľností",
+    x = NULL,
+    y = "Počet",
+    fill = "Typ"
+  )
+
+area2 <- joined_data_cleaned %>%
+  drop_na() %>%
+  ggplot(aes(y = area)) +
+  geom_boxplot(col = "steelblue", outlier.alpha = 0.1) +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  coord_flip() +
+  labs(y = "Rozloha (m^2)")
+
+
+plot_grid(area1, area2, ncol = 1, align = "v")
+```
+
+<br> Podobne ako pri cene, aj teraz môžeme vidieť rozloženie hodnôt s pozitívnym (pravostranným) zošikmením.
+Dôvodom je podobne ako pri drahých nehnuteľnostiach, že ponuka bytov s veľkou plochou je malá a preto je ich výskyt ojedinelý (hoci nemusí platiť, že drahý byt má nevyhnutne aj veľkú plochu).
+
+
+### Typ
+
+<br> V datasete máme 7 typov nehnuteľností:
+
+-   1 izbový byt
+-   2 izbový byt
+-   3 izbový byt
+-   4 izbový byt
+-   5+ izbový byt
+-   Garsónka ("studio apartment")
+-   Dvojgarsónka ("one-bedroom apartment")
+
+
+```{r}
+joined_data_cleaned %>%
+  group_by(type) %>%
+  summarize(count = n()) %>%
+  ggplot(aes(x = type, y = count)) +
+  stat_pareto(
+    point.color = "red",
+    point.size = 2,
+    line.color = "black",
+    bars.fill = "steelblue"
+  ) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  scale_x_discrete(labels = wrap_format(10)) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  labs(
+    x = "Typ",
+    y = "Počet"
+  )
+```
+
+<br> Najčastejší typ je 3 izbový byt a v tesnom závese 2 izbový byt. Tretie sú 1 izbové byty avšak v porovnaní s prvými dvoma kategóriami vidíme výrazný prepad v ich počte.
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+type1 <- joined_data_cleaned %>%
+  filter(!is.na(type)) %>%
+  ggplot(aes(
+    x = factor(type),
+    y = price
+  )) +
+  geom_boxplot(col = "steelblue", outlier.alpha = 0.1) +
+  scale_x_discrete(labels = wrap_format(15)) +
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
+  theme_minimal() +
+  labs(
+    x = "Typ",
+    y = "Cena"
+  )
+
+type1
+```
+
+
+
+<br> 2 a 3 izbové byty majú veľmi podobné ceny. 3 izby sú samozrejme drahšie, ale rozdiel (najmä keď vezmeme do úvahy zvýšenie ceny z 1 izbových bytov na 2 izbové a z 3 izbových na 4 izbové) je mierny.
+<br>
+
+
+```{r}
+KW_temp <- joined_data_cleaned %>%
+  dplyr::select(price, area, type)
+
+KW_temp$geometry <- NULL
+
+theme_gtsummary_journal("jama")
+
+KW_temp %>%
+  tbl_summary(by = type) %>%
+  add_p()
+```
+<br> Kruskal-Wallis rank sum test potvrdzuje, že existujú rozdiely v cenách a rozlohe medzi jednotlivými typmi bytov, ktoré nie sú náhodné.
+
+### Certifikát 
+<br> Energetický certifikát budovy (ECB) je právny dokument, ktorý hodnotí budovy z hľadiska energetickej efektívnosti a emisií oxidu uhličitého, čo vedie k ich klasifikácii v energetických stupniciach z najúčinnejšej triedy A po nehospodárnu triedu G.
+<br> Energetický certifikát hodnotí budovy z hľadiska 4 bodov spotreby energie:
+
+- Tepelná ochrana budov
+- Energetické požiadavky na zahrievanie a prípravu horúcej vody
+- Energetická potreba klimatizácie, klimatizácia
+- Energetická potreba na osvetlenia
+
+Na základe týchto spotrebných bodov ECB prepočítava požadované množstvo energie v kWh / m² ročne pre celú budovu pre celú budovu.
+<br>
+
+```{r echo=FALSE}
+joined_data_cleaned %>%
+  group_by(certificate) %>%
+  summarize(count = n()) %>%
+  ggplot(aes(x = certificate, y = count)) +
+  stat_pareto(
+    point.color = "red",
+    point.size = 2,
+    line.color = "black",
+    bars.fill = "steelblue"
+  ) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  scale_x_discrete(labels = wrap_format(10)) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  labs(
+    x = "Certifikát",
+    y = "Počet"
+  )
+```
+
+<br> `r round((joined_data_cleaned %>% filter(is.na(certificate)) %>% nrow()) / (joined_data_cleaned %>% nrow()), 1)`% inzerovaných bytov nemá uvedený energetický certifikát. Skoro `r round((joined_data_cleaned %>% filter(certificate == 'none') %>% nrow()) / (joined_data_cleaned %>% nrow()), 1)`% má explicitne uvedené, že takýto certifikát nemá. Najhoršie certifikáty D až F sú zastúpené veľmi málo. 
+<br>
+
+```{r, echo=FALSE}
+cert1 <- joined_data_cleaned %>%
+  filter(!certificate %in% c("D", "E", "F")) %>%
+  ggplot(aes(x = factor(certificate, levels = c(
+    "A",
+    "B",
+    "C",
+    "G",
+    "none", NA
+  )), y = price)) +
+  geom_boxplot(col = "steelblue", outlier.alpha = 0.1) +
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
+  theme_minimal() +
+  labs(
+    x = "Certifikát",
+    y = "Cena"
+  )
+
+cert1
+```
+
+<br> Box-plot graf pekne ilustruje vzťah medzi úrovňou certifikátu a cenou. S klesajúcou úrovňou certifikátu klesá aj cena.
+Z grafu je tiež vidno, že ak certifikát chýba (nie je uvedený), nemôžeme automaticky uvažovať, že ho inzerovaný byt nemá. Preto aj tieto hodnoty budú imputované pri príprave ML modelu.
+<br>
+
+```{r echo=FALSE}
+KW_temp <- joined_data_cleaned %>%
+  dplyr::select(price, certificate)
+
+KW_temp$geometry <- NULL
+
+theme_gtsummary_journal("jama")
+
+KW_temp %>%
+  tbl_summary(by = certificate) %>%
+  add_p()
+```
+
+<br> Kruskal-Wallis rank sum test potvrdzuje, že existuje rozdiel v cenách medzi jednotlivými certifikátmi, ktorý nie je náhodný.
+
+
+### Stav
+
+```{r echo=FALSE}
+joined_data_cleaned %>%
+  group_by(condition) %>%
+  summarize(count = n()) %>%
+  ggplot(aes(x = condition, y = count)) +
+  ggQC::stat_pareto(
+    point.color = "red",
+    point.size = 2,
+    line.color = "black",
+    bars.fill = "steelblue"
+  ) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  scale_x_discrete(labels = wrap_format(10)) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  labs(
+    x = "Stav",
+    y = "Počet"
+  )
+```
+
+<br> Najbežnejší stav ponúkaných nehnuteľností sú Kompletná rekonštrukcia, Čiastočná rekonštrukcia a Novostavba. Nasleduje výraznejší prepad na štvrté miesto, kde sa nachádzajú byty v pôvodnom stave.
+<br>
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+cond1 <- joined_data_cleaned %>%
+  filter(!is.na(condition)) %>%
+  ggplot(aes(
+    x = factor(condition),
+    y = price
+  )) +
+  geom_boxplot(col = "steelblue", outlier.alpha = 0.1) +
+  scale_x_discrete(labels = wrap_format(15)) +
+  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
+  theme_minimal() +
+  labs(
+    x = "Stav",
+    y = "Cena"
+  )
+
+cond1
+```
+
+Medzi jednotlivými stavmi sú zjavné rozdiely v cene. Najvyššie hodnoty sú v troch kategóriách: Vo výstavbe, novostavba a developerský projekt. Nie je veľkým prekvapením, že nové a ešte nedokončené byty sú najdrahšie.
+Naopak najlacnejšie sú pôvodný stav a čiastočná rekonštrukcia. Uprostred sa nachádzajú byty s kompletnou rekonštrukciou.
+Všetky stavy majú odľahlé hodnoty vo vyšších cenových rozpätiach, rozloženie je pozitívne zošikmené.
+<br>
+
+```{r echo=FALSE}
+test <- joined_data_cleaned %>%
+  dplyr::select(price, area, condition)
+
+test$geometry <- NULL
+
+theme_gtsummary_journal("jama")
+
+test %>%
+  tbl_summary(by = condition) %>%
+  add_p()
+```
+<br> Kruskal-Wallis rank sum test potvrdzuje, že existujú rozdiely v cenách a rozlohe medzi jednotlivými stavmi bytov, ktoré nie sú náhodné. Zaujímavé je, že novšie byty (Novostavba, developerský projekt) majú menšiu plochu ako staršie byty (teda tie, ktoré majú stav úplná alebo čiastočná rekonštrukcia, resp. pôvodný stav)
+
+
+### Okres
+
+Regionálne rozdiely na Slovensku majú v mnohých sociokultúrnych aspektoch západo-východný gradient. Najmä južná časť stredného Slovenska patrí medzi najmenej rozvinuté regióny.
+Preto je rozumné očakávať rovnaký vzorec aj v cenách bytov.
+<br>
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+top_bottom_10_districts <- joined_data_cleaned %>%
+  group_by(district) %>%
+  summarize(
+    price = mean(price, na.rm = TRUE),
+    adverts_count = n()
+  ) %>%
+  filter(!between(dense_rank(price), 10 + 1, n() - 10)) %>%
+  arrange(desc(price))
+
+mean_price <- mean(joined_data_cleaned$price, na.rm = TRUE)
+top_10_districts_chart <- top_bottom_10_districts %>%
+  ggplot(aes(x = reorder(district, -price), y = price, text = paste0(
+    "Priemerná cena: ",
+    format(round(price, 0), big.mark = " "),
+    "\n", "Počet inzerátov:", format(round(adverts_count, 0), big.mark = " ")
+  ))) +
+  geom_bar(stat = "summary", fun.y = "mean", fill = "steelblue") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45)) +
+  scale_y_continuous(breaks = seq(0, 350000, by = 50000), labels = comma) +
+  geom_hline(yintercept = mean_price, linetype = "dashed", color = "red") + # dashed line is median price
+  labs(
+    x = "Okres",
+    y = "Priemerná cena"
+  )
+
+ggplotly(top_10_districts_chart, tooltip = "text")
+```
+
+<br>Najdrahšie byty sú zo západného Slovenska s výnimkou okresu Košice I, ktoré je centrom na východe.
+Na druhej strane 9 z 10 okresov sa nachádza v južnej a vo východnej časti republiky.
+Tu je potrebné poznamenať, že väčšina týchto okresov má veľmi nízky počet záznamov (inzerátov).
+To nám môže povedať dve veci:
+
+- Nízke ceny môžu byť spôsobené náhodou (čo však zrejme nebude pravda, cena bude odrážať širšie ekonomické súvislosti)
+- Realitný trh v tejto časti Slovenska je málo rozvinutý.
+
+Na Mape nižšie vidíme zobrazené priemerné ceny v obciach (resp. mestských častiach) s aspoň piatimi inzerovanými bytmi.
+
+```{r}
+sf <- joined_data_cleaned %>% 
+  group_by(name_nsi) %>% 
+  summarise_all(list(mean), na.rm = TRUE)
+
+centroid <- st_centroid(sf)
+
+communes <- readRDS("data/geospatial_data/communes.RDS") %>% 
+  select(COMM_NAME) %>% 
+  clean_names() %>% 
+  st_join(centroid)
+
+create_custom_map <- function(data, fill_column) {
+  ggplot(data) +
+    geom_sf(aes(fill = !!rlang::ensym(fill_column))) +
+    theme_minimal() +
+    scale_fill_gradient(
+      low = "lightyellow",
+      high = "red",
+      labels = scales::comma_format(scale = 1)
+    )
+}
+
+create_custom_map(communes, "price") + labs(fill = "Priemerná cena")
+
+```
+
+### Korelačná matica
+
+<br> 
+```{r, echo=TRUE}
+all_num_pred <- select_if(joined_data_cleaned, is.numeric) %>% drop_na()
+all_num_pred$geometry <- NULL
+
+datasummary_correlation(all_num_pred, method = "spearman")
+```
+
+## Záver a nasledujúce kroky
+
+<br> <strong>EDA</Strong> nám poskytla cenné poznatky, ktoré budú zohľadnené v predikčnom modeli:
+
+-   Rozloženie cien je vychýlené doprava - ponuky drahých bytov sú obmedzené
+-   Geopriestorové rozloženie má západ-východný gradient - nižšie ceny sú na východe a juhu, s výnimkou niekoľkých regionálnych centier.
+-   Väčšina miest v našom datasete má pomerne vysokú úroveň indexu bývania. Vo všeobecnosti existuje pozitívny vzťah medzi jeho hodnotou a cenou.
+-   Existujú preukázané rozdiely medzi cenami bytov s rôznymi stavmi. Nie je prekvapujúce, že nové byty majú najvyššie ceny.
+-   Podobný efekt vidíme pri energetickom certifikáte. Počet chýbajúcich údajov je v tomto prípade vzsoký a budeme ho riešiť imputáciou.
+-   Veľká väčšina bytov v súbore má 2 a 3 izby. Cena rastie s rastúcou veľkostnou triedou. Zvýšenie ceny z 2 izbovej na 3 izbovú skupinu je v však priemere dosť nízke. Dva možné dôvody sú - dopyt po 2 izbových bytoch (keďže sú stále lacnejšie ako 3 izbové) a lokalita. Ak by sa väčšina 2-izbových bytov nachádzala na západe, ich cena by bola v priemere za celú krajinu vyššia v porovnaní s rovnomerným priestorovým rozložením.
