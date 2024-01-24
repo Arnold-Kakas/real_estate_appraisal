@@ -831,6 +831,7 @@ index_var_gathered <- index_vars %>%
   gather(key = "var", value = "score", environment:relax)
 
 set.seed(1)
+
 ggwithinstats(data = index_var_gathered,
               x = var,
               y = score,
