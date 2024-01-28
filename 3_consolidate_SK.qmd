@@ -9,9 +9,15 @@ theme:
 toc: true
 toc-depth: 4
 code-fold: true
+code-summary: "Kód"
 execute:
   warning: false  
-  echo: false
+fig-cap-location: bottom
+fig-align: center
+crossref: 
+  fig-prefix: "Graf"
+tbl-cap-location: bottom
+mainfont: Courier New
 ---
 
 ## Úvod
@@ -60,7 +66,8 @@ Sú to napríklad:
 <br>Pre načítanie knižníc rád používam funkciu `p_load` z knižnice [pacman](https://cran.r-project.org/web/packages/pacman/index.html).
 
 ```{r}
-#| include: false
+#| echo: true
+#| code-summary: "Kód"
 # import libraries
 if (!require("pacman")) {
   install.packages("pacman")
@@ -83,9 +90,13 @@ pacman::p_load(
   ggstatsplot, # ggwithinstats()
   effectsize, # interpret_kendalls_w()
   tidyverse,
-  kableExtra
+  kableExtra,
+  extrafont
 )
+
+loadfonts(device = "win")
 ```
+
 
 <br> Nasleduje prvotné čistenie dát.
 V nasledujúcom kóde spájam 3 rôzne súbory.
@@ -100,6 +111,7 @@ Preto na všetku EDA budem používať verziu bez nej.
 
 ```{r}
 #| echo: true
+#| code-summary: "Kód"
 # Load advertisements data from RDS file
 advertisements <- readRDS("data/advertisements.RDS")
 
@@ -292,6 +304,8 @@ Obe poskytujú zhrnutie a deskriptívne štatistiky premenných.
 Funkcia `skim()` je však podrobnejšia a vracia aj údaje o type premennej, formátovaní kompletnosti atď.
 
 ```{r}
+#| echo: true
+#| code-summary: "Kód"
 skimmed_summary <- skim(joined_data_wo_geom)
 
 skimmed_summary %>%
@@ -308,6 +322,8 @@ skimmed_summary %>%
 ```
 
 ```{r}
+#| echo: true
+#| code-summary: "Kód"
 skimmed_summary %>%
   filter(skim_type == "numeric") %>%
   mutate(
@@ -329,6 +345,8 @@ skimmed_summary %>%
 `tail()` s parametrom 5.
 
 ```{r}
+#| echo: true
+#| code-summary: "Kód"
 head(joined_data_wo_geom, 5) %>%
   mutate_if(is.numeric,
     round,
@@ -423,6 +441,8 @@ Tento údaj nie je k dispozícii pre všetky inzeráty.
 Môžeme však zoskupiť záznamy podľa obce a chýbajúce hodnoty doplniť priemerom.
 
 ```{r}
+#| echo: true
+#| code-summary: "Kód"
 joined_data_cleaned_wo_geom <- joined_data_cleaned
 joined_data_cleaned_wo_geom$geometry <- NULL
 
@@ -542,6 +562,8 @@ Podobne ako pri indexe, odľahlé hodnoty cien nehnuteľností odstraňujeme v k
 Dáta agregujeme podľa názvu obce a pokiaľ niektorý záznam presahuje hodnotu mediánu +- 1,5 násobok medzikvartilového rozpätia, tak záznam odstránime.
 
 ```{r}
+#| echo: true
+#| code-summary: "Kód"
 joined_data_cleaned <- joined_data_cleaned %>%
   filter(!is.na(price)) %>%
   group_by(name_nsi) %>%
@@ -561,6 +583,7 @@ Napr.
 po predchádzajúcom odfiltrovaní niektorých záznamov ostal v datasete záznam s cenou 888 888, celkom určite to nie je skutočná cena a tento riadok zmažeme tiež.
 
 ```{r}
+#| include: false
 # removing record with dummy price
 joined_data_cleaned <- joined_data_cleaned[joined_data_cleaned$price != max(joined_data_cleaned$price), ]
 ```
@@ -569,6 +592,8 @@ Rozloha tiež obsahuje záznamy, ktoré bude lepšie odstrániť.
 Keď sa pozrieme na hodnoty prvých a posledných piatich promile, je jasné, že odstraňovať budeme len veľmi malé množstvo záznamov.
 
 ```{r}
+#| echo: true
+#| code-summary: "Kód"
 quantile(joined_data_cleaned$area, probs = seq(.0, 0.005, by = .001), na.rm = TRUE) %>%
   as.data.frame() %>%
   rownames_to_column() %>%
@@ -583,6 +608,8 @@ quantile(joined_data_cleaned$area, probs = seq(.0, 0.005, by = .001), na.rm = TR
 ```
 
 ```{r}
+#| echo: true
+#| code-summary: "Kód"
 quantile(joined_data_cleaned$area, probs = seq(.95, 1, by = .01), na.rm = TRUE) %>%
   as.data.frame() %>%
   rownames_to_column() %>%
@@ -597,6 +624,8 @@ quantile(joined_data_cleaned$area, probs = seq(.95, 1, by = .01), na.rm = TRUE) 
 ```
 
 ```{r}
+#| echo: true
+#| code-summary: "Kód"
 min_area <- quantile(joined_data_cleaned$area, 0.003, na.rm = TRUE)[[1]]
 max_area <- quantile(joined_data_cleaned$area, 0.999, na.rm = TRUE)[[1]]
 
@@ -610,6 +639,7 @@ V tomto kroku odstraňujeme záznamy z obcí, ktoré majú menej ako 5 inzeráto
 Namiesto 5 by sme mohli vzbrať aj iné číslo, ale existuje "rule of thumb", ktoré tvrdí, že je 93,75% šanca, že medián populácie is medzi najnižšou a najvyššou hodnotou náhodne vybranej vzorky.
 
 ```{r}
+#| include: false
 # keep only municipalities with at least 5 ads, Rule of 5
 number_of_ads <- joined_data_cleaned %>%
   group_by(name_nsi) %>%
@@ -654,6 +684,7 @@ gc(verbose = FALSE)
 ```
 
 ```{r}
+#| echo: true
 skimmed_summary_cleaned %>%
   filter(skim_type == "character") %>%
   mutate(complete_rate = round(complete_rate, 1)) %>%
@@ -668,6 +699,7 @@ skimmed_summary_cleaned %>%
 ```
 
 ```{r}
+#| echo: false
 skimmed_summary_cleaned %>%
   filter(skim_type == "numeric") %>%
   mutate(
@@ -683,7 +715,9 @@ skimmed_summary_cleaned %>%
     font_size = 12,
     position = "left"
   )
-
+```
+```{r}
+#| include: false
 rm(skimmed_summary_cleaned, skimmed_summary)
 ```
 
@@ -692,30 +726,22 @@ rm(skimmed_summary_cleaned, skimmed_summary)
 Cena je hlavná premenná, ktorá nás zaujíma a ktorú budeme neskôr predikovať pomocou natrénovaného ML modelu.
 
 ```{r}
-#| echo: true
-price1 <- joined_data_cleaned %>%
+#| echo: false
+#| fig-cap: "Rozloženie cien nehnuteľností"
+#| fig-alt: "Rozloženie cien nehnuteľností"
+joined_data_cleaned %>%
   ggplot(aes(x = price)) +
   geom_histogram(fill = "steelblue", binwidth = 10000) +
+  geom_boxplot(width = 100 , col = "steelblue", outlier.alpha = 0.1,
+               position = position_nudge(y = -75)) +
   scale_x_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
   theme_minimal() +
   labs(
     y = "Počet",
-    x = NULL,
-    title = "Rozloženie cien nehnuteľností"
-  )
-
-
-price2 <- joined_data_cleaned %>%
-  ggplot(aes(y = price)) +
-  geom_boxplot(col = "steelblue", outlier.alpha = 0.1) +
-  theme_minimal() +
-  theme(axis.text.y = element_blank()) +
-  scale_y_continuous(breaks = seq(0, 700000, by = 100000), labels = comma) +
-  coord_flip() +
-  labs(y = "Cena")
-
-
-plot_grid(price1, price2, ncol = 1, align = "v")
+    x = NULL
+  ) +
+  theme(
+  text = element_text(family = "Courier New", size = 12))
 ```
 
 Rozloženie hodnôt je asymetrické s pozitívnym (pravostranným) zošikmením.
@@ -736,31 +762,25 @@ Index udáva agregované hodnotenie šiestich rôznych charakteristík miesta, k
 <br>
 
 ```{r}
-#| echo: true
-index1 <- joined_data_cleaned %>%
+#| echo: false
+#| fig-cap: "Rozloženie indexu bývania"
+#| fig-alt: "Rozloženie indexu bývania"
+joined_data_cleaned %>%
   select(index) %>%
   drop_na() %>%
   ggplot(aes(x = index)) +
-  geom_histogram(fill = "steelblue") +
+  geom_histogram(fill = "steelblue", bins = 40) +
+  geom_boxplot(width = 150 , col = "steelblue", outlier.alpha = 0.1,
+               position = position_nudge(y = -100)) +
   theme_minimal() +
   labs(
     y = "Počet",
     x = NULL,
-    title = "Rozloženie indexu bývania"
-  )
+    title = NULL
+  ) +
+  theme(
+  text = element_text(family = "Courier New", size = 12))
 
-index2 <- joined_data_cleaned %>%
-  select(index) %>%
-  drop_na() %>%
-  ggplot(aes(y = index)) +
-  geom_boxplot(col = "steelblue", outlier.alpha = 0.1) +
-  theme_minimal() +
-  theme(axis.text.y = element_blank()) +
-  coord_flip() +
-  labs(y = "Index")
-
-
-plot_grid(index1, index2, ncol = 1, align = "v")
 ```
 
 <br> Na rozdiel od cien, index bývania má negatívne zošikmenie. Priemerná hodnota je `r round(mean(joined_data_cleaned$index, na.rm = TRUE),1)` bodu a medián `r round(median(joined_data_cleaned$index, na.rm = TRUE),1)` bodu. Medzi inzerátmi však nájdeme aj hodnoty nižšie ako 4 body.
@@ -768,6 +788,7 @@ plot_grid(index1, index2, ncol = 1, align = "v")
 Jednotlivé kategórie, ktoré sa podieľajú na výslednom indexe majú niekoľko spoločných vlasností. Všetky majú medián aj priemer v hornej polovici možných bodov. Je to do istej miery očakávateľné, keďže hodnotenie je zrejme zamerané najmä na mestá a väčšie obce. Je tam jednak dostatok ponúk na trhu s nehnuteľnosťami aby sa vôbec oplatilo venovať mu pozornosť a vzhľadom na veľkú ponuku, a teda pravdepodobne aj dopyt, bude občianska vybavenosť aspoň na uspokojivej úrovni. Zo šiestich kategórií sa mierne odchyľuje "životné prostredie" a celkom evidentne "relax", pri ktorom ani jedna lokalita nedosiahla maximálny počet bodov.
 
 ```{r}
+#| echo: false
 index_categories_df <- joined_data_cleaned %>%
   select(environment, quality_of_living, safety, transport, services, relax) %>%
   drop_na()
@@ -804,6 +825,10 @@ index_categories_df %>%
 ```
 
 ```{r}
+#| echo: false
+#| fig-cap: "Porovnanie komponentov indexu bývania"
+#| fig-alt: "Porovnanie komponentov indexu bývania"
+
 index_vars <- joined_data_cleaned %>%
   select(price, index, environment, quality_of_living, safety, transport, services, relax)
 
@@ -820,13 +845,17 @@ set.seed(1)
 ggwithinstats(data = index_var_gathered,
               x = var,
               y = score,
-              type = "nonparametric")
-
+              type = "nonparametric") +
+  theme(
+  text = element_text(family = "Courier New", size = 12))
 ```
-<br>Napriek podobnostiam medzi kategóriami, rozdiely ich hodnôt sú štatisticky významne odlišné (p hodnota < 0.01) a táto odlišnosť je mierna (`r interpret_kendalls_w(0.49)`). Podľa Durbinovho testu párového porovnania sú všetky kategórie navzájom odlišné (podľa Holm adjustovaných p hodnôt).
+<br>Napriek podobnostiam medzi kategóriami, rozdiely ich hodnôt sú štatisticky významne odlišné (p hodnota < 0.01) a táto odlišnosť je mierna (`r interpret_kendalls_w(0.49)`). Durbinov test párového porovnania ukazuje, že všetky kategórie sú navzájom odlišné (podľa Holm adjustovaných p hodnôt).
 
 
 ```{r}
+#| echo: false
+#| fig-cap: "Korelácia komponentov indexu bývania"
+#| fig-alt: "Korelácia komponentov indexu bývania"
 GGscatterPlot <- function(data, mapping, ...,
                           method = "spearman") {
   # Get correlation coefficient
@@ -891,7 +920,9 @@ GGally::ggpairs(index_vars,
   upper = "blank"
 ) +
   theme_minimal() +
-  theme(panel.grid.minor = element_blank())
+  theme(panel.grid.minor = element_blank()) +
+  theme(
+  text = element_text(family = "Courier New", size = 12))
 ```
 <br>Pri pohľade na koreláciu indexu a jeho komponentov s cenou je zaujímavé, že samotný index má nižšiu koreláciu s cenou ako väčšina jednotlivých komponentov. Ak sa pozrieme na tie, tak negatívny vzťah vidíme len pri životnom prostredí, čo do veľkej miery dáva zmysel. Naopak najvyšší pozitívny vzťah s cenou majú relax, služby a transport.
 
@@ -902,29 +933,25 @@ Rozloha bude zrejme jednou z najpodstatnejších premenných pri predikovaní ce
 <br>
 
 ```{r}
-area1 <- joined_data_cleaned %>%
+#| echo: false
+#| fig-cap: "Rozloženie rozlohy nehnuteľností"
+#| fig-alt: "Rozloženie rozlohy nehnuteľností"
+joined_data_cleaned %>%
   drop_na() %>%
-  ggplot(aes(x = area, fill = type)) +
-  geom_histogram() +
+  ggplot(aes(x = area)) +
+  geom_histogram(aes(fill = type), binwidth = 5) +
+  geom_boxplot(width = 50 , color = "steelblue", outlier.alpha = 0.1,
+               position = position_nudge(y = -40)) +
   theme_minimal() +
   labs(
-    title = "Rozloženie rozlohy nehnuteľností",
+    title = NULL,
     x = NULL,
     y = "Počet",
     fill = "Typ"
-  )
+  ) +
+  theme(
+  text = element_text(family = "Courier New", size = 12))
 
-area2 <- joined_data_cleaned %>%
-  drop_na() %>%
-  ggplot(aes(y = area)) +
-  geom_boxplot(col = "steelblue", outlier.alpha = 0.1) +
-  theme_minimal() +
-  theme(axis.text.y = element_blank()) +
-  coord_flip() +
-  labs(y = "Rozloha (m^2)")
-
-
-plot_grid(area1, area2, ncol = 1, align = "v")
 ```
 
 <br> Podobne ako pri cene, aj teraz môžeme vidieť rozloženie hodnôt s pozitívnym (pravostranným) zošikmením.
@@ -945,6 +972,9 @@ Dôvodom je podobne ako pri drahých nehnuteľnostiach, že ponuka bytov s veľk
 
 
 ```{r}
+#| echo: false
+#| fig-cap: "Paretov graf podľa typu nehnuteľnosti"
+#| fig-alt: "Paretov graf podľa typu nehnuteľnosti"
 joined_data_cleaned %>%
   group_by(type) %>%
   summarize(count = n()) %>%
@@ -959,17 +989,25 @@ joined_data_cleaned %>%
   scale_x_discrete(labels = wrap_format(10)) +
   theme_minimal() +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  scale_y_continuous(
+    sec.axis = ggplot2::sec_axis(~./(max(.)*.95)*100,
+    name = "Kumulatívne %" )) +
   labs(
     x = "Typ",
     y = "Počet"
-  )
+  ) +
+  theme(
+  text = element_text(family = "Courier New", size = 12))
 ```
 
 <br> Najčastejší typ je 3 izbový byt a v tesnom závese 2 izbový byt. Tretie sú 1 izbové byty avšak v porovnaní s prvými dvoma kategóriami vidíme výrazný prepad v ich počte.
 <br>
 
 ```{r}
-type1 <- joined_data_cleaned %>%
+#| echo: false
+#| fig-cap: "Cena nehnuteľností podľa typu"
+#| fig-alt: "Cena nehnuteľností podľa typu"
+joined_data_cleaned %>%
   filter(!is.na(type)) %>%
   ggplot(aes(
     x = factor(type),
@@ -982,18 +1020,16 @@ type1 <- joined_data_cleaned %>%
   labs(
     x = "Typ",
     y = "Cena"
-  )
+  ) +
+  theme(
+  text = element_text(family = "Courier New", size = 12))
 
-type1
 ```
-
-
-
 <br> 2 a 3 izbové byty majú veľmi podobné ceny. 3 izby sú samozrejme drahšie, ale rozdiel (najmä keď vezmeme do úvahy zvýšenie ceny z 1 izbových bytov na 2 izbové a z 3 izbových na 4 izbové) je mierny.
 <br>
 
-
 ```{r}
+#| echo: false
 KW_temp <- joined_data_cleaned %>%
   dplyr::select(price, area, type)
 
@@ -1020,6 +1056,9 @@ Na základe týchto spotrebných bodov ECB prepočítava požadované množstvo 
 <br>
 
 ```{r}
+#| echo: false
+#| fig-cap: "Paretov graf podľa typu certifikátu"
+#| fig-alt: "Paretov graf podľa typu certifikátu"
 joined_data_cleaned %>%
   group_by(certificate) %>%
   summarize(count = n()) %>%
@@ -1034,17 +1073,25 @@ joined_data_cleaned %>%
   scale_x_discrete(labels = wrap_format(10)) +
   theme_minimal() +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_y_continuous(
+    sec.axis = ggplot2::sec_axis(~./(max(.)*.95)*100,
+    name = "Kumulatívne %" )) +
   labs(
     x = "Certifikát",
     y = "Počet"
-  )
+  ) +
+  theme(
+  text = element_text(family = "Courier New", size = 12))
 ```
 
 <br> `r round((joined_data_cleaned %>% filter(is.na(certificate)) %>% nrow()) / (joined_data_cleaned %>% nrow()), 1)`% inzerovaných bytov nemá uvedený energetický certifikát. Skoro `r round((joined_data_cleaned %>% filter(certificate == 'none') %>% nrow()) / (joined_data_cleaned %>% nrow()), 1)`% má explicitne uvedené, že takýto certifikát nemá. Najhoršie certifikáty D až F sú zastúpené veľmi málo. 
 <br>
 
 ```{r}
-cert1 <- joined_data_cleaned %>%
+#| echo: false
+#| fig-cap: "Cena nehnuteľností podľa certifikátu"
+#| fig-alt: "Cena nehnuteľností podľa certifikátu"
+joined_data_cleaned %>%
   filter(!certificate %in% c("D", "E", "F")) %>%
   ggplot(aes(x = factor(certificate, levels = c(
     "A",
@@ -1061,7 +1108,6 @@ cert1 <- joined_data_cleaned %>%
     y = "Cena"
   )
 
-cert1
 ```
 
 <br> Box-plot graf pekne ilustruje vzťah medzi úrovňou certifikátu a cenou. S klesajúcou úrovňou certifikátu klesá aj cena.
@@ -1069,6 +1115,7 @@ Z grafu je tiež vidno, že ak certifikát chýba (nie je uvedený), nemôžeme 
 <br>
 
 ```{r}
+#| echo: false
 KW_temp <- joined_data_cleaned %>%
   dplyr::select(price, certificate)
 
@@ -1087,6 +1134,9 @@ KW_temp %>%
 ### Stav
 
 ```{r}
+#| echo: false
+#| fig-cap: "Paretov graf podľa typu stavu"
+#| fig-alt: "Paretov graf podľa typu stavu"
 joined_data_cleaned %>%
   group_by(condition) %>%
   summarize(count = n()) %>%
@@ -1101,16 +1151,24 @@ joined_data_cleaned %>%
   scale_x_discrete(labels = wrap_format(10)) +
   theme_minimal() +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_y_continuous(
+    sec.axis = ggplot2::sec_axis(~./(max(.)*.95)*100,
+    name = "Kumulatívne %" )) +
   labs(
     x = "Stav",
     y = "Počet"
-  )
+  ) +
+  theme(
+  text = element_text(family = "Courier New", size = 12))
 ```
 
 <br> Najbežnejší stav ponúkaných nehnuteľností sú Kompletná rekonštrukcia, Čiastočná rekonštrukcia a Novostavba. Nasleduje výraznejší prepad na štvrté miesto, kde sa nachádzajú byty v pôvodnom stave.
 <br>
 ```{r}
-cond1 <- joined_data_cleaned %>%
+#| echo: false
+#| fig-cap: "Cena nehnuteľností podľa typu"
+#| fig-alt: "Cena nehnuteľností podľa typu"
+joined_data_cleaned %>%
   filter(!is.na(condition)) %>%
   ggplot(aes(
     x = factor(condition),
@@ -1123,9 +1181,10 @@ cond1 <- joined_data_cleaned %>%
   labs(
     x = "Stav",
     y = "Cena"
-  )
+  ) +
+  theme(
+  text = element_text(family = "Courier New", size = 12))
 
-cond1
 ```
 
 Medzi jednotlivými stavmi sú zjavné rozdiely v cene. Najvyššie hodnoty sú v troch kategóriách: Vo výstavbe, novostavba a developerský projekt. Nie je veľkým prekvapením, že nové a ešte nedokončené byty sú najdrahšie.
@@ -1134,6 +1193,7 @@ Všetky stavy majú odľahlé hodnoty vo vyšších cenových rozpätiach, rozlo
 <br>
 
 ```{r}
+#| echo: false
 test <- joined_data_cleaned %>%
   dplyr::select(price, area, condition)
 
@@ -1155,7 +1215,9 @@ Preto je rozumné očakávať rovnaký vzorec aj v cenách bytov.
 <br>
 
 ```{r}
-#| echo: true
+#| echo: false
+#| fig-cap: "Okresy s najvyššou a najnižšou priemernou cenou bytov"
+#| fig-alt: "Okresy s najvyššou a najnižšou priemernou cenou bytov"
 top_bottom_10_districts <- joined_data_cleaned %>%
   group_by(district) %>%
   summarize(
@@ -1180,7 +1242,9 @@ top_10_districts_chart <- top_bottom_10_districts %>%
   labs(
     x = "Okres",
     y = "Priemerná cena"
-  )
+  ) +
+  theme(
+  text = element_text(family = "Courier New", size = 12))
 
 ggplotly(top_10_districts_chart, tooltip = "text")
 ```
@@ -1196,6 +1260,9 @@ To nám môže povedať dve veci:
 Na Mape nižšie vidíme zobrazené priemerné ceny v obciach (resp. mestských častiach) s aspoň piatimi inzerovanými bytmi.
 
 ```{r}
+#| echo: false
+#| fig-cap: "Priemerné ceny bytov v obciach"
+#| fig-alt: "Priemerné ceny bytov v obciach"
 sf <- joined_data_cleaned %>% 
   group_by(name_nsi) %>% 
   summarise_all(list(mean), na.rm = TRUE)
@@ -1218,7 +1285,9 @@ create_custom_map <- function(data, fill_column) {
     )
 }
 
-create_custom_map(communes, "price") + labs(fill = "Priemerná cena")
+create_custom_map(communes, "price") + labs(fill = "Priemerná cena") +
+  theme(
+  text = element_text(family = "Courier New", size = 12))
 
 ```
 
@@ -1226,6 +1295,7 @@ create_custom_map(communes, "price") + labs(fill = "Priemerná cena")
 
 <br> 
 ```{r}
+#| echo: false
 all_num_pred <- select_if(joined_data_cleaned, is.numeric) %>% drop_na()
 all_num_pred$geometry <- NULL
 

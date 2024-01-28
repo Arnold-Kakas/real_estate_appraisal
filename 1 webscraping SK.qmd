@@ -16,54 +16,52 @@ execute:
 
 ## Caution
 <br>
-Before I get to the topic of this post, please note that this article is for <strong>informational purposes only</strong> and that any information contained below <strong>does not constitute legal advice</strong>. Therefore, before engaging in any scraping activities, you should get appropriate professional legal advice regarding your specific situation.
+Predtým než sa dostanem k téme tohto blogu, upozorňujem, že tento článok slúži výhradne <strong>informačným účelom</strong> a akékoľvek informácie uvedené nižšie <strong>nie sú právne rady</strong>. Preto pred akýmkoľvek zbieraním údajov z webu by ste mali získať vhodnú profesionálnu právnu radu týkajúcu sa vášho konkrétneho prípadu.
 
 ## Web scraping
 <br>
-In this blog post I will go through <strong>[web scraping](https://en.wikipedia.org/wiki/Web_scraping)</strong> using <strong>R programming language</strong>.
-Before I dive into the process itself I would like to talk a bit about the topic in general.
+V tomto blogovom príspevku prejdem procesom <strong>[web scraping-u](https://en.wikipedia.org/wiki/Web_scraping)</strong> s využitím <strong>programovacieho jazyka R</strong>. Predtým než sa pustím do samotného procesu, chcel by som sa trochu zamyslieť nad celkovou tématikou.
 <br>
-Web scraping is the process of collecting content or (usually) structured data from websites in an automated manner (and usually in large amount). This definition naturally brings up the question of legality of such a process.
-In general, web scraping is not illegal or prohibited per se (in EU, as of July 2023) . However, the use of data mining tools is legally risky due to several reasons:
+Web scraping je proces získavania obsahu alebo (väčšinou) štruktúrovaných údajov z webových stránok automatizovaným spôsobom (a obvykle vo veľkom množstve). Táto definícia prirodzene vyvoláva otázku o legalite takéhoto procesu.
+V zásade web scraping nie je ilegálny alebo zakázaný sám osebe (v EÚ, k júlu 2023). Avšak, používanie nástrojov na ťaženie údajov je z právneho hľadiska riskantné z niekoľkých dôvodov:
 
-* Intellectual property breach
-* Contract breach
-* Privacy concerns
+* Porušenie duševného vlastníctva
+* Porušenie zmluvy
+* Obavy o ochranu osobných údajov
 
-To minimize concerns, scraping should be discreet, respect websites’ terms of service, check whether sites are using the robots.txt protocol to communicate that scraping is prohibited, avoid personal data scraping and, if it is necessary, make sure no GDPR violations are made and avoid scraping private or classified information ([Source](https://discoverdigitallaw.com/is-web-scraping-legal-short-guide-on-scraping-under-the-eu-jurisdiction/#IV_HOW_TO_SCRAPE_AND_NOT_BE_SUED)).
+Pre zminimalizovanie obáv by malo scrapovanie prebiehať diskrétne, rešpektovať podmienky používania webových stránok, skontrolovať, či stránky používajú protokol robots.txt na oznámenie, že scrapovanie je zakázané, vyhnúť sa scrapovaniu osobných údajov a, ak je to nevyhnutné, uistiť sa, že nedochádza k porušeniu GDPR, a vyhnúť sa scrapovaniu súkromných alebo utajovaných informácií ([Zdroj](https://discoverdigitallaw.com/is-web-scraping-legal-short-guide-on-scraping-under-the-eu-jurisdiction/#IV_HOW_TO_SCRAPE_AND_NOT_BE_SUED)).
 <br>
-There are some general ethic principles that you should follow when you want to scrape data from web.
-The most frequently mentioned are:
+Existujú niektoré všeobecné etické zásady, ktoré by ste mali dodržiavať, keď chcete scrapovať údaje z webu. Najčastejšie spomínané sú:
 
-* If there is a public <strong>[API](https://en.wikipedia.org/wiki/API)</strong> that provides the data you are looking for, use it instead of scraping.
-* Request data at a reasonable rate. So your scraping is not being harmful on the server and can't be confused with a <strong>[DDoS attack](https://en.wikipedia.org/wiki/Denial-of-service_attack)</strong>. 
-* Respect other's intellectual property. Use the data to create new value from the data, not to duplicate and pass it as your own or illegally sell it.
-* Do not scrape personal or private data or documents, respect the GDPR.
-* View robots.txt file to check how the site should be crawled.
-* Share what you can. If the data you scraped is in the public domain or you got permission to share it, then put it out there for other people to reuse it (e.g. on [GitHub](github.com) or [Kaggle](kaggle.com)). If you wrote a web scraper to access it, share its code so that others can benefit from it.
-* Look for ways how to return value to website you are scraping, e.g. reference the website in an article or post, so you drive traffic to it.
+* Ak existuje verejné <strong>API</strong>, ktoré poskytuje požadované údaje, použite ho namiesto scrapovania.
+* Stahujte údaje v rozumnom tempe, aby scrapovanie nebolo škodlivé pre server a nemohlo byť zamieňané za <strong>DDoS útok</strong>. 
+* Rešpektujte duševné vlastníctvo iných. Použite údaje na vytvorenie nového hodnotného obsahu, nie na duplikovanie a predávanie ich ako vlastné alebo nelegálne predávanie.
+* Nepoužívajte scrapovanie osobných alebo súkromných údajov alebo dokumentov, rešpektujte GDPR.
+* Skontrolujte súbor robots.txt, aby ste zistili, ako by mal byť web prehľadávaný.
+* Zdieľajte to, čo môžete. Ak sú údaje, ktoré ste scrapovali, verejne dostupné, alebo ste získali povolenie na ich zdieľanie, zverejnite ich pre iných (napríklad na [GitHub](github.com) alebo [Kaggle](kaggle.com). Ak ste napísali webový scraper na prístup k nim, zdieľajte jeho kód, aby z neho mohli ťažiť aj iní.
+* Hľadajte spôsoby, ako vrátiť hodnotu webovým stránkam, ktoré scrapujete, napríklad odkazovaním na stránku v článku alebo príspevku, aby ste na ňu priviedli návštevníkov.
 
-You can find several articles dealing with this topic e.g. [This one on towardsdatascience.com](https://towardsdatascience.com/ethics-in-web-scraping-b96b18136f01), or on [Data Fluency github page](https://monashdatafluency.github.io/python-web-scraping/section-5-legal-and-ethical-considerations/) or on [scrapingrobot page](https://scrapingrobot.com/blog/ethical-web-scraping/).
+Niekoľko článkov venujúcim sa téme môžete nájsť na [towardsdatascience.com](https://towardsdatascience.com/ethics-in-web-scraping-b96b18136f01), alebo [Data Fluency github page](https://monashdatafluency.github.io/python-web-scraping/section-5-legal-and-ethical-considerations/), alebo [scrapingrobot page](https://scrapingrobot.com/blog/ethical-web-scraping/).
 <br>
-In this article I will scrape data from [Nehnutelnosti](https://www.nehnutelnosti.sk/) website that specializes in real estate listings and services. To follow ethical scraping principles, I made some preventive measures and actions: 
+V tomto článku budem scrapovať údaje zo stránky [Nehnutelnosti](https://www.nehnutelnosti.sk/), ktorá sa špecializuje na realitné inzeráty a služby. Pre dodržanie etických zásad scrapovania som prijal niekoľko preventívnych opatrení: 
 
-* This particular website uses robots.txt protocol. I am not scraping any part that is disallowed and in some parts of code I added _Sys.sleep()_ function to slow down the process so I request data at a reasonable rate.
-* I scrape only public data I need and probably will limit this data even further after [EDA](https://en.wikipedia.org/wiki/Exploratory_data_analysis).
-* I have publicly available [GitHub repo](https://github.com/Arnold-Kakas/real_estate_appraisal) where all code and data can be accessed.
+* Táto konkrétna stránka používa protokol robots.txt. Nescrapujem žiadnu časť, ktorá je zakázaná, a vo vybraných častiach kódu som pridal funkciu _Sys.sleep()_ aby som spomalil proces a žiadal údaje s primeranou frekvenciou.
+* Scrapujem len verejné údaje, ktoré potrebujem na ďaľšiu analýzu a vytvorenie <strong>ML modelu</strong>.
+* Mám verejne dostupný [GitHub repo](https://github.com/Arnold-Kakas/real_estate_appraisal), kde je možné pristupovať ku všetkému kódu a údajom a výsledný dataset bude dostupný aj na [Kaggle](https://www.kaggle.com/datasets/arnoldkakas/real-estate-dataset).
 <br>
 <center>
 ![Nehnutelnosti website robots.txt protocol](data/Nehnutelnosti robots protocol.JPG)
 </center>
 <br>
 
-## Scraping process {.tabset .tab-pills}
+## Proces scrapovania {.tabset .tab-pills}
 <br>
-### Packages
+### Použité knižnice
 <br>
-As usual, I start with loading packages necessary for this project. I am using [packman](https://cran.r-project.org/web/packages/pacman/index.html) package and function _p_load()_ to do this. I has two advantages compared to traditional _library()_:
+Ako obvykle, začínam s načítaním balíkov potrebných pre tento projekt. Používam na to [packman](https://cran.r-project.org/web/packages/pacman/index.html) knižnicu a funkciu _p_load()_, ktorá ma dve výhody oproti základnej funkcii _library()_:
 
-* if the library is not installed, it will do it automatically
-* you can load multiple libraries at once
+* ak potrebnú knižnicu nemám nainstalovanú, funkcia to rovno napraví
+* môžem načítať viacero knižníc naraz
 
 ```{r}
 if (!require("pacman")) {
@@ -81,47 +79,45 @@ pacman::p_load(
 )
 ```
 
-There are three groups of packages in this project:
 
-* for data loading and data wrangling - rio, tidyverse
-* for web scraping - rvest, RSelenium, netstat, httr
-* for parallel processing - doParallel and furrr
+V tomto projekte máme tri skupiny balíkov:
 
-### Web elements
+* na načítanie údajov a manipuláciu s nimi - rio, tidyverse
+* na web scrapovanie - rvest, RSelenium, netstat, httr
+* na paralelné spracovanie - doParallel a furrr
+
+### Webové elementy
 <br>
-Regardless of what programming language or which package you choose for webscraping, you need to be able to find the elements in web page source code.
-This can be easily done in you web browser (for this blog purposes I am using Google Chrome). You need to press *CRTL* + *SHIFT* + *I* to open DevTools. Now, when you hover over the code in the window, it will dynamically show you in browser which part of the page is it related to. Easier way how to get the correct element (or other web part) reference is to press *CRTL* + *SHIFT* + *C* and select the element directly on page.
+Bez ohľadu na to, ktorý programovací jazyk alebo balík si vyberiete na scrapovanie, musíte byť schopní nájsť elementy v zdrojovom kóde webovej stránky. To môžete jednoducho urobiť vo vašom webovom prehliadači (pre potreby tohto blogu používam Google Chrome). Stlačte  *CRTL* + *SHIFT* + *I* na otvorenie nástrojov vývojára. Teraz, keď sa pohybujete kurzorom po kóde v okne, dynamicky vám ukáže, ktorá časť stránky je s ňou spojená. Jednoduchším spôsobom, ako získať správnu referenciu na element (alebo inú časť stránky), je stlačiť *CRTL* + *SHIFT* + *C* a vybrať priamo na stránke požadovaný element.
 <br>
 <center>
-![DevTools in Google Chrome](data/DevTools.JPG)
+![DevTools v Google Chrome](data/DevTools.JPG)
 </center>
 <br>
 
-Once you found the correct element, you need to copy the CSS selector or XPath. Both can be used as arguments in rvest and RSelenium.
+Ak ste našli správny element, musíte skopírovať jeho CSS selektor alebo cestu XPath. Obe možnosti môžu byť použité ako argumenty v rvest a RSelenium.
 <br>
 <center>
-![Copying web element XPath](data/Web element Xpath-CSS selector.JPG)
+![Kopírovanie XPath web elementu](data/Web element Xpath-CSS selector.JPG)
 </center>
 <br>
 
-Now you are ready to retrieve the content from page. Result, if you did everything correctly, can have different forms. It can be a single value, string, list etc.. Based on this you either specify more precisely what part of the content you need, or work with the result in R and use data wrangling functions to get the information you are looking for.
+Teraz ste pripravení získať obsah zo stránky. Výsledok, ak ste všetko správne urobili, môže mať rôzne formy. Môže to byť jedna hodnota, reťazec, zoznam atď. Na základe toho buď presnejšie špecifikujete, ktorú časť obsahu potrebujete, alebo pracujete s výsledkom v R a používate funkcie na manipuláciu s dátami, aby ste získali požadované informácie.
 
-### Scraping part I. - rvest
+### Scraping časť I. - rvest
 <br>
-One of the most common web scraping packages in R is [rvest](https://rvest.tidyverse.org/). It provides functions to access a public web page and query-specific elements using CSS selectors and XPath. This package does not run javascript, meaning that it retrieves the page html faster, but will miss any elements loaded with javascript after the initial page load.
-Therefore this package is good option if you are scraping static pages.
+Jedným z najbežnejších balíkov na web scrapovanie v R je [rvest](https://rvest.tidyverse.org/). Poskytuje funkcie na prístup k verejnej webovej stránke a na vyhľadávanie špecifických prvkov pomocou selektorov CSS a XPath. Tento balík neodpaluje javascript, čo znamená, že načíta html stránky rýchlejšie, ale vynechá všetky prvky načítané javascriptom po pôvodnom načítaní stránky. Preto je tento balík dobrá voľba, ak scrapujete statické stránky.
 
-In this example I start with creating a variable to store the source url: *https://www.nehnutelnosti.sk/slovensko/byty/predaj/?p[param1][from]=1000&p[param1][to]=&p[page]=*
+V tomto príklade začínam vytvorením premennej pre zdrojovú URL adresu: *https://www.nehnutelnosti.sk/slovensko/byty/predaj/?p[param1][from]=1000&p[param1][to]=&p[page]=*
 
-Next I check the number of pages
+Následne skontrolujem počet stránok:
 <br>
 <center>
 ![Number of pages with search results](data/Number of pages.jpg)
 </center>
 <br>
-
-And lastly I prepare and run multisession to retrieve price, address, type of real estate and most important - link to the advertisement which will be used in next part with RSelenium package.
-I also added *plan(sequential)* to stop the multisession, but I have to admit, I am not as familiar with parallel programming in R to fully understand the importance of this step.
+A nakoniec pripravím a spustím multisession na získanie ceny, adresy, typu nehnuteľnosti a najdôležitejšie - odkazu na inzerát, ktorý bude použitý v ďalšej časti s balíkom RSelenium.
+Pridal som aj _plan(sequential)_ na zastavenie multisession, ale musím priznať, že nie som tak znalý paralelného programovania v R, aby som úplne pochopil dôležitosť tohto kroku.
 <br>
 ```{r}
 # apartments page
@@ -163,11 +159,11 @@ advertisements <- future_map_dfr(1:number_of_pages, function(i) {
 plan(sequential)
 ```
 
-### Scraping part II. - RSelenium
+### Scraping časť II. - RSelenium
 <br>
-[RSelenium](https://cran.r-project.org/web/packages/RSelenium/index.html) Provides a set of R bindings for the *Selenium 2.0 WebDriver*. Unlike rvest, it runs a real web browser, so it will load any javascript contained in the webpage.
-With this package you will be able to interact with web page e.g. scroll, click on button, fill in input forms etc..
-On the other hand, use of this package requires specific set up, installed Java on your system and I faced multiple issues before I got it running properly. More on this topic will be covered in one of the future blogs.
+[RSelenium](https://cran.r-project.org/web/packages/RSelenium/index.html) Poskytuje súbor R väzieb pre *Selenium 2.0 WebDriver*. Na rozdiel od rvest spúšťa skutočný webový prehliadač, takže načíta akýkoľvek javascript obsiahnutý na webovej stránke.
+S týmto balíkom budete schopní interagovať so stránkou, napríklad posúvať, klikať na tlačidlo, vyplňovať vstupné formuláre atď.
+Na druhej strane je použitie tohto balíka náročnejšie, vyžaduje inštalovaný jazyk <strong>Java</strong> vo vašom systéme, a ja som sa stretol s viacerými problémami, kým som ho správne spustil. Viac o tomto téme bude pokryté v jednom z budúcich blogov.
 <br>
 I start with defining several helper functions. 
 One is for unsuccessful navigation to page, this usually happened when I read too many pages and I had to delete browsing history. Sometimes this function created loop running several hours before I noticed (e.g. during night) but at least the code did crashed. I also tried creating function to delete the history in case of unsuccessful navigation, but it did not work and I am fine with this solution for the time being. 
