@@ -165,12 +165,12 @@ plan(sequential)
 S týmto balíkom budete schopní interagovať so stránkou, napríklad posúvať, klikať na tlačidlo, vyplňovať vstupné formuláre atď.
 Na druhej strane je použitie tohto balíka náročnejšie, vyžaduje inštalovaný jazyk <strong>Java</strong> vo vašom systéme, a ja som sa stretol s viacerými problémami, kým som ho správne spustil. Viac o tomto téme bude pokryté v jednom z budúcich blogov.
 <br>
-I start with defining several helper functions. 
-One is for unsuccessful navigation to page, this usually happened when I read too many pages and I had to delete browsing history. Sometimes this function created loop running several hours before I noticed (e.g. during night) but at least the code did crashed. I also tried creating function to delete the history in case of unsuccessful navigation, but it did not work and I am fine with this solution for the time being. 
-Second one is for handling error in element search. In such cases this function returns NA.
-Last one is similar to the previous, however in this case it returns NA in case when element is not found.
+Začínam definovaním niekoľkých pomocných funkcií.
+Jedna je na neúspešnú navigáciu na stránku, k čomu obvykle dochádzalo, keď som čítal príliš veľa stránok a musel som vymazať históriu prehliadania. Niekedy táto funkcia spôsobila nekonečnú slučku, ktorá bežala niekoľko hodín, než som si to všimol (napríklad počas noci), ale aspoň kód nezhavaroval. Tiež som skúsil vytvoriť funkciu na vymazanie histórie v prípade neúspešnej navigácie, ale nefungovala, a som spokojný s touto súčasnou riešením.
+Druhá je na spracovanie chyby pri hľadaní elementu. V takýchto prípadoch táto funkcia vráti NA.
+Posledná je podobná predchádzajúcej, ale v tomto prípade vráti NA, ak sa element nenájde.
 <br>
-I also use `tryCatch()` function in scraping script to return NA in case of error.
+V skripte tiež používam funkciu `tryCatch()` na vrátenie NA v prípade chyby.
 <br>
 ```{r}
 # Define a function that handles the errors in page load
@@ -215,8 +215,7 @@ get_text_or_na <- function(nodes) {
 }
 ```
 <br>
-Now I am splitting links to 10 batches. This does not has to be done since the code is working, but I keep it in case of some unexpected error occurrence during the scraping process in order to save at least part of the data. This may seem paranoid, but I learned to be causes the hard way. The next part of web scraping takes more than two days and you don't want to lose whole progress because of WiFi outage. 
-I am also creating empty dataframe with all possible columns which will be fed later in the process.
+Teraz rozdeľujem odkazy na inzeráty do 10 setov. Tento krok nie je nutný, pretože kód funguje, ale robím to v prípade neočakávanej chyby počas procesu scrapovania, aby som zachránil aspoň časť údajov. Tento krok som zaradil až po jednej veľmi zlej skúsenosti. Ďalšia časť scrapovania totiž trvá viac ako dva dni a môžete mi veriť, že nechcete stratiť celý pokrok kvôli výpadku WiFi. Taktiež vytváram prázdny dataframe so všetkými možnými stĺpcami, ktorý sa bude napĺňať dátami.
 <br>
 ```{r}
 # Additional info from web
@@ -244,29 +243,26 @@ additional_info_df <- tibble(
 
 ```
 <br>
-Now I am getting to actual scraping with RSelenium. As already mentioned, to get it running I need to follow several steps. I am using only RSelenium, there is also possibility to use Docker to run the Selenium server and connect to this instance using RSelenium.
+Až teraz prichádzam k samotnému scrapovaniu s použitím RSelenium. Používam len samotnú knižnicu RSelenium, existuje tiež možnosť použiť Docker na spustenie servera Selenium a pripojenie sa k tejto inštancii pomocou RSelenium, túto možnosť som však nepoužil. 
+<br>Ako už bolo spomenuté, na jeho spustenie musím dodržať niekoľko krokov. Na nastavenie servera Selenium a prehliadača musíte použiť funkciu `rsDriver()` a volať $client na vytvorenie klienta. Funkcia rsDriver očakáva niekoľko argumentov:
 
-To setup the Selenium server and browser you need to use `rsDriver()` function and call $client to create the client. rsDriver functions expects several arguments:
+* browser - používam Chrome, takže argument je "chrome",
+* chromever - tento argument je častí zdroj chýb. Jeho riešenie popíšem v samostatnom *BLOGU*, ale v tomto prípade píšem verziu "113.0.5672.63",
+* verbose - nastavujem FALSE, lebo ma nezaujímajú správy so statusom,
+* port - port, na ktorom sa má spúšťať. Používam funkciu z balíka _netstat_ `free_port(random = TRUE)` pre automatický výber voľného portu.
 
-* browser - I use chrome so I input "chrome",
-* chromever - this is often the cause of error. I will go through the solution is separate blog, but in this case I input Chrome version "113.0.5672.63",
-* verbose - I dont want any status messages so it is FALSE,
-* port - port to run on. I use netstat package function `free_port(random = TRUE)` to automatically select free port
-
-Afterwards I open the browser, maximizing the window, navigate to Nehnutelnosti page and accept cookies.
-When all this is done, the actual scraping runs in for loop. I will not go through all details, but the logic is quite simple: 
-1. Navigate to the link in the loop. 
-2. Scroll to page height/10*4.2 so the javascript returning index of living will run (this scroll depth is based on manual testing, nevertheless I need to find other method or run multiple scrolls to really execute the script on all loaded pages)
-3. Wait for 3 seconds to execute the javascript and slow down the process
-4. Read the page content
-5. If page could not be read and is NA, add blank record to the dataframe
-6. Otherwise read page html, scrape following information and bind the new rows to the dataframe:
-  * info_text - full text from advertisement. Not used currently in ML model, but I plan to use NLP to obtain keywords/topics and create a word cloud in Shiny app
-  * info_details - contains 4 variables and will be cleaned in following steps. Variables are delimited by "\n".
-  * index_of_living - value from 0 to 10, it is calculated by slovak startup [City Performer](https://cityperformer.com/). It considers six categories: environment, quality of housing, safety, transport, services and relaxation
-  * additional_characteristics - contains multiple variables, I select 12 of them in following steps. Variables are delimited by "\n".
-7. Close client and stop server
-
+Následne skriptom otvorím prehliadač, maximalizujem okno, prejdem na stránku Nehnutelnosti a prijmem súbory cookie. Keď je toto hotové, skutočné scrapovanie prebieha v cykle. Nejdem do všetkých detailov, ale logika je dosť jednoduchá, skript: 
+1. Prejde na odkaz v cykle.
+2. Posunie sa na _výšku stránky/10*4,2_, aby sa spustil javascript na zobrazenie indexu bývania (táto hĺbka posuvu je založená na manuálnych testoch, napriek tomu musím nájsť inú metódu alebo spustiť viacero posunov, aby sa skript skutočne spustil na všetkých načítaných stránkach).
+3. Počká 3 sekundy na vykonanie javascriptu a spomalenie procesu (aby sa zbytočne nezaťažovala stránka).
+4. Načíta obsah stránky.
+5. Ak sa stránka nedá načítať, pridá prázdny záznam do dataframe-u.
+6. Ak sa stránka dá načítať, prejde html stránky, scrapuje nasledujúce informácie a pridá nové riadky k dataframe-u:
+  * info_text - celý text z inzerátu. Momentálne nie je používaný v ML modeli, ale plánujem použiť NLP na získanie kľúčových slov/tém a vytvorenie wordcloud v Shiny appke.
+  * info_details - obsahuje 4 premenné a bude vyčistený v nasledujúcich krokoch. Premenné sú oddelené symbolom "\n".
+  * index_of_living - hodnota od 0 do 10, vypočítava ju slovenský startup [City Performer](https://cityperformer.com/). Zohľadňuje šesť kategórií: prostredie, kvalita bývania, bezpečnosť, doprava, služby a oddych.
+  * additional_characteristics - obsahuje viacero premenných, v nasledujúcich krokoch vyberiem 12 z nich. Premenné sú oddelené symbolom "\n".
+7. Zatvorí klienta a zastaví server.
 <br>
 ```{r}
 for (i in 1:10) {
@@ -377,8 +373,8 @@ for (i in 1:10) {
 
 ### Data wrangling
 <br>
-Scraping is done and I continue with data wrangling to adjust the data to usable form. 
-Firstly, I deal with address to keep all districts in first column. This address is later used for geocoding. I also adjust the price to integer so it can be used in ML model.
+Scrapovanie je hotové a pokračujem s manipuláciou s dátami, aby som ich dal do (prvotnej) použiteľnej formy.
+Najprv upravujem adresu, aby som všetky okresy dostal do prvéo stĺpca. Táto adresa sa neskôr používa na geokódovanie, ktorý opisujem v *BLOGU*. Cena je taktiež upravená na číslo, aby sa mohla použiť v ML modeli.
 <br>
 ```{r}
 advertisements_cleaned <- advertisements %>%
@@ -394,10 +390,10 @@ advertisements_cleaned <- advertisements %>%
   select(-street)
 ```
 <br>
-Now, I need to split the additional_characteristics and info_details columns values into more meaningful variables. For this I created two lists: characteristics1 and characteristics2. Each of them contains name of the variable I want to extract. I use these lists to create empty dataframe to ensure that all columns are present.
-From additional_info_df (dataframe with scraped data) I select additional_characteristics and info_details and slit the values using "/n" as delimiter.
-Next I define two functions: get_characteristics1 and get_characteristics2 which retrieve the values and map these functions to respective columns.
-Finally I bind together output_df_characteristics1, output_df_characteristics2 and selected columns from additional_info_df and join them to advertisements_cleaned by link.
+Teraz potrebujem rozdeliť hodnoty stĺpcov additional_characteristics a info_details na viac zmysluplných premenných. Preto som vytvoril dva zoznamy: characteristics1 a characteristics2. Každý z nich obsahuje názov premenných, ktoré chcem extrahovať. Používam tieto zoznamy na vytvorenie prázdneho dataframe-u, aby som sa uistil, že sú všetky stĺpce prítomné.
+Z additional_info_df vyberiem additional_characteristics a info_details a rozdelím hodnoty pomocou "/n" ako oddeľovača.
+Ďalej definujem dve funkcie: get_characteristics1 a get_characteristics2, ktoré tieto hodnoty mapujú na príslušné stĺpce.
+Nakoniec spájam output_df_characteristics1, output_df_characteristics2, vybrané stĺpce z additional_info_df a pripájam ich k advertisements_cleaned podľa linku inzerátu.
 <br>
 ```{r}
 # get additional information from scraped data
@@ -494,40 +490,17 @@ advertisements_complete <- advertisements_cleaned %>%
   select(-flag, -c, -type)
 ```
 <br>
-Last step is saving the data in RDS format. I also keep the historical data for future price development analysis.
+Posledný krok je uloženie dát vo formáte RDS.
 <br>
 ```{r}
 saveRDS(additional_info_df, "data/additional_info_df.RDS")
 saveRDS(advertisements, "data/advertisements.RDS")
 
-# save the old file advertisements_complete to histo folder for further use in web app
-if (file.exists("data/advertisements_complete.rds")) {
-  histo_rds <- import("data/advertisements_complete.rds") %>%
-    mutate(timestamp = as.Date(file.info("data/advertisements_complete.rds")$mtime))
-  histo_date <- file.info("data/advertisements_complete.rds")$mtime %>%
-    as.Date() %>%
-    as.character() %>%
-    str_replace_all("-", "_")
-  saveRDS(histo_rds, paste0("data/histo/advertisements_complete", histo_date, ".rds"))
-}
-
 # create separate df for text analyses
 text_long <- advertisements_complete$info_text
 
-# save the old file text_long to histo folder for further use in web app
-if (file.exists("data/text_long.rds")) {
-  histo_rds <- import("data/text_long.rds") %>%
-    as.data.frame() %>% 
-    mutate(timestamp = as.Date(file.info("data/text_long.rds")$mtime))
-  histo_date <- file.info("data/text_long.rds")$mtime %>%
-    as.Date() %>%
-    as.character() %>%
-    str_replace_all("-", "_")
-  saveRDS(histo_rds, paste0("data/histo/text_long", histo_date, ".rds"))
-}
-
 saveRDS(text_long, file = "data/text_long.rds")
+
 saveRDS(advertisements_complete, file = "data/advertisements_complete.rds")
-advertisements_complete <- read_rds("data/advertisements_complete.rds")
 ```
 
