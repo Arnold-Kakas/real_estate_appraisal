@@ -1,11 +1,11 @@
 /*-- scss:defaults --*/
 
-
+ul li{
+ font-size:14px;
+}
 
 /*-- scss:rules --*/
-body {
-    font-family: "Courier New";
-}
+
 .nav-tabs .nav-item .nav-link.active {
   color: white;
 }

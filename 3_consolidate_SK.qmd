@@ -17,7 +17,6 @@ fig-align: center
 crossref: 
   fig-prefix: "Graf"
 tbl-cap-location: bottom
-mainfont: Courier New
 ---
 
 ## Úvod
@@ -90,11 +89,10 @@ pacman::p_load(
   ggstatsplot, # ggwithinstats()
   effectsize, # interpret_kendalls_w()
   tidyverse,
-  kableExtra,
-  extrafont
+  kableExtra
 )
 
-loadfonts(device = "win")
+#loadfonts(device = "win")
 ```
 
 
@@ -659,6 +657,8 @@ relevant_mun <- number_of_ads %>%
   filter(n > 4) %>%
   select(1)
 
+
+saveRDS(joined_data_cleaned ,"data/apartments_final_data.rds")
 saveRDS(relevant_mun, file = "data/app_obce_filter_list.rds")
 ```
 

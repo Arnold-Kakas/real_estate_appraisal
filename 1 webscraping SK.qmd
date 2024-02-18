@@ -9,12 +9,17 @@ theme:
 toc: true
 toc-depth: 4
 code-fold: true
+code-summary: "Kód"
 execute:
   warning: false  
-  echo: false
+fig-cap-location: bottom
+fig-align: center
+crossref: 
+  fig-prefix: "Graf"
+tbl-cap-location: bottom
 ---
 
-## Caution
+## Upozornenie
 <br>
 Predtým než sa dostanem k téme tohto blogu, upozorňujem, že tento článok slúži výhradne <strong>informačným účelom</strong> a akékoľvek informácie uvedené nižšie <strong>nie sú právne rady</strong>. Preto pred akýmkoľvek zbieraním údajov z webu by ste mali získať vhodnú profesionálnu právnu radu týkajúcu sa vášho konkrétneho prípadu.
 
@@ -83,7 +88,7 @@ pacman::p_load(
 V tomto projekte máme tri skupiny balíkov:
 
 * na načítanie údajov a manipuláciu s nimi - rio, tidyverse
-* na web scrapovanie - rvest, RSelenium, netstat, httr
+* na web scrapovanie - rvest, RSelenium, netstat, httr. *Poznámka:* V čase uverejnenia tohto príspevku bola dostupná už aj nová funkcia v knižnici rvest *read_html_live()*. Podľa [popisu](https://rvest.tidyverse.org/dev/reference/read_html_live.html) by mohla aspon čiastočne nahradiť RSelenium.
 * na paralelné spracovanie - doParallel a furrr
 
 ### Webové elementy
@@ -247,7 +252,7 @@ Až teraz prichádzam k samotnému scrapovaniu s použitím RSelenium. Používa
 <br>Ako už bolo spomenuté, na jeho spustenie musím dodržať niekoľko krokov. Na nastavenie servera Selenium a prehliadača musíte použiť funkciu `rsDriver()` a volať $client na vytvorenie klienta. Funkcia rsDriver očakáva niekoľko argumentov:
 
 * browser - používam Chrome, takže argument je "chrome",
-* chromever - tento argument je častí zdroj chýb. Jeho riešenie popíšem v samostatnom *BLOGU*, ale v tomto prípade píšem verziu "113.0.5672.63",
+* chromever - tento argument je častí zdroj chýb. Jeho riešenie popíšem v samostatnom *BLOGU*, ale v tomto prípade píšem verziu "119.0.6045.105",
 * verbose - nastavujem FALSE, lebo ma nezaujímajú správy so statusom,
 * port - port, na ktorom sa má spúšťať. Používam funkciu z balíka _netstat_ `free_port(random = TRUE)` pre automatický výber voľného portu.
 
@@ -272,7 +277,7 @@ for (i in 1:10) {
   # start the server
   rs_driver_object <- rsDriver(
     browser = "chrome",
-    chromever = "113.0.5672.63",
+    chromever = "119.0.6045.105",
     verbose = FALSE,
     port = free_port(random = TRUE)
   )

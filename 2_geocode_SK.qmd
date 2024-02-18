@@ -1,0 +1,112 @@
+---
+title: Geocoding
+author: Arnold Kakas
+format: html
+date: today
+theme: 
+  - flatly
+  - Style.scss
+toc: true
+toc-depth: 4
+code-fold: true
+code-summary: "Kód"
+execute:
+  warning: false  
+fig-cap-location: bottom
+fig-align: center
+crossref: 
+  fig-prefix: "Graf"
+tbl-cap-location: bottom
+---
+
+## Úvod
+
+V dnešnom príspevku sa budeme venovať procesu *geokódovania* inzerátov a následné spojenie týchto geokódovaných údajov s údajmi o obciach v SR. Tento proces otvára dvere k hlbšiemu porozumeniu vašich dát a umožňuje pokročilé geopriestorové analýzy.
+<br>Tentokrát si vystačíme s tromi knižnicami. S _tidyverse_ na manipuláciu s dátami, _tidygeocoder_ na samotný <strong>geocoding</strong> adries a _sf_ pre prácu s priestorovými dátami (v našom prípade bodmi a polygónmi) sme pripravení načítať a spracovať naše dáta.
+
+```{r}
+#| echo: true
+#| eval: false
+#| code-summary: "Kód"
+# import libraries
+
+pacman::p_load(
+  tidyverse, 
+  tidygeocoder, 
+  sf
+)
+```
+
+## Načítanie dát a geokódovanie
+
+Načítame geopriestorové údaje o obciach a údaje o inzerátoch. Udaje o obciach sa dajú jednoducho získať pomocou knižnice [giscoR](https://cran.r-project.org/web/packages/giscoR/index.html) a funkcie _gisco_get_communes()_.
+
+```{r}
+#| echo: true
+#| eval: false
+#| code-summary: "Kód"
+
+# Read geospatial data for communes
+communes <- readRDS("data/geospatial_data/communes.RDS") |> 
+  select(NAME_NSI)
+
+# Read advertisements data
+advertisements_complete <- readRDS("data/advertisements_complete.RDS") 
+```
+
+<br>Každý z inzerátov v našom datasete obsahuje adresu. Naším cieľom je extrahovať unikátne adresy z týchto reklám a premeniť ich na geopriestorové údaje. Geokódovanie vykonáme pomocou funkcie _geocode()_ metódou OpenStreetMap. Tento proces môže trvať dlho keďže každú sekundu sa odošle jedna požiadavka a umožní nám analyzovať, ako sa reklamy rozkladajú geograficky.
+
+
+```{r}
+#| echo: true
+#| eval: false
+#| code-summary: "Kód"
+
+# Extract unique addresses from advertisements data
+advertisements <- advertisements_complete |> 
+  select(address) |> 
+  rename(address1 = address) |> 
+  as_tibble() |> 
+  mutate(address1 = str_extract(address1, 
+                                "^[^,]+,[^,]+")) |> 
+  unique()
+
+# Geocode addresses using OpenStreetMap method
+geocoded_advertisements <- geocode(advertisements, 
+                            address = address1, 
+                            method = 'osm', 
+                            lat = latitude , 
+                            long = longitude)
+```
+
+<br>Po geokódovaní adries ich spojíme späť s našimi údajmi o reklamách. To nám umožní priradiť každej reklame geografickú polohu. V tejto fáze tiež aplikujeme filter, aby sme zabezpečili, že v našej analýze zohľadňujeme iba reklamy v špecifickom geografickom rozsahu, ktorý odpovedá oblasti Slovenska. Občas sa totiž stalo, že adresa bola lokalizovaná v zahraničí.
+
+```{r}
+#| echo: true
+#| eval: false
+#| code-summary: "Kód"
+
+# Join geocoded addresses with advertisements data
+advertisements_complete_geocoded <- advertisements_complete |> 
+  left_join(geocoded_advertisements, by = c("address" = "address1"), keep = FALSE, multiple = "first") |> 
+  filter(latitude <= 49.613611 & latitude >= 47.75740 & longitude <= 22.565833 & longitude >= 16.833333) |>  
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
+```
+
+<br>Posledným krokom je priestorové spojenie geokódovaných reklám s dátami o obciach. Tento proces nám umožní zistiť, v ktorých obciach sa nachádzajú naše reklamy. Využívame k tomu knižnicu [sf](https://cran.r-project.org/web/packages/sf/index.html), ktorá je štandardom pre prácu s priestorovými dátami v R. Keďže už pracujeme s priestorovými údajmi, musíme použit špecifický typ spojenia *st_join* metódou *st_contains*, ktorý spája dve priestorové jednotky (body, polygóny) podľa toho či jedna obsahuje druhú. Výsledný dataset integruje originálne informácie o inyerciách s ich geopriestorovými vlastnosťami a príslušnosťou k obciam.
+
+```{r}
+#| echo: true
+#| eval: false
+#| code-summary: "Kód"
+
+# Spatial join with communes data
+advertisements_complete_geocoded <- communes %>% 
+  st_join(advertisements_complete_geocoded, join = st_contains)
+
+# Save the final geocoded advertisements data
+saveRDS(advertisements_complete_geocoded, "data/advertisements_complete_geocoded.RDS")
+```
+
+## Záver
+<br> <strong>Geokódovanie</strong> a práca s geopriestorovými dátami otvárajú nové možnosti pre <strong>analýzu a vizualizáciu</strong> informácií. V tomto prípade sme prešli od jednoduchých adresných údajov k ich geografickej reprezentácii a integrácii s údajmi o obciach. Tento prístup nám umožňuje <strong>lepšie porozumieť distribúcii</strong> na území Slovenska, čo je jednak dôležité pre nacenenie nehnuteľnosti a v praxi často kľúčové pre efektívne plánovanie marketingových a obchodných stratégií.

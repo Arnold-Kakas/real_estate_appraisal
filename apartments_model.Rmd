@@ -32,38 +32,43 @@ pacman::p_load(rio,
 
 ```{r}
 # import data
-apartments_analysis_data <- import("data/apartments_final_data.rds") %>% 
-  select(-n, -address1, -address2) %>% 
-  filter(!is.na(price)) %>% 
-  group_by(name_nsi)
+apartments_analysis_data <- import("data/apartments_final_data.rds") |>
+  filter(!is.na(price)) |>
+  mutate(coord = st_coordinates(st_centroid(geometry)),
+         lon = coord[, 1],
+         lat = coord[, 2]) |>
+  select(-coord)  # Optionally remove the original coordinates column
+
+# remove geometry since we have coordinates now
+apartments_analysis_data$geometry <- NULL
 
 
 #apartments_analysis_data <- apartments_app_analysis_data
-apartments_app_analysis_data <- apartments_analysis_data
-apartments_app_analysis_data_sk <- apartments_analysis_data %>% 
-  mutate(district = "Slovensko") %>% 
-  mutate(district = as.factor(district))
+# apartments_app_analysis_data <- apartments_analysis_data
+# apartments_app_analysis_data_sk <- apartments_analysis_data |>
+#   mutate(district = "Slovensko",
+#          district = as.factor(district))
+# 
+# apartments_app_analysis_data <- rbind(apartments_app_analysis_data_sk)
+# 
+# 
+# saveRDS(apartments_app_analysis_data, "data/apartments_app_analysis_data.rds")
 
-apartments_app_analysis_data <- rbind(apartments_app_analysis_data_sk)
 
 
-saveRDS(apartments_app_analysis_data, "data/apartments_app_analysis_data.rds")
-
-
-
-apartments <- apartments_analysis_data %>% 
-  mutate(index = mean(as.numeric(index),na.rm = TRUE),
-         index = if_else(index > 0, index, NA),
-         IQR = IQR(price),
-         median = median(price),
-         lower = median - 1.5*IQR,
-         upper = median + 1.5*IQR,
-         ) %>% 
-  ungroup() %>% 
-  filter(price >= lower & price <= upper) %>% 
-  filter(area > 10 & area < 200) %>% 
-  filter(price < 400000) %>% 
-  select(-lower, -upper, -median, -IQR)
+# apartments <- apartments_analysis_data |>
+#   mutate(index = mean(as.numeric(index),na.rm = TRUE),
+#          index = if_else(index > 0, index, NA),
+#          IQR = IQR(price),
+#          median = median(price),
+#          lower = median - 1.5*IQR,
+#          upper = median + 1.5*IQR,
+#          ) |>
+#   ungroup() |>
+#   filter(price >= lower & price <= upper) |>
+#   filter(area > 10 & area < 200) |>
+#   filter(price < 400000) |>
+#   select(-lower, -upper, -median, -IQR)
 
 
 
@@ -74,22 +79,24 @@ apartments <- apartments_analysis_data %>%
 ```{r}
 # split dataframes to train(80)/test(20)
 set.seed(123)
-apartments_train_split <- initial_split(apartments, prop = 0.8, strata = price)
+apartments_train_split <- initial_split(apartments_analysis_data, prop = 0.7, strata = price)
 
 apartments_train <- training(apartments_train_split)
 apartments_test <- testing(apartments_train_split)
 
 saveRDS(apartments_test, "data/apartments_test.RDS")
 
-set.seed(123)
-apartments_train_boots <- bootstraps(apartments_train, times = 25)
+
+folds <- vfold_cv(apartments_train, v = 5, strata = price)
 ```
 
 ```{r}
 # recipes
-apartments_xgboost_recipe <- recipe(apartments_train, price ~ .) %>%
-  step_impute_knn(all_nominal_predictors()) %>%
-  step_unknown(all_nominal_predictors()) %>%
+apartments_xgboost_recipe <- recipe(apartments_train, price ~ .) |>
+  step_rm(name_nsi) |> 
+  step_string2factor(all_nominal_predictors()) |> 
+  step_impute_knn(all_nominal_predictors()) |>
+  step_unknown(all_nominal_predictors()) |>
   step_dummy(all_nominal_predictors())
 ```
 
@@ -98,75 +105,73 @@ apartments_xgboost_recipe <- recipe(apartments_train, price ~ .) %>%
 # models
 xgb_model <-
   boost_tree(
-    trees = 1000, loss_reduction = tune(),
+    trees = tune(), loss_reduction = tune(),
     tree_depth = tune(), min_n = tune(),
     mtry = tune(), sample_size = tune(),
     learn_rate = tune()
-  ) %>%
-  set_mode("regression") %>%
+  ) |>
+  set_mode("regression") |>
   set_engine("xgboost")
 ```
 
 ```{r}
 # workflows
-apartments_workflow <- workflow() %>%
-  add_recipe(apartments_xgboost_recipe) %>%
+apartments_workflow <- workflow() |>
+  add_recipe(apartments_xgboost_recipe) |>
   add_model(xgb_model)
 ```
 
 ```{r}
 # parameters
 apartments_xgboost_params <- parameters(
-  trees(), learn_rate(),
-  tree_depth(), min_n(),
-  finalize(mtry(), apartments_train)
-)
+  trees(), learn_rate(), loss_reduction(),
+  tree_depth(), min_n(),  sample_size = sample_prop(),
+  finalize(mtry(), apartments_train))
+
+apartments_xgboost_params <- apartments_xgboost_params %>% update(trees = trees(c(300, 600))) 
 ```
 
 ```{r}
 # optimization
-set.seed(123)
-apartments_xgboost_grid <-
-  grid_latin_hypercube(
-    tree_depth(),
-    min_n(),
-    loss_reduction(),
-    sample_size = sample_prop(),
-    finalize(mtry(), apartments_train),
-    learn_rate(),
-    size = 30
+
+registerDoParallel(cores = detectCores() - 2)
+
+xgboost_tune <-
+  apartments_workflow %>%
+  tune_bayes(
+    resamples = folds,
+    param_info = apartments_xgboost_params,
+    iter = 30, 
+    metrics = metric_set(rmse, mape),
+    control = control_bayes(no_improve = 10, 
+                            save_pred = T, verbose = T)
   )
+
+# doParallel::stopImplicitCluster()
+autoplot(xgboost_tune)
 ```
 
 ```{r}
-# results
-registerDoParallel(cores = detectCores() - 2)
 
-set.seed(123)
-apartments_xgboost_res <- tune_grid(
-  apartments_workflow,
-  resamples = apartments_train_boots,
-  grid = apartments_xgboost_grid,
-  control = control_grid(save_pred = TRUE)
-)
 ```
+
 
 ```{r}
 # best models
-apartments_best_model <- select_best(apartments_xgboost_res, "rmse")
+apartments_best_model <- select_best(xgboost_tune, "rmse", maximize = FALSE)
 ```
 
 ```{r}
 # finalize models
 apartments_final_model <- finalize_model(xgb_model, apartments_best_model)
-apartments_workflow <- apartments_workflow %>% update_model(apartments_final_model)
+apartments_workflow <- apartments_workflow |>update_model(apartments_final_model)
 apartments_xgb_fit <- fit(apartments_workflow, data = apartments_train)
 ```
 
 ```{r}
-apartments_xgb_fit %>%
-  fit(data = apartments_train) %>%
-  pull_workflow_fit() %>%
+apartments_xgb_fit |>
+  fit(data = apartments_train) |>
+  pull_workflow_fit() |>
   vip(geom = "point")
 ```
 
@@ -178,24 +183,24 @@ collect_metrics(apartments_final_res)
 ```{r}
 # evaluate
 apartments_pred <-
-  predict(apartments_xgb_fit, apartments_test) %>%
+  predict(apartments_xgb_fit, apartments_test) |>
   bind_cols(apartments_test)
 
-# %>% 
+# |>
 #   mutate(prediction = 10^.pred,
 #          real_price = 10^price)
 
 apartments_plot1 <-
-  apartments_pred %>%
+  apartments_pred |>
   ggplot(aes(x = .pred, y = price)) +
   geom_point() +
   geom_abline(intercept = 0, col = "red")
 
 
 apartments_plot2 <-
-  apartments_pred %>%
-  select(.pred, price) %>%
-  gather(key, value) %>%
+  apartments_pred |>
+  select(.pred, price) |>
+  gather(key, value) |>
   ggplot(aes(x = value, volor = key, fill = key)) +
   geom_density(alpha = .2) +
   labs(x = "", y = "")
@@ -208,13 +213,13 @@ apartments_plot1 / apartments_plot2
 saveRDS(apartments_xgb_fit, "data/model.RDS")
 
 # # save other data for app
-# conditions <- scraped_cleaned_wo_outliers_wo_geometry %>% select(condition) %>% distinct()
+# conditions <- scraped_cleaned_wo_outliers_wo_geometry |>select(condition) |>distinct()
 # saveRDS(conditions, "data/conditions.RDS")
 # 
-# certificate <- scraped_cleaned_wo_outliers_wo_geometry %>% select(certificate) %>% distinct()
+# certificate <- scraped_cleaned_wo_outliers_wo_geometry |>select(certificate) |>distinct()
 # saveRDS(certificate, "data/certificate.RDS")
 # 
-# type <- scraped_cleaned_wo_outliers_wo_geometry %>% select(type) %>% distinct()
+# type <- scraped_cleaned_wo_outliers_wo_geometry |>select(type) |>distinct()
 # saveRDS(type, "data/type.RDS")
 ```
 
@@ -233,7 +238,7 @@ test <- data.frame(name_nsi = "Senec",
 
 
 test_pred <-
-  predict(apartments_xgb_fit, test) %>%
+  predict(apartments_xgb_fit, test) |>
   bind_cols(test)
 ```
 
