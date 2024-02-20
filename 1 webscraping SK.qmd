@@ -126,11 +126,11 @@ Pridal som aj _plan(sequential)_ na zastavenie multisession, ale musím priznať
 <br>
 ```{r}
 # apartments page
-site <- "https://www.nehnutelnosti.sk/slovensko/byty/predaj/?p[param1][from]=1000&p[param1][to]=&p[page]="
+site <- "https://www.nehnutelnosti.sk/byty/predaj/?p%5Bparam1%5D%5Bfrom%5D=1000&p%5Bparam1%5D%5Bto%5D=&p%5Bparam11%5D%5Bfrom%5D=10&p%5Bparam11%5D%5Bto%5D="
 
 # scrape the number of pages
-number_of_pages <- read_html(paste0(site, 1)) %>%
-  html_nodes(xpath = '//*[@id="content"]/div[8]/div/div/div[1]/div[17]/div/div/ul/li[5]') %>%
+number_of_pages <- read_html(site) %>%
+  html_nodes(xpath = '//*[@id="content"]/div[7]/div/div/div[1]/div[17]/div/div/ul/li[5]') %>%
   html_elements("a") %>%
   html_text(trim = TRUE) %>%
   as.numeric()
