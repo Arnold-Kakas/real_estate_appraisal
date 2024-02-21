@@ -31,7 +31,7 @@ Podrobnejšie som prešiel procesom webscraping-u v mojom predchádzajúcom [blo
 <br> <strong>Exploratory Data Analysis</strong> je neoddeliteľnou súčasťou dátovej analytiky (Data analysis)/dátovej vedy (Data science).
 <br>
 
-<centrum>![EDA v projekte vedy o údajoch. Zdroj: https://commons.wikimedia.org/wiki/File:Data_visualization_process_v1.png](data/EDA.PNG)
+<center>![EDA v data science projekte. Zdroj: https://commons.wikimedia.org/wiki/File:Data_visualization_process_v1.png](data/EDA.PNG)
 
 </center>
 
