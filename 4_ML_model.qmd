@@ -21,42 +21,47 @@ tbl-cap-location: bottom
 
 ## Úvod
 
-tidymodels, xgboost
+V tomto blogovom príspevku prejdem procesom prípravy a tvorby <strong>ML modelu</strong>, ktorý bude na základe vložených parametrov predikovať cenu bytu. Dáta boli vopred nachystané, ich čistenie a manipuláciu si môžete pozrieť v tomto [článku](). 
 
 ## Explainable ML
 
-V rámci strojového učenia predstavuje koncept "explainable ML" (vysvetliteľné strojové učenie) kľúčový posun smerom k transparentnosti a interpretovateľnosti modelov, ktoré sú často vnímané ako "black box". Napriek tomu, že modely ako XGBoost ponúkajú výnimočnú prediktívnu silu, ich interné rozhodovacie procesy môžu byť zložité a nejasné. Toto vnímanie komplikuje dôveru a akceptáciu modelov v kritických aplikáciách, kde je potrebné pochopenie dôvodov za predikciami.
+V rámci strojového učenia predstavuje koncept "explainable/interpretable ML" (vysvetliteľné strojové učenie) kľúčový posun smerom k transparentnosti a interpretovateľnosti modelov. Napriek tomu, že modely ako XGBoost ponúkajú výnimočnú prediktívnu silu, ich interné rozhodovacie procesy môžu byť zložité a nejasné a teda môžu byť tiež vnímané ako "black box", čo znamená, že nie je ľahké pochopiť, ako sa k predikciám dospelo. Toto vnímanie komplikuje dôveru a akceptáciu modelov v kritických aplikáciách, kde je potrebné pochopenie dôvodov za predikciami.
 
-Vysvetliteľné ML sa snaží preklenúť túto priepasť, poskytujúc nástroje a metódy na objasnenie, ako modely dospeli k svojim rozhodnutiam. Knihovne ako "vip" a metódy ako SHAP (Shapley Additive exPlanations) hodnoty umožňujú analytikom a vývojárom lepšie pochopiť príspevky jednotlivých funkcií k výslednému predikovanému výstupu. Táto schopnosť detailne rozložiť predikčný proces umožňuje nielen hlbšiu analýzu a optimalizáciu modelov, ale tiež zvyšuje transparentnosť a dôveru zo strany koncových užívateľov.
+Vysvetliteľné strojové učenie sa snaží preklenúť túto priepasť, poskytujúc nástroje a metódy na objasnenie, ako modely dospeli k svojim rozhodnutiam. Knižnice ako "vip" v jazyku R a metódy ako SHAP (Shapley Additive exPlanations) hodnoty umožňujú analytikom a vývojárom lepšie pochopiť príspevky jednotlivých funkcií k výslednému predikovanému výstupu. Táto schopnosť detailne rozložiť predikčný proces umožňuje nielen hlbšiu analýzu a optimalizáciu modelov, ale tiež zvyšuje transparentnosť a dôveru zo strany koncových užívateľov.
 
-Dôležitosť "explainable ML" naberá na váhe najmä v sektoroch, kde sú dôsledky rozhodnutí založených na predikciách modelu vysoké, ako sú zdravotníctvo, financie alebo právo. V týchto oblastiach je kľúčové, aby boli modely nielen presné, ale aj ich rozhodnutia comprehenzívne a spravodlivé. Vysvetliteľné strojové učenie tak stojí v centre úsilia o vytvorenie technológií, ktoré sú nielen inteligentné, ale aj zrozumiteľné a etické.
+<center>![Vysvetliteľné strojové učenie. Zdroj: Lundberg, Scott & Erion, Gabriel & Chen, Hugh & DeGrave, Alex & Prutkin, Jordan & Nair, Bala & Katz, Ronit & Himmelfarb, Jonathan & Bansal, Nisha & Lee, Su-In. (2019). Explainable AI for Trees: From Local Explanations to Global Understanding. ](data/explainable ML.png)
+</center>
 
+Dôležitosť explainable/interpretable ML naberá na váhe najmä v sektoroch, kde sú dôsledky rozhodnutí založených na predikciách modelu vysoké, ako sú zdravotníctvo, financie alebo právo. V týchto oblastiach je kľúčové, aby boli modely nielen presné, ale aj ich rozhodnutia comprehenzívne a spravodlivé. Vysvetliteľné strojové učenie tak stojí v centre úsilia o vytvorenie technológií, ktoré sú nielen inteligentné, ale aj zrozumiteľné a etické.
 
+Výborná kniha na túto tému je napríklad [Interpretable Machine Learning: A Guide For Making Black Box Models Explainable](https://www.amazon.com/dp/B09TMWHVB4), ktorá je veľmi zrorumiteľne napísaná a obsahuje aj odkazy na knižnice v R aj Pythone. Navyše je dostupná aj [online](https://christophm.github.io/interpretable-ml-book/). Náročnejšia publikácia je potom [Explainable AI for Trees: From Local Explanations to Global Understanding](https://arxiv.org/abs/1905.04610), ktorá ide viac do detailu a "matematiky" na pozadí.
 
 ## Načítanie knižníc a dát
+
+Klasicky začíname s načítaním knižníc. Aj tento krát použijeme [tidyverse](https://cran.r-project.org/web/packages/tidyverse/index.html) - súbor knižníc navrhnutých na prácu s dátami v R, ktorý zahŕňa napr. ggplot2 pre vizualizáciu, dplyr pre manipuláciu s dátami, tidyr pre úpravu tvaru dát, a iné. Opäť sa objavuje  knižnica [sf](https://cran.r-project.org/web/packages/sf/index.html) keďže dáta obsahuju priestorové objekty. Novikou v tomto blogu je [tidymodels](https://cran.r-project.org/web/packages/tidymodels/index.html). Je to framework pre modelovanie a strojové učenie, ktorý poskytuje koherentnú súpravu knižníc na predspracovanie dát, rozdelenie dát, cross-validáciu, výber modelu atď. Je navrhnutý tak, aby bol v súlade s princípmi tidyverse a umožňoval ľahkú integráciu s inými nástrojmi z tohto ekosystému. Dve nasledujúce knižnice pomáhajú s konceptom "explainable/interpretable ML". Knižnica [vip](https://cran.r-project.org/web/packages/vip/index.html) je určená na vizualizáciu dôležitosti premenných v rôznych modeloch strojového učenia. Umožňuje ľahko identifikovať, ktoré premenné majú najväčší vplyv na predikcie modelu, čo je kľúčové pre interpretáciu modelu a pochopenie dát. Knižnica [shapviz](https://cran.r-project.org/web/packages/shapviz/index.html) je špecificky navrhnutá na výpočet a vizualizáciu SHAP hodnôt pre modely vytvorené pomocou XGBoost v R. SHAP hodnoty poskytujú podrobné vysvetlenie predikcií modelu na úrovni jednotlivých pozorovaní, čo pomáha v interpretácii "black box" modelov. [doParallel](https://cran.r-project.org/web/packages/doParallel/index.html) slúži na paralelné výpočty a teda skrátenie času trénovania modelu. Posledná knižnica [extrafont](https://cran.r-project.org/web/packages/extrafont/index.html) slúži na načítanie fontov inštalovaných na Windows-e.
 
 ```{r}
 #| echo: true
 #| code-summary: "Knižnice"
+#| warning: false
+#| message: false
 # import libraries
 if (!require("pacman")) {
   install.packages("pacman")
 }
 
 pacman::p_load(
-  sf,
   tidyverse,
+  sf, # data contain geometry
   tidymodels,
-  GGally,
   vip,
-  SHAPforxgboost,
-  parallel,
-  dataPreparation,
+  shapviz,
   doParallel,
   extrafont
 )
 
 loadfonts(device = "win")
+options(scipen=999)
 
 unregister_dopar <- function() {
   env <- foreach:::.foreachGlobals
@@ -67,6 +72,8 @@ unregister_dopar <- function() {
 ```{r}
 #| echo: true
 #| code-summary: "Dáta"
+#| warning: false
+#| message: false
 # import data
 apartments_analysis_data <- readRDS("data/apartments_final_data.rds") |>
   filter(!is.na(price)) |>
@@ -99,7 +106,7 @@ apartments_analysis_data$geometry <- NULL
 
 * **Výber a nastavenie hyperparametrov:** Pomocou parameters() môžeme definovať a prispôsobiť rozsahy hyperparametrov pre tuning modelu. Tidymodels ponúka rôzne metódy pre vyhľadávanie optimálnych hodnôt, napr. tune_grid(), tune_bayes(), tune_race() a iné.
 
-* **Krížová validácia a tuning modelu:** Tuning hyperparametrov prebieha na trénovacej sade (resp. na jednotlivých "fold-och") s cieľom nájsť najlepšiu kombináciu hyperparametrov. Najlepší model vyberieme pomocou funkcie select_best(), pričom špecifikujeme metriku, podľa ktorej model vyberáme.
+* **Cross-validácia a tuning modelu:** Tuning hyperparametrov prebieha na trénovacej sade (resp. na jednotlivých "fold-och") s cieľom nájsť najlepšiu kombináciu hyperparametrov. Najlepší model vyberieme pomocou funkcie select_best(), pričom špecifikujeme metriku, podľa ktorej model vyberáme.
 
 * **Finalizácia a fitovanie modelu:** Po vybraní najlepších hyperparametrov finalizujeme model pomocou finalize_model() a potom ho fitujete na trénovacie dáta s fit(). Tento krok produkuje finálny model pripravený na evaluáciu a predikcie.
 
@@ -113,6 +120,8 @@ Toto je opis základného procesu tvorby ML modelu pomocou tidymodels frameworku
 ```{r}
 #| echo: true
 #| code-summary: "Rozdelenie dát"
+#| warning: false
+#| message: false
 
 # split dataframes to train(80)/test(20)
 set.seed(123)
@@ -128,6 +137,8 @@ folds <- vfold_cv(apartments_train, v = 5, strata = price)
 ```{r}
 #| echo: true
 #| code-summary: "Recept"
+#| warning: false
+#| message: false
 
 apartments_xgboost_recipe <- recipe(apartments_train, price ~ .) |>
   step_rm(name_nsi) |>
@@ -142,6 +153,8 @@ apartments_xgboost_recipe <- recipe(apartments_train, price ~ .) |>
 #| eval: false
 #| echo: true
 #| code-summary: "Špeficikácia modelu"
+#| warning: false
+#| message: false
 
 xgb_model <-
   boost_tree(
@@ -158,6 +171,8 @@ xgb_model <-
 #| eval: false
 #| echo: true
 #| code-summary: "Workflow"
+#| warning: false
+#| message: false
 
 apartments_workflow <- workflow() |>
   add_recipe(apartments_xgboost_recipe) |>
@@ -168,6 +183,8 @@ apartments_workflow <- workflow() |>
 #| eval: false
 #| echo: true
 #| code-summary: "Výber parametrov"
+#| warning: false
+#| message: false
 
 apartments_xgboost_params <- parameters(
   trees(), learn_rate(), loss_reduction(),
@@ -176,7 +193,7 @@ apartments_xgboost_params <- parameters(
   finalize(mtry(), apartments_train)
 )
 
-apartments_xgboost_params <- apartments_xgboost_params %>% update(trees = trees(c(300, 600)))
+apartments_xgboost_params <- apartments_xgboost_params |> update(trees = trees(c(300, 600)))
 ```
 <br>Pri tuningu použijeme paralelné spracovanie na x - 2 jadrách. Niektoré algoritmy umožnujú aj spracovanie pomocou GPU ak je dostupná kompatibilná grafická karta (bavíme sa o tvorbe modelu na lokálnom zariadení, samozrejme v produkcii je vhodnejšie vyižiť sluzby ako GCP, AWS a iné)
 
@@ -184,11 +201,13 @@ apartments_xgboost_params <- apartments_xgboost_params %>% update(trees = trees(
 #| eval: false
 #| echo: true
 #| code-summary: "Tuning parametrov"
+#| warning: false
+#| message: false
 
 registerDoParallel(cores = detectCores() - 2)
 
 xgboost_tune <-
-  apartments_workflow %>%
+  apartments_workflow |>
   tune_bayes(
     resamples = folds,
     param_info = apartments_xgboost_params,
@@ -206,6 +225,8 @@ unregister_dopar()
 ```{r}
 #| eval: false
 #| echo: true
+#| warning: false
+#| message: false
 #| code-summary: "Finalizácia modelu"
 apartments_best_model <- select_best(xgboost_tune, "rmse")
 apartments_final_model <- finalize_model(xgb_model, apartments_best_model)
@@ -221,22 +242,26 @@ apartments_xgb_fit <- readRDS("data/xgb_fit.RDS")
 ```
 
 ```{r}
-#| eval: false
+#| eval: true
 #| echo: true
-#| code-summary: "Výsledné metriky"
+#| warning: false
+#| message: false
+#| code-summary: "Výsledné metriky a testovacia predikcia"
 apartments_final_res <- last_fit(apartments_xgb_fit, apartments_train_split)
-collect_metrics(apartments_final_res) |> mutate(.estimate = round(.estimate, 2))
+apartments_pred <-
+  predict(apartments_xgb_fit, apartments_test) |>
+  bind_cols(apartments_test)
 ```
 
 ## Vyhodnotenie modelu
 
+Z grafu je zrejmé, že výsledný model vcelku dobre predikuje ceny bytov s hodnotou do približne 300 tisíc EUR. Pri drahších bytoch je variabilita odchýlok od reálnych cien vyššia.
+
 ```{r}
 #| echo: true
-#| code-summary: "Porovnanie predikcie s reálnou cenou"
-apartments_pred <-
-  predict(apartments_xgb_fit, apartments_test) |>
-  bind_cols(apartments_test)
-
+#| warning: false
+#| message: false
+#| code-summary: "Porovnanie predikcie s reálnou cenou 1"
 plot1 <-
   apartments_pred |>
   ggplot(aes(x = .pred, y = price)) +
@@ -251,17 +276,24 @@ plot1 <-
   ) +
   theme_minimal() +
   theme(
-    panel.grid.minor = element_blank(),
     text = element_text(family = "Courier New", size = 12)
   ) +
   coord_fixed()
 
+plot1
+```
+Ak si pozrieme rozloženie reálnych a predikovaných cien, môžeme vidieť kde presne dochádza k najväčším odchýlkam. Model predikoval viac bytov v cene približne 100 až 150 tisíc EUR a približne 200 až 225 tisíc EUR. Naopak menej zastúpené sú najmä byty s cenou približne 250 až 300 tisíc EUR. Teraz je potrebné rozhodnutie či sa sa treba vrátiť k procesu **feature engineering**, čiže manipulácii s premennými alebo pokračovať s model v stave v akom je. 
+```{r}
+#| echo: true
+#| warning: false
+#| message: false
+#| code-summary: "Porovnanie predikcie s reálnou cenou 2"
 plot2 <-
   apartments_pred |>
   select(predikcia = .pred, realita = price) |>
   gather(key, value) |>
   ggplot(aes(x = value, color = key)) +
-  geom_density(alpha = .2) +
+  geom_density(alpha = .5) +
   labs(
     title = NULL,
     x = "Cena",
@@ -272,26 +304,66 @@ plot2 <-
   scale_x_continuous(labels = function(x) format(x, big.mark = " ", scientific = FALSE)) +
   theme_minimal() +
   theme(
-    panel.grid.minor = element_blank(),
-    panel.grid.major.x = element_blank(),
-    text = element_text(family = "Courier New", size = 12)
+    text = element_text(family = "Courier New", size = 12),
+    legend.position = "bottom"
   )
-```
 
-```{r}
-#| echo: false
-plot1
-```
-
-```{r}
-#| echo: false
 plot2
 ```
 
+Model v priemere <span style="color:#90ee90;"> mierne nadhodnocuje</span> (do 5 percent) byty s reálnou cenou medzi 100 až 180 tisíc EUR.<span style="color:#037f51;">Najvyššie nadhodnotenie</span>  (viac ako 5 percent) je pri cenách do 100 tisíc EUR. Naopak byty s cenou od 180 tisíc EUR do 260 tisíc eur <span style="color:#55B9F5;">mierne podhodnocuje</span>. V prípade bytov od 260 tisíc EUR (približne 7 percent z inzerátov) sú už odchýlky nestabilné, trend je však smerom k <span style="color:#506BA0;">výraznejšiemu podhodnocovaniu</span>.
 
 ```{r}
 #| echo: true
+#| warning: false
+#| message: false
+#| code-summary: "Odchýlky"
+# Calculate the difference between prediction and actual value
+plot3_data <- apartments_pred |>
+  select(.pred, price) |> 
+  mutate(diff = .pred - price,
+         bin = floor(price/10000)*10000) |>
+  group_by(bin) |>
+  summarize(mean_diff = mean(diff)) |> 
+  mutate(rel_diff = case_when(
+    mean_diff/bin >= 0.05 ~ 0.05,
+    mean_diff/bin >= 0 ~ 0,
+    mean_diff/bin <= -0.05 ~ -0.05,
+    mean_diff/bin < 0 ~ -0.02
+    ))
+
+
+# Plot with coloring based on mean difference
+plot3 <- ggplot(plot3_data, aes(x = bin, y = mean_diff, color = factor(rel_diff))) +
+  geom_point() +
+  labs(
+    title = NULL,
+    x = "Cena",
+    y = "Priemerná chyba"
+  ) +
+  scale_color_manual(values = c("#506BA0", "#55B9F5", "#90ee90","#037f51" )) +
+  scale_y_continuous(labels = function(x) format(x, big.mark = " ", scientific = FALSE)) +
+  scale_x_continuous(labels = function(x) format(x, big.mark = " ", scientific = FALSE)) +
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Courier New", size = 12),
+    legend.position = "none")
+
+plot3
+```
+
+
+Pri XGBoost je dôležitosť premenných založená na "Gain", tento termín odkazuje na príspevok každej premennej k celkovému zlepšeniu modelu, ktoré je dosiahnuté vďaka rozdeleniam (splits) na konkrétnej premennej. Keď XGBoost vytvára stromy, každé rozdelenie v strome sa vyberá tak, aby maximalizovalo "zisk", čo znamená, že sa snaží o čo najväčšie zlepšenie prediktívnej presnosti. "Gain" v tomto kontexte meria, o koľko sa zlepšuje predikcia, keď sa použije rozdelenie založené na danej premenné. Tento zisk je často vážený a sumarizovaný cez všetky stromy v modele. Premenné, ktoré najviac prispievajú k zlepšeniu, sú tie, ktoré model najviac využíva na dosiahnutie presnejších predikcií, a preto sú považované za dôležitejšie. Viac informácií môžete nájsť napríklad v [tomto článku na medium](https://towardsdatascience.com/be-careful-when-interpreting-your-features-importance-in-xgboost-6e16132588e7)
+
+Neprekvapivo, najdôležitejšou premennou je rozloha bytu. Nasledujú geografická dĺžka a lokalita v okrese Bratislava I. Počet izieb, hodnotenie dopravy a relaxu v lokalite, ktoré majú približne 50 percentnú dôležitosť oproti rozlohe. Až 4 z top 10 premenných sú súčasťou [indexu bývania](https://www.nehnutelnosti.sk/magazin-o-byvani/1626-aka-je-kvalita-byvania-vo-vybranej-lokalite-po-novom-to-zistite-na-nehnutelnosti-sk-s-pomockou-od-city-performer/)
+
+```{r}
+#| echo: true
+#| warning: false
+#| message: false
 #| code-summary: "vip"
+#| fig-cap: "Dôležitosť premenných v modeli"
+#| fig-alt: "Dôležitosť premenných v modeli"
 apartments_xgb_fit |>
   fit(data = apartments_train) |>
   pull_workflow_fit() |>
@@ -304,49 +376,74 @@ apartments_xgb_fit |>
   labs(
     y = "Dôležitosť",
     x = "Premenná"
+  ) +
+  theme(
+    panel.grid.minor = element_blank(),
+    text = element_text(family = "Courier New", size = 12)
   )
 ```
+<br>SHAP (Shapley Additive exPlanations) hodnoty sú metóda používaná na vysvetlenie príspevku jednotlivých premenných k predikcii konkrétneho modelu strojového učenia. SHAP hodnoty poskytujú detailné vysvetlenie predikcie pre každý záznam (riadok dát) tým, že ukážu, ako každá premenná prispieva k výslednej predikcii, či už zvyšovaním alebo znížením predikovanej hodnoty. Tiež zaručujú konzistentnosť, čo znamená, že ak máme dve premenné a jedna konzistentne prispieva k predikcii viac než druhá, bude mať aj vyššiu SHAP hodnotu.
+Okrem poskytovania vysvetlení na úrovni jednotlivých predikcií (lokálne vysvetlenie) môžu byť SHAP hodnoty agregované na poskytnutie prehľadu o dôležitosti premenných v celom modeli (globálne vysvetlenie).
 
-
+SHAP hodnoty nám poskytujú ďaľšie informácie k dôležitosti premenných. Napr. sa potvrdzuje západo-východný gradient, ktorý sme spomínali v [tretej časti]() tejto série. Ak sa byt nachádza v okrese Bratislava I, môže mu to pridať na hodnote 50 až 100 tisíc EUR. Pôvodný stav a čiastočná rekonštrukcia majú približne rovnako negatívny vplyv na výsledné nacenenie. Efekt je približne do -25 tisíc EUR. Naopak ak sa jedná o novú stavbu, tak jej to pridáva na hodnote asi 5 až 30 tisíc EUR.
 
 ```{r}
 #| echo: true
 #| code-summary: "SHAP"
-#| fig-width: 8
-fitted_data <- apartments_xgboost_recipe %>%
-  prep() %>%
-  bake(new_data = apartments_analysis_data) %>%
+#| warning: false
+#| message: false
+fitted_data <- apartments_xgboost_recipe |>
+  prep() |>
+  bake(new_data = apartments_analysis_data) |>
   select(-price)
 
-shap_long <- shap.prep(xgb_model = extract_fit_engine(apartments_xgb_fit), 
-                        X_train = fitted_data %>% as.matrix(), top_n = 15) |> 
-  mutate(mean_value = round(mean_value, 0))
-                       
-shap_plot <- shap.plot.summary(shap_long, scientific = FALSE) +
-  geom_text(data = unique(shap_long[, c("variable", "mean_value")]),
-            aes(x = variable, y = -Inf, label = format(mean_value, big.mark = " ", scientific = FALSE)),
-            size = 3, alpha = 0.7,
-            hjust = -0.2,
-            check_overlap = TRUE,
-            family = "Courier New") +
-  scale_y_continuous(labels = function(x) format(x, big.mark = " ", scientific = FALSE)) +
+shp <- shapviz(extract_fit_engine(apartments_xgb_fit), X_pred = fitted_data |> as.matrix())
+
+shap_plot <- sv_importance(shp, kind = "beeswarm")  +
+  scale_x_continuous(labels = function(x) format(x, big.mark = " ", scientific = FALSE)) +
   scale_color_gradient(low = "blue", high = "red",
                       breaks = c(0,1),
                       labels = c("nízka", "vysoká"),
                       guide = guide_colorbar(barwidth = 12, barheight = 0.3)) + # Customize based on your exact needs
-  labs(x = "Premenná",
-       y = "SHAP hodnota (vplyv na predikovanú cenu)",
-       color = "Hodnota premennej  "
+  labs(x = "SHAP hodnota (vplyv na predikovanú cenu)",
+       y = "Premenná",
+       color = "Hodnota premennej "
        ) +
+  theme_minimal() +
   theme(
     panel.grid.minor = element_blank(),
-    text = element_text(family = "Courier New", size = 12),
+    text = element_text(family = "Courier New", size = 10),
     legend.position = "bottom"
   )
+```
 
-shap_plot$layers[[3]] <- NULL
-
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-cap: "Top 15 premenných podľa SHAP hodnôt"
+#| fig-alt: "Top 15 premenných podľa SHAP hodnôt"
 shap_plot
+```
+Okrem celkového príspevku jednotlivých premenných v rámci modelu ako celku (globálne vysvetlenie) sa vieme pozrieť aj na jednotlivé predikcie. Napr. keď sa pozrieme na inzerát na riadku 1804, môžeme vidieť, že lokalita v okrese Bratislava I mu pridala na hodnote 67,7 tisíc EUR, geografická dĺžka ďalších 43,7 tisíc EUR a rozloha 84 m^2 23,3 tisíc EUR. Naopak pôvodný stav bytu mu uberá 22,9 tisíc EUR.
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-cap: "Príklad SHAP hodnôt jednej predikcie"
+#| fig-alt: "Príklad SHAP hodnôt jednej predikcie"
+sv_waterfall(shp, row_id = 1804) +
+  scale_x_continuous(labels = function(x) format(x, big.mark = " ", scientific = FALSE)) +
+  theme(axis.text = element_text(size = 11)) +
+  labs(x = "SHAP hodnota (vplyv na predikovanú cenu)",
+       y = "Premenná"
+       ) +
+  theme_minimal() +
+  theme(
+    panel.grid.minor = element_blank(),
+    text = element_text(family = "Courier New", size = 10)
+  )
 ```
 
 # Uloženie modelu a dát pre aplikáciu

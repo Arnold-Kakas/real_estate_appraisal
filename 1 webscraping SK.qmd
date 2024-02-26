@@ -25,7 +25,7 @@ Predtým než sa dostanem k téme tohto blogu, upozorňujem, že tento článok 
 
 ## Web scraping
 <br>
-V tomto blogovom príspevku prejdem procesom <strong>[web scraping-u](https://en.wikipedia.org/wiki/Web_scraping)</strong> s využitím <strong>programovacieho jazyka R</strong>. Predtým než sa pustím do samotného procesu, chcel by som sa trochu zamyslieť nad celkovou tématikou.
+V tomto blogovom príspevku prejdem procesom <strong>[web scraping-u](https://en.wikipedia.org/wiki/Web_scraping)</strong> s využitím <strong>programovacieho jazyka R</strong>. Predtým než sa pustím do samotného procesu, chcel by som sa trochu venovať téme z trochz širšej prespektívny.
 <br>
 Web scraping je proces získavania obsahu alebo (väčšinou) štruktúrovaných údajov z webových stránok automatizovaným spôsobom (a obvykle vo veľkom množstve). Táto definícia prirodzene vyvoláva otázku o legalite takéhoto procesu.
 V zásade web scraping nie je ilegálny alebo zakázaný sám osebe (v EÚ, k júlu 2023). Avšak, používanie nástrojov na ťaženie údajov je z právneho hľadiska riskantné z niekoľkých dôvodov:
@@ -73,7 +73,6 @@ if (!require("pacman")) {
   install.packages("pacman")
 }
 pacman::p_load(
-  rio,
   tidyverse,
   rvest, # scraping, part of tidyverse
   httr, # working with html

@@ -62,11 +62,13 @@ Sú to napríklad:
 
 ## Úvodné čistenie dát
 
-<br>Pre načítanie knižníc rád používam funkciu `p_load` z knižnice [pacman](https://cran.r-project.org/web/packages/pacman/index.html).
+<br>Pre načítanie knižníc rád používam funkciu `p_load` z knižnice [pacman](https://cran.r-project.org/web/packages/pacman/index.html). 
 
 ```{r}
 #| echo: true
-#| code-summary: "Kód"
+#| code-summary: "Knižnice"
+#| warning: false
+#| message: false
 # import libraries
 if (!require("pacman")) {
   install.packages("pacman")
@@ -75,22 +77,19 @@ if (!require("pacman")) {
 pacman::p_load(
   janitor, # clean_names()
   skimr, # skim()
-  sf,
-  bslib, # RMD theme
-  cowplot, # plots alignment with plot_grid()
+  sf, # geospatial data
   ggpubr,
   ggQC, # pareto chart
-  plotly, # interactive charts
   scales, # scales
-  GGally,
+  GGally, # eval_data_col
   knitr,
   modelsummary, # datasummary_correlation()
-  gtsummary,
+  gtsummary, # tables
   ggstatsplot, # ggwithinstats()
   effectsize, # interpret_kendalls_w()
-  tidyverse,
-  kableExtra,
-  extrafont
+  tidyverse, # data wrangling
+  kableExtra, # tables
+  extrafont # fonts
 )
 
 loadfonts(device = "win")
@@ -1247,7 +1246,7 @@ top_10_districts_chart <- top_bottom_10_districts %>%
   theme(
   text = element_text(family = "Courier New", size = 12))
 
-ggplotly(top_10_districts_chart, tooltip = "text")
+top_10_districts_chart
 ```
 
 <br>Najdrahšie byty sú zo západného Slovenska s výnimkou okresu Košice I, ktoré je centrom na východe.
