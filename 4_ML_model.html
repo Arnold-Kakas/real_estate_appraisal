@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Arnold Kakas">
-<meta name="dcterms.date" content="2024-02-25">
+<meta name="dcterms.date" content="2024-02-28">
 
 <title>Naceňovací ML model</title>
 <style>
@@ -112,7 +112,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">February 25, 2024</p>
+      <p class="date">February 28, 2024</p>
     </div>
   </div>
   
@@ -139,11 +139,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </center>
 <p>Dôležitosť explainable/interpretable ML naberá na váhe najmä v sektoroch, kde sú dôsledky rozhodnutí založených na predikciách modelu vysoké, ako sú zdravotníctvo, financie alebo právo. V týchto oblastiach je kľúčové, aby boli modely nielen presné, ale aj ich rozhodnutia comprehenzívne a spravodlivé. Vysvetliteľné strojové učenie tak stojí v centre úsilia o vytvorenie technológií, ktoré sú nielen inteligentné, ale aj zrozumiteľné a etické.</p>
-<p>Výborná kniha na túto tému je napríklad <a href="https://www.amazon.com/dp/B09TMWHVB4">Interpretable Machine Learning: A Guide For Making Black Box Models Explainable</a>, ktorá je veľmi zrorumiteľne napísaná a obsahuje aj odkazy na knižnice v R aj Pythone. Navyše je dostupná aj <a href="https://christophm.github.io/interpretable-ml-book/">online</a>. Náročnejšia publikácia je potom <a href="https://arxiv.org/abs/1905.04610">Explainable AI for Trees: From Local Explanations to Global Understanding</a></p>
+<p>Výborná kniha na túto tému je napríklad <a href="https://www.amazon.com/dp/B09TMWHVB4">Interpretable Machine Learning: A Guide For Making Black Box Models Explainable</a>, ktorá je veľmi zrorumiteľne napísaná a obsahuje aj odkazy na knižnice v R aj Pythone. Navyše je dostupná aj <a href="https://christophm.github.io/interpretable-ml-book/">online</a>. Náročnejšia publikácia je potom <a href="https://arxiv.org/abs/1905.04610">Explainable AI for Trees: From Local Explanations to Global Understanding</a>, ktorá ide viac do detailu a “matematiky” na pozadí.</p>
 </section>
 <section id="načítanie-knižníc-a-dát" class="level2">
 <h2 class="anchored" data-anchor-id="načítanie-knižníc-a-dát">Načítanie knižníc a dát</h2>
-<p>Klasicky začíname s načítaním knižníc. Aj tento krát použijeme <a href="https://cran.r-project.org/web/packages/tidyverse/index.html">tidyverse</a>: Súbor knižníc navrhnutých na prácu s dátami v R, ktorý zahŕňa napr. ggplot2 pre vizualizáciu, dplyr pre manipuláciu s dátami, tidyr pre úpravu tvaru dát, a iné. Opäť sa objavuje knižnica <a href="https://cran.r-project.org/web/packages/sf/index.html">sf</a> keďže dáta obsahuju priestorové objekty. Novikou v totmo blogu je <a href="https://cran.r-project.org/web/packages/tidymodels/index.html">tidymodels</a>. Je to framework pre modelovanie a strojové učenie, ktorý poskytuje koherentnú súpravu knižníc na predspracovanie dát, rozdelenie dát, cross-validáciu, výber modelu atď. Je navrhnutý tak, aby bol v súlade s princípmi tidyverse a umožňoval ľahkú integráciu s inými nástrojmi z tohto ekosystému. Dve nasledujúce knižnice pomáhajú s konceptom “explainable/interpretable ML”. Knižnica <a href="https://cran.r-project.org/web/packages/vip/index.html">vip</a> je určená na vizualizáciu dôležitosti premenných v rôznych modeloch strojového učenia. Umožňuje ľahko identifikovať, ktoré premenné majú najväčší vplyv na predikcie modelu, čo je kľúčové pre interpretáciu modelu a pochopenie dát. Knižnica <a href="https://cran.r-project.org/web/packages/shapviz/index.html">shapviz</a> je špecificky navrhnutá na výpočet a vizualizáciu SHAP hodnôt pre modely vytvorené pomocou XGBoost v R. SHAP hodnoty poskytujú podrobné vysvetlenie predikcií modelu na úrovni jednotlivých pozorovaní, čo pomáha v interpretácii “black box” modelov. <a href="https://cran.r-project.org/web/packages/doParallel/index.html">doParallel</a> slúži na paralelné výpočty a teda skrátenie času trénovania modelu. Posledná knižnica <a href="https://cran.r-project.org/web/packages/extrafont/index.html">extrafont</a> slúži na načítanie fontov inštalovaných na Windows-e.</p>
+<p>Klasicky začíname s načítaním knižníc. Aj tento krát použijeme <a href="https://cran.r-project.org/web/packages/tidyverse/index.html">tidyverse</a> - súbor knižníc navrhnutých na prácu s dátami v R, ktorý zahŕňa napr. ggplot2 pre vizualizáciu, dplyr pre manipuláciu s dátami, tidyr pre úpravu tvaru dát, a iné. Opäť sa objavuje knižnica <a href="https://cran.r-project.org/web/packages/sf/index.html">sf</a> keďže dáta obsahuju priestorové objekty. Novikou v tomto blogu je <a href="https://cran.r-project.org/web/packages/tidymodels/index.html">tidymodels</a>. Je to framework pre modelovanie a strojové učenie, ktorý poskytuje koherentnú súpravu knižníc na predspracovanie dát, rozdelenie dát, cross-validáciu, výber modelu atď. Je navrhnutý tak, aby bol v súlade s princípmi tidyverse a umožňoval ľahkú integráciu s inými nástrojmi z tohto ekosystému. Dve nasledujúce knižnice pomáhajú s konceptom “explainable/interpretable ML”. Knižnica <a href="https://cran.r-project.org/web/packages/vip/index.html">vip</a> je určená na vizualizáciu dôležitosti premenných v rôznych modeloch strojového učenia. Umožňuje ľahko identifikovať, ktoré premenné majú najväčší vplyv na predikcie modelu, čo je kľúčové pre interpretáciu modelu a pochopenie dát. Knižnica <a href="https://cran.r-project.org/web/packages/shapviz/index.html">shapviz</a> je špecificky navrhnutá na výpočet a vizualizáciu SHAP hodnôt pre modely vytvorené pomocou XGBoost v R. SHAP hodnoty poskytujú podrobné vysvetlenie predikcií modelu na úrovni jednotlivých pozorovaní, čo pomáha v interpretácii “black box” modelov. <a href="https://cran.r-project.org/web/packages/doParallel/index.html">doParallel</a> slúži na paralelné výpočty a teda skrátenie času trénovania modelu. Posledná knižnica <a href="https://cran.r-project.org/web/packages/extrafont/index.html">extrafont</a> slúži na načítanie fontov inštalovaných na Windows-e.</p>
 <div class="cell">
 <details>
 <summary>Knižnice</summary>
@@ -506,9 +506,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="uloženie-modelu-a-dát-pre-aplikáciu" class="level1">
 <h1>Uloženie modelu a dát pre aplikáciu</h1>
+<p>Finalizovaný model unikátne hodnoty premenných ukladáme v RDS formáte a budú použité v Shiny web aplikácii.</p>
 <div class="cell">
 <details>
-<summary>Porovnanie predikcie s reálnou cenou</summary>
+<summary>Ukladanie súborov</summary>
 <div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># save model</span></span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(apartments_xgb_fit, <span class="st">"data/model.RDS"</span>)</span>
 <span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -526,7 +527,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>type <span class="ot">&lt;-</span> apartments_analysis_data <span class="sc">|&gt;</span></span>
 <span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(type) <span class="sc">|&gt;</span></span>
 <span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>()</span>
-<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(type, <span class="st">"data/type.RDS"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(type, <span class="st">"data/type.RDS"</span>)</span>
+<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a>district <span class="ot">&lt;-</span> apartments_analysis_data <span class="sc">|&gt;</span></span>
+<span id="cb16-21"><a href="#cb16-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(district) <span class="sc">|&gt;</span></span>
+<span id="cb16-22"><a href="#cb16-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>()</span>
+<span id="cb16-23"><a href="#cb16-23" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(type, <span class="st">"data/type.RDS"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 </section>

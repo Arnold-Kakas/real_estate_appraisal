@@ -9,7 +9,6 @@ theme:
 toc: true
 toc-depth: 4
 code-fold: true
-code-summary: "Kód"
 execute:
   warning: false  
 fig-cap-location: bottom
@@ -69,6 +68,11 @@ Ako obvykle, začínam s načítaním balíkov potrebných pre tento projekt. Po
 * môžem načítať viacero knižníc naraz
 
 ```{r}
+#| echo: true
+#| eval: false
+#| code-summary: "Knižnice"
+#| warning: false
+#| message: false
 if (!require("pacman")) {
   install.packages("pacman")
 }
@@ -124,8 +128,13 @@ A nakoniec pripravím a spustím multisession na získanie ceny, adresy, typu ne
 Pridal som aj _plan(sequential)_ na zastavenie multisession, ale musím priznať, že nie som tak znalý paralelného programovania v R, aby som úplne pochopil dôležitosť tohto kroku.
 <br>
 ```{r}
+#| echo: true
+#| eval: false
+#| code-summary: "Scraping statických dát"
+#| warning: false
+#| message: false
 # apartments page
-site <- "https://www.nehnutelnosti.sk/byty/predaj/?p%5Bparam1%5D%5Bfrom%5D=1000&p%5Bparam1%5D%5Bto%5D=&p%5Bparam11%5D%5Bfrom%5D=10&p%5Bparam11%5D%5Bto%5D="
+site <- "https://www.nehnutelnosti.sk/slovensko/byty/predaj/?p[param1][from]=1000&p[param1][to]=&p[page]="
 
 # scrape the number of pages
 number_of_pages <- read_html(site) %>%
@@ -177,7 +186,17 @@ Posledná je podobná predchádzajúcej, ale v tomto prípade vráti NA, ak sa e
 V skripte tiež používam funkciu `tryCatch()` na vrátenie NA v prípade chyby.
 <br>
 ```{r}
+#| echo: true
+#| eval: false
+#| code-summary: "Definovanie funkcií"
+#| warning: false
+#| message: false
 # Define a function that handles the errors in page load
+# Delete all cookies from the last 24 hours
+clearCookies <- function(remDr) {
+  remDr$deleteAllCookies()
+}
+
 navigate_with_retry <- function(link, remDr) {
   success <- FALSE
   while (!success) {
@@ -222,6 +241,11 @@ get_text_or_na <- function(nodes) {
 Teraz rozdeľujem odkazy na inzeráty do 10 setov. Tento krok nie je nutný, pretože kód funguje, ale robím to v prípade neočakávanej chyby počas procesu scrapovania, aby som zachránil aspoň časť údajov. Tento krok som zaradil až po jednej veľmi zlej skúsenosti. Ďalšia časť scrapovania totiž trvá viac ako dva dni a môžete mi veriť, že nechcete stratiť celý pokrok kvôli výpadku WiFi. Taktiež vytváram prázdny dataframe so všetkými možnými stĺpcami, ktorý sa bude napĺňať dátami.
 <br>
 ```{r}
+#| echo: true
+#| eval: false
+#| code-summary: "Rozdelenie dát do menších celkov"
+#| warning: false
+#| message: false
 # Additional info from web
 
 # number of splits
@@ -241,6 +265,12 @@ additional_info_df <- tibble(
   info_text = character(),
   additional_characteristics = character(),
   index_of_living = character(),
+  environment = character(),
+  quality_of_living = character(),
+  safety = character(),
+  transport = character(),
+  services = character(),
+  relax = character(),
   info_details = character(),
   stringsAsFactors = FALSE
 )
@@ -255,7 +285,7 @@ Až teraz prichádzam k samotnému scrapovaniu s použitím RSelenium. Používa
 * verbose - nastavujem FALSE, lebo ma nezaujímajú správy so statusom,
 * port - port, na ktorom sa má spúšťať. Používam funkciu z balíka _netstat_ `free_port(random = TRUE)` pre automatický výber voľného portu.
 
-Následne skriptom otvorím prehliadač, maximalizujem okno, prejdem na stránku Nehnutelnosti a prijmem súbory cookie. Keď je toto hotové, skutočné scrapovanie prebieha v cykle. Nejdem do všetkých detailov, ale logika je dosť jednoduchá, skript: 
+Následne skriptom otvorím prehliadač, maximalizujem okno, prejdem na stránku Nehnutelnosti a prijmem súbory cookie. Potom je nutné manuálne prihlásenie aby sa zobrazili hodnoty jednotlivých komponentov "indexu bývania". Tento krok by sa dal zautomatiyovať, avšak je to jednorazová aktivita, takže ju ponechávam takto. Keď je toto hotové, skutočné scrapovanie prebieha v cykle. Nejdem do všetkých detailov, ale logika je dosť jednoduchá, skript: 
 1. Prejde na odkaz v cykle.
 2. Posunie sa na _výšku stránky/10*4,2_, aby sa spustil javascript na zobrazenie indexu bývania (táto hĺbka posuvu je založená na manuálnych testoch, napriek tomu musím nájsť inú metódu alebo spustiť viacero posunov, aby sa skript skutočne spustil na všetkých načítaných stránkach).
 3. Počká 3 sekundy na vykonanie javascriptu a spomalenie procesu (aby sa zbytočne nezaťažovala stránka).
@@ -269,6 +299,11 @@ Následne skriptom otvorím prehliadač, maximalizujem okno, prejdem na stránku
 7. Zatvorí klienta a zastaví server.
 <br>
 ```{r}
+#| echo: true
+#| eval: false
+#| code-summary: "Scraping pomocou RSelenium"
+#| warning: false
+#| message: false
 for (i in 1:10) {
   # get the current dataframe
   current_df <- get(paste0("advertisements_", i))
@@ -293,21 +328,35 @@ for (i in 1:10) {
   Sys.sleep(5) # wait for 5 seconds
 
   # accept cookies
-  remDr$switchToFrame(remDr$findElement(using = "xpath", '//*[@id="sp_message_iframe_710573"]'))
-  remDr$findElement(using = "xpath", '//*[@id="notice"]/div[5]/div[2]/button')$clickElement()
+# switch to cookie iframe
+remDr$switchToFrame(remDr$findElement(using = "xpath", '//*[@id="sp_message_iframe_920334"]'))
+remDr$findElement(using = "xpath", '//*[@id="notice"]/div[2]/button')$clickElement()
+
+# switch back to default frame
+remDr$switchToFrame(NA)
+
+# MANUAL LOG IN
 
   # loop through each link in the current dataframe
   for (link in current_df$link) {
     info_text <- NA
     additional_characteristics <- NA
     index_of_living <- NA
+    environment <- NA
+    quality_of_living <- NA
+    safety <- NA
+    transport <- NA
+    services <- NA
+    relax <- NA
     info_details <- NA
 
     navigate_with_retry(link, remDr)
+    #remDr$executeScript("document.body.style.zoom = '50%';")
     height <- as.numeric(remDr$executeScript("return document.documentElement.scrollHeight"))/10*4.2 # Scroll to load index of living
     remDr$executeScript(paste("window.scrollTo(0, ", height, ");")) # scroll to living index
     
-    Sys.sleep(3)
+    
+    Sys.sleep(1)
     page <- safe_find_element(remDr, '//*[@id="map-filter-container"]')
 
     if (is.na(page)) {
@@ -316,8 +365,15 @@ for (i in 1:10) {
         info_text = NA,
         additional_characteristics = NA,
         index_of_living = NA,
+        environment = NA,
+        quality_of_living = NA,
+        safety = NA,
+        transport = NA,
+        services = NA,
+        relax = NA,
         info_details = NA
       )
+
       # bind new row to additional info dataframe
       additional_info_df <- rbind(additional_info_df, new_row)
     } else {
@@ -345,6 +401,72 @@ for (i in 1:10) {
 
       tryCatch(
         {
+          environment <- page_html %>%
+            html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[1]/div[1]/div[2]/span[1]/span') %>%
+            get_text_or_na()
+        },
+        error = function(e) {
+          environment <- NA
+        }
+      )
+      
+      tryCatch(
+        {
+          quality_of_living <- page_html %>%
+            html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[1]/div[2]/div[2]/span[1]/span') %>%
+            get_text_or_na()
+        },
+        error = function(e) {
+          quality_of_living <- NA
+        }
+      )
+      
+      tryCatch(
+        {
+          safety <- page_html %>%
+            html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[1]/div[3]/div[2]/span[1]/span') %>%
+            get_text_or_na()
+        },
+        error = function(e) {
+          safety <- NA
+        }
+      )
+      
+      tryCatch(
+        {
+          transport <- page_html %>%
+            html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[2]/div[1]/div[2]/span[1]/span') %>%
+            get_text_or_na()
+        },
+        error = function(e) {
+          transport <- NA
+        }
+      )
+      
+      tryCatch(
+        {
+          services <- page_html %>%
+            html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[2]/div[2]/div[2]/span[1]/span') %>%
+            get_text_or_na()
+        },
+        error = function(e) {
+          services <- NA
+        }
+      )
+      
+      tryCatch(
+        {
+          relax <- page_html %>%
+            html_nodes(xpath = '//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[2]/div[3]/div[2]/span[1]/span') %>%
+            get_text_or_na()
+        },
+        error = function(e) {
+          relax <- NA
+        }
+      )
+      
+     tryCatch(
+        {
           additional_characteristics <- page_html %>%
             html_nodes(xpath = '//*[@id="additional-features-modal-button"]/ul') %>%
             html_text2() # %>%
@@ -359,6 +481,12 @@ for (i in 1:10) {
         link = link, info_text = info_text,
         additional_characteristics = additional_characteristics,
         index_of_living = index_of_living,
+        environment = environment,
+        quality_of_living = quality_of_living,
+        safety = safety,
+        transport = transport,
+        services = services,
+        relax = relax,
         info_details = info_details
       )
 
@@ -366,13 +494,14 @@ for (i in 1:10) {
       additional_info_df <- rbind(additional_info_df, new_row)
     }
   }
-
-  # close client and stop server
-  rs_driver_object$client$close()
-  rs_driver_object$server$stop()
-  rm(rs_driver_object, remDr)
-  gc()
 }
+
+# close remote driver
+rs_driver_object$client$close()
+rs_driver_object$server$stop()
+rm(rs_driver_object, remDr)
+gc()
+
 ```
 
 ### Data wrangling
@@ -381,6 +510,11 @@ Scrapovanie je hotové a pokračujem s manipuláciou s dátami, aby som ich dal 
 Najprv upravujem adresu, aby som všetky okresy dostal do prvéo stĺpca. Táto adresa sa neskôr používa na geokódovanie, ktorý opisujem v *BLOGU*. Cena je taktiež upravená na číslo, aby sa mohla použiť v ML modeli.
 <br>
 ```{r}
+#| echo: true
+#| eval: false
+#| code-summary: "Úprava dát 1"
+#| warning: false
+#| message: false
 advertisements_cleaned <- advertisements %>%
   separate(type_of_real_estate, c("type", "area"), sep = " • ", remove = TRUE) %>% 
   separate(address, c("a", "b", "c"), sep = ", ", remove = TRUE) %>%
@@ -400,6 +534,11 @@ Z additional_info_df vyberiem additional_characteristics a info_details a rozdel
 Nakoniec spájam output_df_characteristics1, output_df_characteristics2, vybrané stĺpce z additional_info_df a pripájam ich k advertisements_cleaned podľa linku inzerátu.
 <br>
 ```{r}
+#| echo: true
+#| eval: false
+#| code-summary: "Úprava dát 2"
+#| warning: false
+#| message: false
 # get additional information from scraped data
 # First list of additional info details
 characteristics1 <- c(
@@ -483,11 +622,21 @@ output_df_characteristics2 <- map_dfr(characteristics_wrangler$chars2_list, get_
 additional_info_df_complete <- cbind(
   additional_info_df %>%
     mutate(index_of_living = str_replace_all(index_of_living, " /", "")) %>%
-    select(c(link, info_text, index_of_living)) %>% 
+    select(c(link, 
+             info_text, 
+             index_of_living,
+             environment,
+             quality_of_living,
+             safety,
+             transport,
+             services,
+             relax)) %>% 
     mutate(flag = "x"), 
   output_df_characteristics1,
   output_df_characteristics2
 )
+
+
 advertisements_complete <- advertisements_cleaned %>%
   left_join(additional_info_df_complete, by = "link", multiple = "first") %>%
   filter(!is.na(flag)) %>% 
@@ -497,6 +646,11 @@ advertisements_complete <- advertisements_cleaned %>%
 Posledný krok je uloženie dát vo formáte RDS.
 <br>
 ```{r}
+#| echo: true
+#| eval: false
+#| code-summary: "Uloženie súborov"
+#| warning: false
+#| message: false
 saveRDS(additional_info_df, "data/additional_info_df.RDS")
 saveRDS(advertisements, "data/advertisements.RDS")
 

@@ -61,7 +61,7 @@ pacman::p_load(
 )
 
 loadfonts(device = "win")
-options(scipen=999)
+options(scipen = 999)
 
 unregister_dopar <- function() {
   env <- foreach:::.foreachGlobals
@@ -75,17 +75,34 @@ unregister_dopar <- function() {
 #| warning: false
 #| message: false
 # import data
+original_conditions <- c(
+  "Pôvodný stav", "Čiastočná rekonštrukcia", "Kompletná rekonštrukcia",
+  "Novostavba", "Vo výstavbe", "Developerský projekt"
+)
+english_conditions <- c(
+  "Original condition", "Partial reconstruction", "Complete reconstruction",
+  "New building", "Under construction", "Development project"
+)
+
+original_type <- c("3 izbový byt", "1 izbový byt", "2 izbový byt", "4 izbový byt", "Garsónka", "5 a viac izbový byt", "Dvojgarsónka")
+english_type <- c("3-room apartment", "1-room apartment", "2-room apartment", "4-room apartment", "Studio", "5 or more room apartment", "Two-room apartment")
+
 apartments_analysis_data <- readRDS("data/apartments_final_data.rds") |>
   filter(!is.na(price)) |>
   mutate(
     coord = st_coordinates(st_centroid(geometry)),
     lon = coord[, 1],
-    lat = coord[, 2]
+    lat = coord[, 2],
+    type = str_replace_na(recode(type, !!!setNames(original_type, english_type)),"Neznáme"),
+    condition = str_replace_na(recode(condition, !!!setNames(original_conditions, english_conditions)),"Neznáme"),
+    certificate = str_replace_na(str_replace(certificate, "none", "Nemá"), "Neznáme")
   ) |>
   select(-coord) # Optionally remove the original coordinates column
 
 # remove geometry since we have coordinates now
 apartments_analysis_data$geometry <- NULL
+
+saveRDS(apartments_analysis_data, "data/apartments_data_App.RDS")
 ```
 
 ## Tidymodels framework
@@ -262,6 +279,8 @@ Z grafu je zrejmé, že výsledný model vcelku dobre predikuje ceny bytov s hod
 #| warning: false
 #| message: false
 #| code-summary: "Porovnanie predikcie s reálnou cenou 1"
+#| fig-cap: "Korelácia reálnych a predikovaných cien"
+#| fig-alt: "Korelácia reálnych a predikovaných cien"
 plot1 <-
   apartments_pred |>
   ggplot(aes(x = .pred, y = price)) +
@@ -288,6 +307,8 @@ Ak si pozrieme rozloženie reálnych a predikovaných cien, môžeme vidieť kde
 #| warning: false
 #| message: false
 #| code-summary: "Porovnanie predikcie s reálnou cenou 2"
+#| fig-cap: "Rozloženie reálnych vs predikovaných cien"
+#| fig-alt: "Rozloženie reálnych vs predikovaných cien"
 plot2 <-
   apartments_pred |>
   select(predikcia = .pred, realita = price) |>
@@ -318,6 +339,8 @@ Model v priemere <span style="color:#90ee90;"> mierne nadhodnocuje</span> (do 5 
 #| warning: false
 #| message: false
 #| code-summary: "Odchýlky"
+#| fig-cap: "Odchýlky predikcie od reality"
+#| fig-alt: "Odchýlky predikcie od reality"
 # Calculate the difference between prediction and actual value
 plot3_data <- apartments_pred |>
   select(.pred, price) |> 
@@ -448,10 +471,12 @@ sv_waterfall(shp, row_id = 1804) +
 
 # Uloženie modelu a dát pre aplikáciu
 
+Finalizovaný model unikátne hodnoty premenných ukladáme v RDS formáte a budú použité v Shiny web aplikácii.
+
 ```{r}
 #| eval: false
 #| echo: true
-#| code-summary: "Porovnanie predikcie s reálnou cenou"
+#| code-summary: "Ukladanie súborov"
 # save model
 saveRDS(apartments_xgb_fit, "data/model.RDS")
 
@@ -468,6 +493,11 @@ saveRDS(certificate, "data/certificate.RDS")
 
 type <- apartments_analysis_data |>
   select(type) |>
+  distinct()
+saveRDS(type, "data/type.RDS")
+
+district <- apartments_analysis_data |>
+  select(district) |>
   distinct()
 saveRDS(type, "data/type.RDS")
 ```

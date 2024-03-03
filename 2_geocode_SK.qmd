@@ -27,7 +27,9 @@ V dnešnom príspevku sa budeme venovať procesu *geokódovania* inzerátov a n�
 ```{r}
 #| echo: true
 #| eval: false
-#| code-summary: "Kód"
+#| code-summary: "Knižnice"
+#| warning: false
+#| message: false
 # import libraries
 
 pacman::p_load(
@@ -44,7 +46,9 @@ Načítame geopriestorové údaje o obciach a údaje o inzerátoch. Udaje o obci
 ```{r}
 #| echo: true
 #| eval: false
-#| code-summary: "Kód"
+#| code-summary: "Načítanie dát"
+#| warning: false
+#| message: false
 
 # Read geospatial data for communes
 communes <- readRDS("data/geospatial_data/communes.RDS") |> 
@@ -60,7 +64,9 @@ advertisements_complete <- readRDS("data/advertisements_complete.RDS")
 ```{r}
 #| echo: true
 #| eval: false
-#| code-summary: "Kód"
+#| code-summary: "Geokódovanie adries"
+#| warning: false
+#| message: false
 
 # Extract unique addresses from advertisements data
 advertisements <- advertisements_complete |> 
@@ -84,7 +90,9 @@ geocoded_advertisements <- geocode(advertisements,
 ```{r}
 #| echo: true
 #| eval: false
-#| code-summary: "Kód"
+#| code-summary: "Prepojenie inzerátov a geografických dát"
+#| warning: false
+#| message: false
 
 # Join geocoded addresses with advertisements data
 advertisements_complete_geocoded <- advertisements_complete |> 
@@ -98,7 +106,9 @@ advertisements_complete_geocoded <- advertisements_complete |>
 ```{r}
 #| echo: true
 #| eval: false
-#| code-summary: "Kód"
+#| code-summary: "Uloženie finálneho súboru"
+#| warning: false
+#| message: false
 
 # Spatial join with communes data
 advertisements_complete_geocoded <- communes %>% 

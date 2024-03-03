@@ -48,6 +48,8 @@ apartments_analysis_data <- readRDS("data/apartments_final_data.rds") |>
 
 # remove geometry since we have coordinates now
 apartments_analysis_data$geometry <- NULL
+
+saveRDS(apartments_analysis_data, "data/apartments_data_App.RDS")
 ```
 
 
