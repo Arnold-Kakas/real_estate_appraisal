@@ -301,7 +301,7 @@ plot1 <-
 
 plot1
 ```
-Ak si pozrieme rozloženie reálnych a predikovaných cien, môžeme vidieť kde presne dochádza k najväčším odchýlkam. Model predikoval viac bytov v cene približne 100 až 150 tisíc EUR a približne 200 až 225 tisíc EUR. Naopak menej zastúpené sú najmä byty s cenou približne 250 až 300 tisíc EUR. Teraz je potrebné rozhodnutie či sa sa treba vrátiť k procesu **feature engineering**, čiže manipulácii s premennými alebo pokračovať s model v stave v akom je. 
+Ak si pozrieme rozloženie reálnych a predikovaných cien, môžeme vidieť kde presne dochádza k najväčším odchýlkam. Model predikoval viac bytov v cene približne 100 až 170 tisíc EUR a približne 200 až 225 tisíc EUR. Naopak menej zastúpené sú najmä byty s cenou približne 250 až 300 tisíc EUR. Teraz je potrebné rozhodnutie či sa sa treba vrátiť k procesu **feature engineering**, čiže manipulácii s premennými alebo pokračovať s model v stave v akom je. 
 ```{r}
 #| echo: true
 #| warning: false
@@ -420,6 +420,7 @@ fitted_data <- apartments_xgboost_recipe |>
   bake(new_data = apartments_analysis_data) |>
   select(-price)
 
+set.seed(123)
 shp <- shapviz(extract_fit_engine(apartments_xgb_fit), X_pred = fitted_data |> as.matrix())
 
 shap_plot <- sv_importance(shp, kind = "beeswarm")  +
