@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Arnold Kakas">
-<meta name="dcterms.date" content="2024-02-28">
+<meta name="dcterms.date" content="2024-03-04">
 
 <title>Naceňovací ML model</title>
 <style>
@@ -112,7 +112,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">February 28, 2024</p>
+      <p class="date">March 4, 2024</p>
     </div>
   </div>
   
@@ -163,7 +163,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="fu">loadfonts</span>(<span class="at">device =</span> <span class="st">"win"</span>)</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="fu">options</span>(<span class="at">scipen=</span><span class="dv">999</span>)</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="fu">options</span>(<span class="at">scipen =</span> <span class="dv">999</span>)</span>
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>unregister_dopar <span class="ot">&lt;-</span> <span class="cf">function</span>() {</span>
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  env <span class="ot">&lt;-</span> foreach<span class="sc">:::</span>.foreachGlobals</span>
@@ -175,17 +175,34 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <details>
 <summary>Dáta</summary>
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># import data</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>apartments_analysis_data <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"data/apartments_final_data.rds"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(price)) <span class="sc">|&gt;</span></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">coord =</span> <span class="fu">st_coordinates</span>(<span class="fu">st_centroid</span>(geometry)),</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">lon =</span> coord[, <span class="dv">1</span>],</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">lat =</span> coord[, <span class="dv">2</span>]</span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>coord) <span class="co"># Optionally remove the original coordinates column</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>original_conditions <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Pôvodný stav"</span>, <span class="st">"Čiastočná rekonštrukcia"</span>, <span class="st">"Kompletná rekonštrukcia"</span>,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Novostavba"</span>, <span class="st">"Vo výstavbe"</span>, <span class="st">"Developerský projekt"</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>english_conditions <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Original condition"</span>, <span class="st">"Partial reconstruction"</span>, <span class="st">"Complete reconstruction"</span>,</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="st">"New building"</span>, <span class="st">"Under construction"</span>, <span class="st">"Development project"</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="co"># remove geometry since we have coordinates now</span></span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>apartments_analysis_data<span class="sc">$</span>geometry <span class="ot">&lt;-</span> <span class="cn">NULL</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>original_type <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"3 izbový byt"</span>, <span class="st">"1 izbový byt"</span>, <span class="st">"2 izbový byt"</span>, <span class="st">"4 izbový byt"</span>, <span class="st">"Garsónka"</span>, <span class="st">"5 a viac izbový byt"</span>, <span class="st">"Dvojgarsónka"</span>)</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>english_type <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"3-room apartment"</span>, <span class="st">"1-room apartment"</span>, <span class="st">"2-room apartment"</span>, <span class="st">"4-room apartment"</span>, <span class="st">"Studio"</span>, <span class="st">"5 or more room apartment"</span>, <span class="st">"Two-room apartment"</span>)</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>apartments_analysis_data <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"data/apartments_final_data.rds"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(price)) <span class="sc">|&gt;</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">coord =</span> <span class="fu">st_coordinates</span>(<span class="fu">st_centroid</span>(geometry)),</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">lon =</span> coord[, <span class="dv">1</span>],</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">lat =</span> coord[, <span class="dv">2</span>],</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">type =</span> <span class="fu">str_replace_na</span>(<span class="fu">recode</span>(type, <span class="sc">!!!</span><span class="fu">setNames</span>(original_type, english_type)),<span class="st">"Neznáme"</span>),</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">condition =</span> <span class="fu">str_replace_na</span>(<span class="fu">recode</span>(condition, <span class="sc">!!!</span><span class="fu">setNames</span>(original_conditions, english_conditions)),<span class="st">"Neznáme"</span>),</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">certificate =</span> <span class="fu">str_replace_na</span>(<span class="fu">str_replace</span>(certificate, <span class="st">"none"</span>, <span class="st">"Nemá"</span>), <span class="st">"Neznáme"</span>)</span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>coord) <span class="co"># Optionally remove the original coordinates column</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a><span class="co"># remove geometry since we have coordinates now</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>apartments_analysis_data<span class="sc">$</span>geometry <span class="ot">&lt;-</span> <span class="cn">NULL</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(apartments_analysis_data, <span class="st">"data/apartments_data_App.RDS"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 </section>
@@ -346,10 +363,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>plot1</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
-<p><img src="4_ML_model_files/figure-html/unnamed-chunk-12-1.png" class="img-fluid" width="672"></p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="4_ML_model_files/figure-html/unnamed-chunk-12-1.png" class="img-fluid figure-img" alt="Korelácia reálnych a predikovaných cien" width="672"></p>
+<figcaption class="figure-caption">Korelácia reálnych a predikovaných cien</figcaption>
+</figure>
 </div>
 </div>
-<p>Ak si pozrieme rozloženie reálnych a predikovaných cien, môžeme vidieť kde presne dochádza k najväčším odchýlkam. Model predikoval viac bytov v cene približne 100 až 150 tisíc EUR a približne 200 až 225 tisíc EUR. Naopak menej zastúpené sú najmä byty s cenou približne 250 až 300 tisíc EUR. Teraz je potrebné rozhodnutie či sa sa treba vrátiť k procesu <strong>feature engineering</strong>, čiže manipulácii s premennými alebo pokračovať s model v stave v akom je.</p>
+</div>
+<p>Pri pohľade na rozloženie reálnych a predikovaných cien, môžeme vidieť kde presne dochádza k najväčším odchýlkam. Model predikoval viac bytov v cene približne 100 až 170 tisíc EUR a približne 200 až 225 tisíc EUR. Naopak menej zastúpené sú najmä byty s cenou približne 250 až 300 tisíc EUR. Teraz je potrebné rozhodnutie či sa sa treba vrátiť k procesu <strong>feature engineering</strong>, čiže manipulácii s premennými alebo pokračovať s model v stave v akom je.</p>
 <div class="cell">
 <details>
 <summary>Porovnanie predikcie s reálnou cenou 2</summary>
@@ -376,7 +398,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>plot2</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
-<p><img src="4_ML_model_files/figure-html/unnamed-chunk-13-1.png" class="img-fluid" width="672"></p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="4_ML_model_files/figure-html/unnamed-chunk-13-1.png" class="img-fluid figure-img" alt="Rozloženie reálnych vs predikovaných cien" width="672"></p>
+<figcaption class="figure-caption">Rozloženie reálnych vs predikovaných cien</figcaption>
+</figure>
+</div>
 </div>
 </div>
 <p>Model v priemere <span style="color:#90ee90;"> mierne nadhodnocuje</span> (do 5 percent) byty s reálnou cenou medzi 100 až 180 tisíc EUR.<span style="color:#037f51;">Najvyššie nadhodnotenie</span> (viac ako 5 percent) je pri cenách do 100 tisíc EUR. Naopak byty s cenou od 180 tisíc EUR do 260 tisíc eur <span style="color:#55B9F5;">mierne podhodnocuje</span>. V prípade bytov od 260 tisíc EUR (približne 7 percent z inzerátov) sú už odchýlky nestabilné, trend je však smerom k <span style="color:#506BA0;">výraznejšiemu podhodnocovaniu</span>.</p>
@@ -417,11 +444,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb13-32"><a href="#cb13-32" aria-hidden="true" tabindex="-1"></a>plot3</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
-<p><img src="4_ML_model_files/figure-html/unnamed-chunk-14-1.png" class="img-fluid" width="672"></p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="4_ML_model_files/figure-html/unnamed-chunk-14-1.png" class="img-fluid figure-img" alt="Odchýlky predikcie od reality" width="672"></p>
+<figcaption class="figure-caption">Odchýlky predikcie od reality</figcaption>
+</figure>
+</div>
 </div>
 </div>
 <p>Pri XGBoost je dôležitosť premenných založená na “Gain”, tento termín odkazuje na príspevok každej premennej k celkovému zlepšeniu modelu, ktoré je dosiahnuté vďaka rozdeleniam (splits) na konkrétnej premennej. Keď XGBoost vytvára stromy, každé rozdelenie v strome sa vyberá tak, aby maximalizovalo “zisk”, čo znamená, že sa snaží o čo najväčšie zlepšenie prediktívnej presnosti. “Gain” v tomto kontexte meria, o koľko sa zlepšuje predikcia, keď sa použije rozdelenie založené na danej premenné. Tento zisk je často vážený a sumarizovaný cez všetky stromy v modele. Premenné, ktoré najviac prispievajú k zlepšeniu, sú tie, ktoré model najviac využíva na dosiahnutie presnejších predikcií, a preto sú považované za dôležitejšie. Viac informácií môžete nájsť napríklad v <a href="https://towardsdatascience.com/be-careful-when-interpreting-your-features-importance-in-xgboost-6e16132588e7">tomto článku na medium</a></p>
-<p>Neprekvapivo, najdôležitejšou premennou je rozloha bytu. Nasledujú geografická dĺžka a lokalita v okrese Bratislava I. Počet izieb, hodnotenie dopravy a relaxu v lokalite, ktoré majú približne 50 percentnú dôležitosť oproti rozlohe. Až 4 z top 10 premenných sú súčasťou <a href="https://www.nehnutelnosti.sk/magazin-o-byvani/1626-aka-je-kvalita-byvania-vo-vybranej-lokalite-po-novom-to-zistite-na-nehnutelnosti-sk-s-pomockou-od-city-performer/">indexu bývania</a></p>
+<p>Neprekvapivo, najdôležitejšou premennou je rozloha bytu. Nasledujú geografická dĺžka, počet miestností a geografická šírka. Až 4 z top 10 premenných sú súčasťou <a href="https://www.nehnutelnosti.sk/magazin-o-byvani/1626-aka-je-kvalita-byvania-vo-vybranej-lokalite-po-novom-to-zistite-na-nehnutelnosti-sk-s-pomockou-od-city-performer/">indexu bývania</a></p>
 <div class="cell">
 <details>
 <summary>vip</summary>
@@ -453,7 +485,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p><br>SHAP (Shapley Additive exPlanations) hodnoty sú metóda používaná na vysvetlenie príspevku jednotlivých premenných k predikcii konkrétneho modelu strojového učenia. SHAP hodnoty poskytujú detailné vysvetlenie predikcie pre každý záznam (riadok dát) tým, že ukážu, ako každá premenná prispieva k výslednej predikcii, či už zvyšovaním alebo znížením predikovanej hodnoty. Tiež zaručujú konzistentnosť, čo znamená, že ak máme dve premenné a jedna konzistentne prispieva k predikcii viac než druhá, bude mať aj vyššiu SHAP hodnotu. Okrem poskytovania vysvetlení na úrovni jednotlivých predikcií (lokálne vysvetlenie) môžu byť SHAP hodnoty agregované na poskytnutie prehľadu o dôležitosti premenných v celom modeli (globálne vysvetlenie).</p>
-<p>SHAP hodnoty nám poskytujú ďaľšie informácie k dôležitosti premenných. Napr. sa potvrdzuje západo-východný gradient, ktorý sme spomínali v <a href="">tretej časti</a> tejto série. Ak sa byt nachádza v okrese Bratislava I, môže mu to pridať na hodnote 50 až 100 tisíc EUR. Pôvodný stav a čiastočná rekonštrukcia majú približne rovnako negatívny vplyv na výsledné nacenenie. Efekt je približne do -25 tisíc EUR. Naopak ak sa jedná o novú stavbu, tak jej to pridáva na hodnote asi 5 až 30 tisíc EUR.</p>
+<p>SHAP hodnoty nám poskytujú ďaľšie informácie k dôležitosti premenných. Napr. sa potvrdzuje západo-východný gradient, ktorý sme spomínali v <a href="">tretej časti</a> tejto série. Ak sa byt nachádza v okrese Bratislava I, môže mu to pridať na hodnote 25 až 75 tisíc EUR. Ak sa jedná o novostavbu cena môže stúpnuť až o 50 tisíc EUR, kompletná rekonštrukcia pridáva na hodnote do 25 tisíc EUR, neopak pôvodný stav má negatívnz efekt do približne - 17 tisíc EUR.</p>
 <div class="cell">
 <details>
 <summary>SHAP</summary>
@@ -462,24 +494,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bake</span>(<span class="at">new_data =</span> apartments_analysis_data) <span class="sc">|&gt;</span></span>
 <span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>price)</span>
 <span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>shp <span class="ot">&lt;-</span> <span class="fu">shapviz</span>(<span class="fu">extract_fit_engine</span>(apartments_xgb_fit), <span class="at">X_pred =</span> fitted_data <span class="sc">|&gt;</span> <span class="fu">as.matrix</span>())</span>
-<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>shap_plot <span class="ot">&lt;-</span> <span class="fu">sv_importance</span>(shp, <span class="at">kind =</span> <span class="st">"beeswarm"</span>)  <span class="sc">+</span></span>
-<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">labels =</span> <span class="cf">function</span>(x) <span class="fu">format</span>(x, <span class="at">big.mark =</span> <span class="st">" "</span>, <span class="at">scientific =</span> <span class="cn">FALSE</span>)) <span class="sc">+</span></span>
-<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_gradient</span>(<span class="at">low =</span> <span class="st">"blue"</span>, <span class="at">high =</span> <span class="st">"red"</span>,</span>
-<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>                      <span class="at">breaks =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>),</span>
-<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>                      <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"nízka"</span>, <span class="st">"vysoká"</span>),</span>
-<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>                      <span class="at">guide =</span> <span class="fu">guide_colorbar</span>(<span class="at">barwidth =</span> <span class="dv">12</span>, <span class="at">barheight =</span> <span class="fl">0.3</span>)) <span class="sc">+</span> <span class="co"># Customize based on your exact needs</span></span>
-<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"SHAP hodnota (vplyv na predikovanú cenu)"</span>,</span>
-<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">"Premenná"</span>,</span>
-<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>       <span class="at">color =</span> <span class="st">"Hodnota premennej "</span></span>
-<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>       ) <span class="sc">+</span></span>
-<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
-<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
-<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">panel.grid.minor =</span> <span class="fu">element_blank</span>(),</span>
-<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">text =</span> <span class="fu">element_text</span>(<span class="at">family =</span> <span class="st">"Courier New"</span>, <span class="at">size =</span> <span class="dv">10</span>),</span>
-<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">"bottom"</span></span>
-<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>shp <span class="ot">&lt;-</span> <span class="fu">shapviz</span>(<span class="fu">extract_fit_engine</span>(apartments_xgb_fit), <span class="at">X_pred =</span> fitted_data <span class="sc">|&gt;</span> <span class="fu">as.matrix</span>())</span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>shap_plot <span class="ot">&lt;-</span> <span class="fu">sv_importance</span>(shp, <span class="at">kind =</span> <span class="st">"beeswarm"</span>)  <span class="sc">+</span></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">labels =</span> <span class="cf">function</span>(x) <span class="fu">format</span>(x, <span class="at">big.mark =</span> <span class="st">" "</span>, <span class="at">scientific =</span> <span class="cn">FALSE</span>)) <span class="sc">+</span></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_gradient</span>(<span class="at">low =</span> <span class="st">"blue"</span>, <span class="at">high =</span> <span class="st">"red"</span>,</span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>                      <span class="at">breaks =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>),</span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>                      <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"nízka"</span>, <span class="st">"vysoká"</span>),</span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>                      <span class="at">guide =</span> <span class="fu">guide_colorbar</span>(<span class="at">barwidth =</span> <span class="dv">12</span>, <span class="at">barheight =</span> <span class="fl">0.3</span>)) <span class="sc">+</span> <span class="co"># Customize based on your exact needs</span></span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"SHAP hodnota (vplyv na predikovanú cenu)"</span>,</span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">"Premenná"</span>,</span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>       <span class="at">color =</span> <span class="st">"Hodnota premennej "</span></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>       ) <span class="sc">+</span></span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">panel.grid.minor =</span> <span class="fu">element_blank</span>(),</span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">text =</span> <span class="fu">element_text</span>(<span class="at">family =</span> <span class="st">"Courier New"</span>, <span class="at">size =</span> <span class="dv">10</span>),</span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">"bottom"</span></span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <div class="cell">
@@ -492,7 +525,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
-<p>Okrem celkového príspevku jednotlivých premenných v rámci modelu ako celku (globálne vysvetlenie) sa vieme pozrieť aj na jednotlivé predikcie. Napr. keď sa pozrieme na inzerát na riadku 1804, môžeme vidieť, že lokalita v okrese Bratislava I mu pridala na hodnote 67,7 tisíc EUR, geografická dĺžka ďalších 43,7 tisíc EUR a rozloha 84 m^2 23,3 tisíc EUR. Naopak pôvodný stav bytu mu uberá 22,9 tisíc EUR.</p>
+<p>Okrem celkového príspevku jednotlivých premenných v rámci modelu ako celku (globálne vysvetlenie) sa vieme pozrieť aj na jednotlivé predikcie. Napr. keď sa pozrieme na inzerát na riadku 1804, môžeme vidieť, že lokalita v okrese Bratislava I mu pridala na hodnote 48,5 tisíc EUR, geografická dĺžka ďalších 36,3 tisíc EUR, geografická šírka 19,5 tisíc EUR a rozloha 84 m^2 19,2 tisíc EUR. Naopak to, že sa nejedná o novostavbu znižuje cenu o 12,6 tisíc EUR a pôvodný stav uberá ďalších, približne, 8 tisíc EUR.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
@@ -506,33 +539,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="uloženie-modelu-a-dát-pre-aplikáciu" class="level1">
 <h1>Uloženie modelu a dát pre aplikáciu</h1>
-<p>Finalizovaný model unikátne hodnoty premenných ukladáme v RDS formáte a budú použité v Shiny web aplikácii.</p>
+<p>Finalizovaný model ukladáme v RDS formáte a bude použitý v Shiny web aplikácii.</p>
 <div class="cell">
 <details>
 <summary>Ukladanie súborov</summary>
 <div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># save model</span></span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(apartments_xgb_fit, <span class="st">"data/model.RDS"</span>)</span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="co"># save other data for app</span></span>
-<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>conditions <span class="ot">&lt;-</span> apartments_analysis_data <span class="sc">|&gt;</span></span>
-<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(condition) <span class="sc">|&gt;</span></span>
-<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>()</span>
-<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(conditions, <span class="st">"data/conditions.RDS"</span>)</span>
-<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>certificate <span class="ot">&lt;-</span> apartments_analysis_data <span class="sc">|&gt;</span></span>
-<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(certificate) <span class="sc">|&gt;</span></span>
-<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>()</span>
-<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(certificate, <span class="st">"data/certificate.RDS"</span>)</span>
-<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>type <span class="ot">&lt;-</span> apartments_analysis_data <span class="sc">|&gt;</span></span>
-<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(type) <span class="sc">|&gt;</span></span>
-<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>()</span>
-<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(type, <span class="st">"data/type.RDS"</span>)</span>
-<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a>district <span class="ot">&lt;-</span> apartments_analysis_data <span class="sc">|&gt;</span></span>
-<span id="cb16-21"><a href="#cb16-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(district) <span class="sc">|&gt;</span></span>
-<span id="cb16-22"><a href="#cb16-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>()</span>
-<span id="cb16-23"><a href="#cb16-23" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(type, <span class="st">"data/type.RDS"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(apartments_xgb_fit, <span class="st">"data/model.RDS"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 </section>

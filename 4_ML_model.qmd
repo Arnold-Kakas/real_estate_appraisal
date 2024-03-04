@@ -301,7 +301,7 @@ plot1 <-
 
 plot1
 ```
-Ak si pozrieme rozloženie reálnych a predikovaných cien, môžeme vidieť kde presne dochádza k najväčším odchýlkam. Model predikoval viac bytov v cene približne 100 až 170 tisíc EUR a približne 200 až 225 tisíc EUR. Naopak menej zastúpené sú najmä byty s cenou približne 250 až 300 tisíc EUR. Teraz je potrebné rozhodnutie či sa sa treba vrátiť k procesu **feature engineering**, čiže manipulácii s premennými alebo pokračovať s model v stave v akom je. 
+Pri pohľade na rozloženie reálnych a predikovaných cien, môžeme vidieť kde presne dochádza k najväčším odchýlkam. Model predikoval viac bytov v cene približne 100 až 170 tisíc EUR a približne 200 až 225 tisíc EUR. Naopak menej zastúpené sú najmä byty s cenou približne 250 až 300 tisíc EUR. Teraz je potrebné rozhodnutie či sa sa treba vrátiť k procesu **feature engineering**, čiže manipulácii s premennými alebo pokračovať s model v stave v akom je. 
 ```{r}
 #| echo: true
 #| warning: false
@@ -378,7 +378,7 @@ plot3
 
 Pri XGBoost je dôležitosť premenných založená na "Gain", tento termín odkazuje na príspevok každej premennej k celkovému zlepšeniu modelu, ktoré je dosiahnuté vďaka rozdeleniam (splits) na konkrétnej premennej. Keď XGBoost vytvára stromy, každé rozdelenie v strome sa vyberá tak, aby maximalizovalo "zisk", čo znamená, že sa snaží o čo najväčšie zlepšenie prediktívnej presnosti. "Gain" v tomto kontexte meria, o koľko sa zlepšuje predikcia, keď sa použije rozdelenie založené na danej premenné. Tento zisk je často vážený a sumarizovaný cez všetky stromy v modele. Premenné, ktoré najviac prispievajú k zlepšeniu, sú tie, ktoré model najviac využíva na dosiahnutie presnejších predikcií, a preto sú považované za dôležitejšie. Viac informácií môžete nájsť napríklad v [tomto článku na medium](https://towardsdatascience.com/be-careful-when-interpreting-your-features-importance-in-xgboost-6e16132588e7)
 
-Neprekvapivo, najdôležitejšou premennou je rozloha bytu. Nasledujú geografická dĺžka a lokalita v okrese Bratislava I. Počet izieb, hodnotenie dopravy a relaxu v lokalite, ktoré majú približne 50 percentnú dôležitosť oproti rozlohe. Až 4 z top 10 premenných sú súčasťou [indexu bývania](https://www.nehnutelnosti.sk/magazin-o-byvani/1626-aka-je-kvalita-byvania-vo-vybranej-lokalite-po-novom-to-zistite-na-nehnutelnosti-sk-s-pomockou-od-city-performer/)
+Neprekvapivo, najdôležitejšou premennou je rozloha bytu. Nasledujú geografická dĺžka, počet miestností a geografická šírka. Až 4 z top 10 premenných sú súčasťou [indexu bývania](https://www.nehnutelnosti.sk/magazin-o-byvani/1626-aka-je-kvalita-byvania-vo-vybranej-lokalite-po-novom-to-zistite-na-nehnutelnosti-sk-s-pomockou-od-city-performer/)
 
 ```{r}
 #| echo: true
@@ -408,7 +408,7 @@ apartments_xgb_fit |>
 <br>SHAP (Shapley Additive exPlanations) hodnoty sú metóda používaná na vysvetlenie príspevku jednotlivých premenných k predikcii konkrétneho modelu strojového učenia. SHAP hodnoty poskytujú detailné vysvetlenie predikcie pre každý záznam (riadok dát) tým, že ukážu, ako každá premenná prispieva k výslednej predikcii, či už zvyšovaním alebo znížením predikovanej hodnoty. Tiež zaručujú konzistentnosť, čo znamená, že ak máme dve premenné a jedna konzistentne prispieva k predikcii viac než druhá, bude mať aj vyššiu SHAP hodnotu.
 Okrem poskytovania vysvetlení na úrovni jednotlivých predikcií (lokálne vysvetlenie) môžu byť SHAP hodnoty agregované na poskytnutie prehľadu o dôležitosti premenných v celom modeli (globálne vysvetlenie).
 
-SHAP hodnoty nám poskytujú ďaľšie informácie k dôležitosti premenných. Napr. sa potvrdzuje západo-východný gradient, ktorý sme spomínali v [tretej časti]() tejto série. Ak sa byt nachádza v okrese Bratislava I, môže mu to pridať na hodnote 50 až 100 tisíc EUR. Pôvodný stav a čiastočná rekonštrukcia majú približne rovnako negatívny vplyv na výsledné nacenenie. Efekt je približne do -25 tisíc EUR. Naopak ak sa jedná o novú stavbu, tak jej to pridáva na hodnote asi 5 až 30 tisíc EUR.
+SHAP hodnoty nám poskytujú ďaľšie informácie k dôležitosti premenných. Napr. sa potvrdzuje západo-východný gradient, ktorý sme spomínali v [tretej časti]() tejto série. Ak sa byt nachádza v okrese Bratislava I, môže mu to pridať na hodnote 25 až 75 tisíc EUR. Ak sa jedná o novostavbu cena môže stúpnuť až o 50 tisíc EUR, kompletná rekonštrukcia pridáva na hodnote do 25 tisíc EUR, neopak pôvodný stav má negatívnz efekt do približne - 17 tisíc EUR.
 
 ```{r}
 #| echo: true
@@ -449,7 +449,7 @@ shap_plot <- sv_importance(shp, kind = "beeswarm")  +
 #| fig-alt: "Top 15 premenných podľa SHAP hodnôt"
 shap_plot
 ```
-Okrem celkového príspevku jednotlivých premenných v rámci modelu ako celku (globálne vysvetlenie) sa vieme pozrieť aj na jednotlivé predikcie. Napr. keď sa pozrieme na inzerát na riadku 1804, môžeme vidieť, že lokalita v okrese Bratislava I mu pridala na hodnote 67,7 tisíc EUR, geografická dĺžka ďalších 43,7 tisíc EUR a rozloha 84 m^2 23,3 tisíc EUR. Naopak pôvodný stav bytu mu uberá 22,9 tisíc EUR.
+Okrem celkového príspevku jednotlivých premenných v rámci modelu ako celku (globálne vysvetlenie) sa vieme pozrieť aj na jednotlivé predikcie. Napr. keď sa pozrieme na inzerát na riadku 1804, môžeme vidieť, že lokalita v okrese Bratislava I mu pridala na hodnote 48,5 tisíc EUR, geografická dĺžka ďalších 36,3 tisíc EUR, geografická šírka 19,5 tisíc EUR a rozloha 84 m^2 19,2 tisíc EUR. Naopak to, že sa nejedná o novostavbu znižuje cenu o 12,6 tisíc EUR a pôvodný stav uberá ďalších, približne, 8 tisíc EUR.
 
 ```{r}
 #| echo: false
@@ -472,7 +472,7 @@ sv_waterfall(shp, row_id = 1804) +
 
 # Uloženie modelu a dát pre aplikáciu
 
-Finalizovaný model unikátne hodnoty premenných ukladáme v RDS formáte a budú použité v Shiny web aplikácii.
+Finalizovaný model ukladáme v RDS formáte a bude použitý v Shiny web aplikácii.
 
 ```{r}
 #| eval: false
@@ -480,25 +480,4 @@ Finalizovaný model unikátne hodnoty premenných ukladáme v RDS formáte a bud
 #| code-summary: "Ukladanie súborov"
 # save model
 saveRDS(apartments_xgb_fit, "data/model.RDS")
-
-# save other data for app
-conditions <- apartments_analysis_data |>
-  select(condition) |>
-  distinct()
-saveRDS(conditions, "data/conditions.RDS")
-
-certificate <- apartments_analysis_data |>
-  select(certificate) |>
-  distinct()
-saveRDS(certificate, "data/certificate.RDS")
-
-type <- apartments_analysis_data |>
-  select(type) |>
-  distinct()
-saveRDS(type, "data/type.RDS")
-
-district <- apartments_analysis_data |>
-  select(district) |>
-  distinct()
-saveRDS(type, "data/type.RDS")
 ```
