@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.4.553">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Webscraping pomocou jazyka R</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="1 webscraping SK_files/libs/clipboard/clipboard.min.js"></script>
+<script src="1 webscraping SK_files/libs/quarto-html/quarto.js"></script>
+<script src="1 webscraping SK_files/libs/quarto-html/popper.min.js"></script>
+<script src="1 webscraping SK_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="1 webscraping SK_files/libs/quarto-html/anchor.min.js"></script>
+<link href="1 webscraping SK_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="1 webscraping SK_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="1 webscraping SK_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="1 webscraping SK_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="1 webscraping SK_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Obsah</h2>
+   
+  <ul>
+  <li><a href="#upozornenie" id="toc-upozornenie" class="nav-link active" data-scroll-target="#upozornenie">Upozornenie</a></li>
+  <li><a href="#web-scraping" id="toc-web-scraping" class="nav-link" data-scroll-target="#web-scraping">Web scraping</a></li>
+  <li><a href="#proces-scrapovania" id="toc-proces-scrapovania" class="nav-link" data-scroll-target="#proces-scrapovania">Proces scrapovania</a>
+  <ul>
+  <li><a href="#použité-knižnice" id="toc-použité-knižnice" class="nav-link" data-scroll-target="#použité-knižnice">Použité knižnice</a></li>
+  <li><a href="#webové-elementy" id="toc-webové-elementy" class="nav-link" data-scroll-target="#webové-elementy">Webové elementy</a></li>
+  <li><a href="#scraping-časť-i.---rvest" id="toc-scraping-časť-i.---rvest" class="nav-link" data-scroll-target="#scraping-časť-i.---rvest">Scraping časť I. - rvest</a></li>
+  <li><a href="#scraping-časť-ii.---rselenium" id="toc-scraping-časť-ii.---rselenium" class="nav-link" data-scroll-target="#scraping-časť-ii.---rselenium">Scraping časť II. - RSelenium</a></li>
+  <li><a href="#data-wrangling" id="toc-data-wrangling" class="nav-link" data-scroll-target="#data-wrangling">Data wrangling</a></li>
+  </ul></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Webscraping pomocou jazyka R</h1>
+<p class="subtitle lead">Ako použiť voľne dostupné dáta pre vlastnú analýzu</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="upozornenie" class="level2">
+<h2 class="anchored" data-anchor-id="upozornenie">Upozornenie</h2>
+<p><br> Predtým než sa dostanem k téme tohto blogu, upozorňujem, že tento článok slúži výhradne k <strong>informačným účelom</strong> a akékoľvek informácie uvedené nižšie <strong>nie sú právne rady</strong>. Z tohto dôvodu pred akýmkoľvek zbieraním údajov z webu by ste mali získať vhodnú profesionálnu právnu radu týkajúcu sa vášho konkrétneho prípadu.</p>
+</section>
+<section id="web-scraping" class="level2">
+<h2 class="anchored" data-anchor-id="web-scraping">Web scraping</h2>
+<p><br> V tomto blogovom príspevku prejdem procesom <strong><a href="https://en.wikipedia.org/wiki/Web_scraping">web scraping-u</a></strong> s využitím <strong>programovacieho jazyka R</strong>. Predtým než sa pustím do samotného procesu, chcel by som sa trochu venovať téme z trochu širšej prespektívny. <br> Web scraping je proces získavania obsahu alebo (väčšinou) štruktúrovaných údajov z webových stránok automatizovaným spôsobom (a obvykle vo veľkom množstve). Táto definícia prirodzene vyvoláva otázku o legalite takéhoto procesu. V zásade web scraping nie je ilegálny alebo zakázaný sám osebe (v EÚ, k júnu 2024). Avšak, používanie nástrojov na sťahovanie údajov je z právneho hľadiska riskantné z niekoľkých dôvodov:</p>
+<ul>
+<li>Porušenie duševného vlastníctva</li>
+<li>Porušenie zmluvy</li>
+<li>Obavy o ochranu osobných údajov</li>
+</ul>
+<p>Pre zminimalizovanie obáv by malo scrapovanie prebiehať diskrétne, rešpektovať podmienky používania webových stránok, v rámci procesu by ste mali kontrolovať, či stránky používajú protokol robots.txt na oznámenie, že scrapovanie je zakázané, vyhnúť sa scrapovaniu osobných údajov a, ak je to nevyhnutné, uistiť sa, že nedochádza k porušeniu GDPR, taktiež sa vyhnúť scrapovaniu súkromných alebo utajovaných informácií (<a href="https://discoverdigitallaw.com/is-web-scraping-legal-short-guide-on-scraping-under-the-eu-jurisdiction/#IV_HOW_TO_SCRAPE_AND_NOT_BE_SUED">Zdroj</a>). <br> Existujú niektoré všeobecné etické zásady, ktoré by ste mali dodržiavať, keď chcete scrapovať údaje z webu. Najčastejšie spomínané sú:</p>
+<ul>
+<li>Ak existuje verejné <strong>API</strong>, ktoré poskytuje požadované údaje, použite ho namiesto scrapovania.</li>
+<li>Sťahujte údaje v rozumnom tempe, aby scrapovanie nebolo škodlivé pre server a nemohlo byť zamieňané za <strong>DDoS útok</strong>.</li>
+<li>Rešpektujte duševné vlastníctvo iných. Použite údaje na vytvorenie nového hodnotného obsahu, nie na duplikovanie a predávanie ich ako vlastné alebo nelegálne predávanie.</li>
+<li>Nepoužívajte scrapovanie osobných alebo súkromných údajov alebo dokumentov, rešpektujte GDPR.</li>
+<li>Skontrolujte súbor robots.txt, aby ste zistili, ako by mal byť web prehľadávaný.</li>
+<li>Zdieľajte to, čo môžete. Ak sú údaje, ktoré ste scrapovali, verejne dostupné, alebo ste získali povolenie na ich zdieľanie, zverejnite ich pre iných (napríklad na <a href="github.com">GitHub</a> alebo <a href="kaggle.com">Kaggle</a>). Ak ste napísali webový scraper na prístup k nim, zdieľajte jeho kód.</li>
+<li>Hľadajte spôsoby, ako vrátiť hodnotu webovým stránkam, ktoré scrapujete, napríklad odkazovaním na stránku v článku alebo príspevku, aby ste na ňu priviedli návštevníkov.</li>
+<li>Ak sa jedná o súkromný projekt (ako tento), počkajte kým sa štruktúra stránky zmení a kód nie je možné použiť bez ďalšej úpravy.</li>
+</ul>
+<p>Niekoľko článkov venujúcim sa téme môžete nájsť na <a href="https://towardsdatascience.com/ethics-in-web-scraping-b96b18136f01">towardsdatascience.com</a>, <a href="https://monashdatafluency.github.io/python-web-scraping/section-5-legal-and-ethical-considerations/">Data Fluency github page</a> alebo <a href="https://scrapingrobot.com/blog/ethical-web-scraping/">scrapingrobot page</a>. <br> Príklad <strong>komerčného využitia</strong> web scrapingu je napr. <a href="https://apify.com/">Apify</a>, ktoré ponúka množstvo produktov a riešení v oblasti web scrapingu. <br> V tomto článku budem scrapovať údaje zo stránky <a href="https://www.nehnutelnosti.sk/">Nehnutelnosti</a>, ktorá sa špecializuje na realitné inzeráty a služby. Pre dodržanie etických zásad scrapovania som prijal niekoľko preventívnych opatrení:</p>
+<ul>
+<li>Táto konkrétna stránka používa protokol robots.txt. Nescrapujem žiadnu časť, ktorá je zakázaná a vo vybraných častiach kódu som pridal funkciu <em>Sys.sleep()</em>, aby som spomalil proces a žiadal údaje s primeranou frekvenciou.</li>
+<li>Scrapujem len verejné údaje, ktoré potrebujem na ďaľšiu analýzu a vytvorenie <strong>ML modelu</strong>.</li>
+<li>Výsledný dataset je dostupný na <a href="https://www.kaggle.com/datasets/arnoldkakas/real-estate-dataset">Kaggle</a>. <br>
+<center>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="data/Nehnutelnosti%20robots%20protocol.JPG" class="img-fluid figure-img"></p>
+<figcaption>Nehnutelnosti website robots.txt protocol</figcaption>
+</figure>
+</div>
+</center>
+<br></li>
+</ul>
+</section>
+<section id="proces-scrapovania" class="level2 tabset tab-pills">
+<h2 class="tabset tab-pills anchored" data-anchor-id="proces-scrapovania">Proces scrapovania</h2>
+<p><br></p>
+<section id="použité-knižnice" class="level3">
+<h3 class="anchored" data-anchor-id="použité-knižnice">Použité knižnice</h3>
+<p><br> Ako obvykle, začínam s načítaním balíkov potrebných pre tento projekt. Používam na to <a href="https://cran.r-project.org/web/packages/pacman/index.html">packman</a> knižnicu a funkciu <em>p_load()</em>, ktorá ma dve výhody oproti základnej funkcii <em>library()</em>:</p>
+<ul>
+<li>ak potrebnú knižnicu nemám nainštalovanú, funkcia to rovno napraví</li>
+<li>môžem načítať viacero knižníc naraz</li>
+</ul>
+<div class="cell">
+<details class="code-fold">
+<summary>Knižnice</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">require</span>(<span class="st">"pacman"</span>)) {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">install.packages</span>(<span class="st">"pacman"</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  tidyverse,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  rvest, <span class="co"># scraping, part of tidyverse</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  httr, <span class="co"># working with html</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  RSelenium, <span class="co"># scraping in Google Chrome</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  netstat, <span class="co"># free_port()</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  doParallel, <span class="co"># parallel processing</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  furrr <span class="co"># future map</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>V tomto projekte máme tri skupiny balíkov:</p>
+<ul>
+<li>na načítanie údajov a manipuláciu s nimi - rio, tidyverse</li>
+<li>na web scrapovanie - rvest, RSelenium, netstat, httr. <em>Poznámka:</em> V čase uverejnenia tohto príspevku bola dostupná už aj nová funkcia v knižnici rvest <em>read_html_live()</em>. Podľa <a href="https://rvest.tidyverse.org/dev/reference/read_html_live.html">popisu</a> by mohla aspon čiastočne nahradiť RSelenium.</li>
+<li>na paralelné spracovanie - doParallel a furrr</li>
+</ul>
+</section>
+<section id="webové-elementy" class="level3">
+<h3 class="anchored" data-anchor-id="webové-elementy">Webové elementy</h3>
+<br> Bez ohľadu na to, ktorý programovací jazyk alebo balík si vyberiete na scrapovanie, musíte byť schopní nájsť elementy v zdrojovom kóde webovej stránky. To môžete jednoducho urobiť vo vašom webovom prehliadači (pre potreby tohto blogu používam Google Chrome). Stlačte <em>CRTL</em> + <em>SHIFT</em> + <em>I</em> na otvorenie nástrojov vývojára. Teraz, keď sa pohybujete kurzorom po kóde v okne, dynamicky vám ukáže, ktorá časť stránky je s ňou spojená. Jednoduchším spôsobom, ako získať správnu referenciu na element (alebo inú časť stránky), je stlačiť <em>CRTL</em> + <em>SHIFT</em> + <em>C</em> a vybrať priamo na stránke požadovaný element. <br>
+<center>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="data/DevTools.JPG" class="img-fluid figure-img"></p>
+<figcaption>DevTools v Google Chrome</figcaption>
+</figure>
+</div>
+</center>
+<p><br></p>
+Ak ste našli správny element, musíte skopírovať jeho CSS selektor alebo cestu XPath. Obe možnosti môžu byť použité ako argumenty v rvest a RSelenium. <br>
+<center>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="data/Web%20element%20Xpath-CSS%20selector.JPG" class="img-fluid figure-img"></p>
+<figcaption>Kopírovanie XPath web elementu</figcaption>
+</figure>
+</div>
+</center>
+<p><br></p>
+<p>Teraz ste pripravení získať obsah zo stránky. Výsledok, ak ste všetko správne urobili, môže mať rôzne formy. Môže to byť jedna hodnota, reťazec, zoznam atď. Na základe toho buď presnejšie špecifikujete, ktorú časť obsahu potrebujete, alebo pracujete s výsledkom v R a používate funkcie na manipuláciu s dátami s cieľom získania požadovaných informácií.</p>
+</section>
+<section id="scraping-časť-i.---rvest" class="level3">
+<h3 class="anchored" data-anchor-id="scraping-časť-i.---rvest">Scraping časť I. - rvest</h3>
+<p><br> Jedným z najbežnejších balíkov na web scrapovanie v R je <a href="https://rvest.tidyverse.org/">rvest</a>. Poskytuje funkcie na prístup k verejnej webovej stránke a na vyhľadávanie špecifických prvkov pomocou selektorov CSS a XPath. Tento balík nespúšťa javascript, čo znamená, že načíta html stránky rýchlejšie, ale vynechá všetky prvky načítané javascriptom po pôvodnom načítaní stránky. Preto je tento balík dobrá voľba, ak scrapujete statické stránky.</p>
+<p>V tomto príklade začínam vytvorením premennej pre zdrojovú URL adresu: <em>https://www.nehnutelnosti.sk/slovensko/byty/predaj/?p[param1][from]=1000&amp;p[param1][to]=&amp;p[page]=</em></p>
+Následne skontrolujem počet stránok: <br>
+<center>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="data/Number%20of%20pages.jpg" class="img-fluid figure-img"></p>
+<figcaption>Number of pages with search results</figcaption>
+</figure>
+</div>
+</center>
+<p><br> A nakoniec pripravím a spustím multisession na získanie ceny, adresy, typu nehnuteľnosti a najdôležitejšie - odkazu na inzerát, ktorý bude použitý v ďalšej časti s balíkom RSelenium. Pridal som aj <em>plan(sequential)</em> na zastavenie multisession, ale musím priznať, že nie som tak znalý paralelného programovania v R, aby som úplne pochopil dôležitosť tohto kroku. <br></p>
+<div class="cell">
+<details class="code-fold">
+<summary>Scraping statických dát</summary>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># apartments page</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>site <span class="ot">&lt;-</span> <span class="st">"https://www.nehnutelnosti.sk/slovensko/byty/predaj/?p[param1][from]=1000&amp;p[param1][to]=&amp;p[page]="</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co"># scrape the number of pages</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>number_of_pages <span class="ot">&lt;-</span> <span class="fu">read_html</span>(site) <span class="sc">%&gt;%</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">html_nodes</span>(<span class="at">xpath =</span> <span class="st">'//*[@id="content"]/div[7]/div/div/div[1]/div[17]/div/div/ul/li[5]'</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">html_elements</span>(<span class="st">"a"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">html_text</span>(<span class="at">trim =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.numeric</span>()</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="co"># create a cluster of worker processes (cores)</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="fu">plan</span>(multisession, <span class="at">workers =</span> <span class="dv">6</span>)</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>advertisements <span class="ot">&lt;-</span> <span class="fu">future_map_dfr</span>(<span class="dv">1</span><span class="sc">:</span>number_of_pages, <span class="cf">function</span>(i) {</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>  page_content <span class="ot">&lt;-</span> <span class="fu">read_html</span>(<span class="fu">paste0</span>(site, i))</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>  price <span class="ot">&lt;-</span> page_content <span class="sc">%&gt;%</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">html_nodes</span>(<span class="at">xpath =</span> <span class="st">'//*[@class="advertisement-item--content__price col-auto pl-0 pl-md-3 pr-0 text-right mt-2 mt-md-0 align-self-end"]'</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="fu">html_attr</span>(<span class="st">"data-adv-price"</span>)</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>  type_of_real_estate <span class="ot">&lt;-</span> page_content <span class="sc">%&gt;%</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">html_nodes</span>(<span class="at">xpath =</span> <span class="st">'//*[@class="advertisement-item--content__info"]'</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="fu">html_text2</span>()</span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>  address <span class="ot">&lt;-</span> page_content <span class="sc">%&gt;%</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    <span class="fu">html_nodes</span>(<span class="at">xpath =</span> <span class="st">'//*[@class="advertisement-item--content__info d-block text-truncate"]'</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>    <span class="fu">html_text2</span>()</span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>  link <span class="ot">&lt;-</span> page_content <span class="sc">%&gt;%</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>    <span class="fu">html_nodes</span>(<span class="at">xpath =</span> <span class="st">'//*[@class="mb-0 d-none d-md-block"]'</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    <span class="fu">html_nodes</span>(<span class="st">"a"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>    <span class="fu">html_attr</span>(<span class="st">"href"</span>)</span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tibble</span>(<span class="at">price =</span> price, <span class="at">type_of_real_estate =</span> type_of_real_estate, <span class="at">address =</span> address, <span class="at">link =</span> link)</span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a><span class="fu">plan</span>(sequential)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+<section id="scraping-časť-ii.---rselenium" class="level3">
+<h3 class="anchored" data-anchor-id="scraping-časť-ii.---rselenium">Scraping časť II. - RSelenium</h3>
+<p><br> <a href="https://cran.r-project.org/web/packages/RSelenium/index.html">RSelenium</a> poskytuje súbor R väzieb pre <em>Selenium 2.0 WebDriver</em>. Na rozdiel od rvest spúšťa skutočný webový prehliadač, takže načíta akýkoľvek javascript obsiahnutý na webovej stránke. S týmto balíkom budete schopní interagovať so stránkou, napríklad posúvať, klikať na tlačidlo, vyplňovať vstupné formuláre atď. Na druhej strane je použitie tohto balíka náročnejšie, vyžaduje inštalovaný jazyk <strong>Java</strong> vo vašom systéme, a ja som sa stretol s viacerými problémami, kým som ho správne spustil. Viac sa tejto téme budem venovať v jednom z budúcich blogov. <br> Začínam definovaním niekoľkých pomocných funkcií. Jedna je na neúspešnú navigáciu na stránku, k čomu obvykle dochádzalo, keď som čítal príliš veľa stránok a musel som vymazať históriu prehliadania. Niekedy táto funkcia spôsobila nekonečnú slučku, ktorá bežala niekoľko hodín, než som si to všimol (napríklad počas noci), ale aspoň kód nezhavaroval. Tiež som skúsil vytvoriť funkciu na vymazanie histórie v prípade neúspešnej navigácie, ale nefungovala, a som spokojný s týmto súčasným riešením. Druhá je na spracovanie chyby pri hľadaní elementu. V takýchto prípadoch táto funkcia vráti NA. Posledná je podobná predchádzajúcej, ale v tomto prípade vráti NA, ak sa element nenájde. <br> V skripte tiež používam funkciu <code>tryCatch()</code> na vrátenie NA v prípade chyby. <br></p>
+<div class="cell">
+<details class="code-fold">
+<summary>Definovanie funkcií</summary>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Define a function that handles the errors in page load</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Delete all cookies from the last 24 hours</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>clearCookies <span class="ot">&lt;-</span> <span class="cf">function</span>(remDr) {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  remDr<span class="sc">$</span><span class="fu">deleteAllCookies</span>()</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>navigate_with_retry <span class="ot">&lt;-</span> <span class="cf">function</span>(link, remDr) {</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  success <span class="ot">&lt;-</span> <span class="cn">FALSE</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  <span class="cf">while</span> (<span class="sc">!</span>success) {</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tryCatch</span>(</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>        remDr<span class="sc">$</span><span class="fu">navigate</span>(link)</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>        <span class="fu">Sys.sleep</span>(<span class="dv">5</span>)</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>        success <span class="ot">&lt;-</span> <span class="cn">TRUE</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>      },</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>      <span class="at">error =</span> <span class="cf">function</span>(e) {</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>        <span class="fu">cat</span>(<span class="st">"Failed to navigate to"</span>, link, <span class="st">"- Retrying in 10 seconds...</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>        <span class="fu">clearCookies</span>(remDr)</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>        <span class="fu">Sys.sleep</span>(<span class="dv">10</span>)</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a><span class="co"># Define a wrapper function that handles the errors in element search</span></span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>safe_find_element <span class="ot">&lt;-</span> <span class="fu">possibly</span>(<span class="cf">function</span>(page, xpath) {</span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>  page<span class="sc">$</span><span class="fu">findElement</span>(<span class="at">using =</span> <span class="st">"xpath"</span>, xpath)</span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>}, <span class="cn">NA</span>)</span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a><span class="co"># function to get text or return NA if element not found</span></span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>get_text_or_na <span class="ot">&lt;-</span> <span class="cf">function</span>(nodes) {</span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tryCatch</span>(</span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>    {</span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>      text <span class="ot">&lt;-</span> nodes <span class="sc">%&gt;%</span></span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>        <span class="fu">html_text2</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>        <span class="fu">as.character</span>() <span class="co"># %&gt;%</span></span>
+<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a>      <span class="co"># str_trim() %&gt;%</span></span>
+<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a>      <span class="co"># str_squish()</span></span>
+<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span> (text <span class="sc">==</span> <span class="st">""</span>) <span class="cn">NA</span> <span class="cf">else</span> text</span>
+<span id="cb3-40"><a href="#cb3-40" aria-hidden="true" tabindex="-1"></a>    },</span>
+<span id="cb3-41"><a href="#cb3-41" aria-hidden="true" tabindex="-1"></a>    <span class="at">error =</span> <span class="cf">function</span>(e) {</span>
+<span id="cb3-42"><a href="#cb3-42" aria-hidden="true" tabindex="-1"></a>      <span class="cn">NA</span></span>
+<span id="cb3-43"><a href="#cb3-43" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb3-44"><a href="#cb3-44" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb3-45"><a href="#cb3-45" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p><br> Teraz rozdeľujem odkazy na inzeráty do 10 setov. Tento krok nie je nutný, pretože kód funguje, ale robím to v prípade neočakávanej chyby počas procesu scrapovania, aby som zachránil aspoň časť údajov. Tento krok som zaradil až po jednej veľmi zlej skúsenosti. Ďalšia časť scrapovania totiž trvá viac ako dva dni a môžete mi veriť, že nechcete stratiť celý pokrok kvôli výpadku WiFi. Taktiež vytváram prázdny dataframe so všetkými možnými stĺpcami, ktorý sa bude napĺňať dátami. <br></p>
+<div class="cell">
+<details class="code-fold">
+<summary>Rozdelenie dát do menších celkov</summary>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Additional info from web</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="co"># number of splits</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>num_splits <span class="ot">&lt;-</span> <span class="dv">10</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>split_size <span class="ot">&lt;-</span> <span class="fu">ceiling</span>(<span class="fu">nrow</span>(advertisements) <span class="sc">/</span> num_splits)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="co"># split the data frame into subsets</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>advertisments_list <span class="ot">&lt;-</span> <span class="fu">split</span>(advertisements, <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span>num_splits, <span class="at">each =</span> split_size, <span class="at">length.out =</span> <span class="fu">nrow</span>(advertisements)))</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_along</span>(advertisments_list)) {</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">assign</span>(<span class="fu">paste0</span>(<span class="st">"advertisements_"</span>, i), advertisments_list[[i]])</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="co"># create empty dataframe outside of the loop to hold additional info</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>additional_info_df <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">link =</span> <span class="fu">character</span>(),</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">info_text =</span> <span class="fu">character</span>(),</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">additional_characteristics =</span> <span class="fu">character</span>(),</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>  <span class="at">index_of_living =</span> <span class="fu">character</span>(),</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>  <span class="at">environment =</span> <span class="fu">character</span>(),</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>  <span class="at">quality_of_living =</span> <span class="fu">character</span>(),</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>  <span class="at">safety =</span> <span class="fu">character</span>(),</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>  <span class="at">transport =</span> <span class="fu">character</span>(),</span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>  <span class="at">services =</span> <span class="fu">character</span>(),</span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>  <span class="at">relax =</span> <span class="fu">character</span>(),</span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>  <span class="at">info_details =</span> <span class="fu">character</span>(),</span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>  <span class="at">stringsAsFactors =</span> <span class="cn">FALSE</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p><br> Až teraz prichádzam k samotnému scrapovaniu s použitím RSelenium. Používam len samotnú knižnicu RSelenium, existuje tiež možnosť použiť Docker na spustenie servera Selenium a pripojenie sa k tejto inštancii pomocou RSelenium, túto možnosť som však nepoužil. <br>Ako už bolo spomenuté, na jeho spustenie musím dodržať niekoľko krokov. Na nastavenie servera Selenium a prehliadača musíte použiť funkciu <code>rsDriver()</code> a volať $client na vytvorenie klienta. Funkcia rsDriver očakáva niekoľko argumentov:</p>
+<ul>
+<li>browser - používam Chrome, takže argument je “chrome”,</li>
+<li>chromever - tento argument je často zdroj chýb. Jeho riešenie popíšem v samostatnom <em>BLOGU</em>, ale v tomto prípade píšem verziu “119.0.6045.105”,</li>
+<li>verbose - nastavujem FALSE,</li>
+<li>port - port, na ktorom sa má spúšťať. Používam funkciu z balíka <em>netstat</em> <code>free_port(random = TRUE)</code> pre automatický výber voľného portu.</li>
+</ul>
+<p>Následne skriptom otvorím prehliadač, maximalizujem okno, prejdem na stránku Nehnuteľnosti a prijmem súbory cookie. Potom je nutné manuálne prihlásenie, aby sa zobrazili hodnoty jednotlivých komponentov “indexu bývania”. Tento krok by sa dal zautomatizovať, avšak je to jednorazová aktivita, takže ju ponechávam takto. Keď je toto všetko hotové, skutočné scrapovanie prebieha v cykle. Nejdem do všetkých detailov, ale logika je dosť jednoduchá, skript:</p>
+<ol type="1">
+<li><p>Prejde na odkaz v cykle.</p></li>
+<li><p>Posunie sa na (výšku stránky/10*4,2), aby sa spustil javascript na zobrazenie indexu bývania (táto hĺbka posuvu je založená na manuálnych testoch, napriek tomu musím nájsť inú metódu alebo spustiť viacero posunov, aby sa script skutočne spustil na všetkých načítaných stránkach).</p></li>
+<li><p>Počká 3 sekundy na vykonanie javascriptu a spomalenie procesu (aby sa zbytočne nezaťažovala stránka).</p></li>
+<li><p>Načíta obsah stránky.</p></li>
+<li><p>Ak sa stránka nedá načítať, pridá prázdny záznam do dataframe-u.</p></li>
+<li><p>Ak sa stránka dá načítať, prejde html stránky, scrapuje nasledujúce informácie a pridá nové riadky k dataframe-u:</p>
+<ul>
+<li>info_text - celý text z inzerátu. Momentálne nie je používaný v ML modeli, ale plánujem použiť NLP na získanie kľúčových slov/tém a vytvorenie wordcloud v Shiny appke.</li>
+<li>info_details - obsahuje 4 premenné a bude vyčistený v nasledujúcich krokoch. Premenné sú oddelené symbolom “”.</li>
+<li>index_of_living - hodnota od 0 do 10, vypočítava ju slovenský startup <a href="https://cityperformer.com/">City Performer</a>. Zohľadňuje šesť kategórií: prostredie, kvalita bývania, bezpečnosť, doprava, služby a oddych.</li>
+<li>additional_characteristics - obsahuje viacero premenných, v nasledujúcich krokoch vyberiem 12 z nich. Premenné sú oddelené symbolom <code>"\n"</code>.</li>
+</ul></li>
+<li><p>Zatvorí klienta a zastaví server.</p></li>
+</ol>
+<p><br></p>
+<div class="cell">
+<details class="code-fold">
+<summary>Scraping pomocou RSelenium</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>) {</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="co"># get the current dataframe</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  current_df <span class="ot">&lt;-</span> <span class="fu">get</span>(<span class="fu">paste0</span>(<span class="st">"advertisements_"</span>, i))</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># start the server</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  rs_driver_object <span class="ot">&lt;-</span> <span class="fu">rsDriver</span>(</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">browser =</span> <span class="st">"chrome"</span>,</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">chromever =</span> <span class="st">"119.0.6045.105"</span>,</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">verbose =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">port =</span> <span class="fu">free_port</span>(<span class="at">random =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>  <span class="co"># create a client object</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>  remDr <span class="ot">&lt;-</span> rs_driver_object<span class="sc">$</span>client</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>  <span class="co"># open a browser</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>  remDr<span class="sc">$</span><span class="fu">open</span>()</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>  remDr<span class="sc">$</span><span class="fu">maxWindowSize</span>()</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>  <span class="co"># navigate to a website</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>  remDr<span class="sc">$</span><span class="fu">navigate</span>(<span class="st">"https://www.nehnutelnosti.sk/"</span>)</span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">Sys.sleep</span>(<span class="dv">5</span>) <span class="co"># wait for 5 seconds</span></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>  <span class="co"># accept cookies</span></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a><span class="co"># switch to cookie iframe</span></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>remDr<span class="sc">$</span><span class="fu">switchToFrame</span>(remDr<span class="sc">$</span><span class="fu">findElement</span>(<span class="at">using =</span> <span class="st">"xpath"</span>, <span class="st">'//*[@id="sp_message_iframe_920334"]'</span>))</span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>remDr<span class="sc">$</span><span class="fu">findElement</span>(<span class="at">using =</span> <span class="st">"xpath"</span>, <span class="st">'//*[@id="notice"]/div[2]/button'</span>)<span class="sc">$</span><span class="fu">clickElement</span>()</span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a><span class="co"># switch back to default frame</span></span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>remDr<span class="sc">$</span><span class="fu">switchToFrame</span>(<span class="cn">NA</span>)</span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a><span class="co"># MANUAL LOG IN</span></span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>  <span class="co"># loop through each link in the current dataframe</span></span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (link <span class="cf">in</span> current_df<span class="sc">$</span>link) {</span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a>    info_text <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a>    additional_characteristics <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>    index_of_living <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a>    environment <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a>    quality_of_living <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb5-41"><a href="#cb5-41" aria-hidden="true" tabindex="-1"></a>    safety <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb5-42"><a href="#cb5-42" aria-hidden="true" tabindex="-1"></a>    transport <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb5-43"><a href="#cb5-43" aria-hidden="true" tabindex="-1"></a>    services <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb5-44"><a href="#cb5-44" aria-hidden="true" tabindex="-1"></a>    relax <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb5-45"><a href="#cb5-45" aria-hidden="true" tabindex="-1"></a>    info_details <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb5-46"><a href="#cb5-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-47"><a href="#cb5-47" aria-hidden="true" tabindex="-1"></a>    <span class="fu">navigate_with_retry</span>(link, remDr)</span>
+<span id="cb5-48"><a href="#cb5-48" aria-hidden="true" tabindex="-1"></a>    <span class="co">#remDr$executeScript("document.body.style.zoom = '50%';")</span></span>
+<span id="cb5-49"><a href="#cb5-49" aria-hidden="true" tabindex="-1"></a>    height <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(remDr<span class="sc">$</span><span class="fu">executeScript</span>(<span class="st">"return document.documentElement.scrollHeight"</span>))<span class="sc">/</span><span class="dv">10</span><span class="sc">*</span><span class="fl">4.2</span> <span class="co"># Scroll to load index of living</span></span>
+<span id="cb5-50"><a href="#cb5-50" aria-hidden="true" tabindex="-1"></a>    remDr<span class="sc">$</span><span class="fu">executeScript</span>(<span class="fu">paste</span>(<span class="st">"window.scrollTo(0, "</span>, height, <span class="st">");"</span>)) <span class="co"># scroll to living index</span></span>
+<span id="cb5-51"><a href="#cb5-51" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb5-52"><a href="#cb5-52" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb5-53"><a href="#cb5-53" aria-hidden="true" tabindex="-1"></a>    <span class="fu">Sys.sleep</span>(<span class="dv">1</span>)</span>
+<span id="cb5-54"><a href="#cb5-54" aria-hidden="true" tabindex="-1"></a>    page <span class="ot">&lt;-</span> <span class="fu">safe_find_element</span>(remDr, <span class="st">'//*[@id="map-filter-container"]'</span>)</span>
+<span id="cb5-55"><a href="#cb5-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-56"><a href="#cb5-56" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">is.na</span>(page)) {</span>
+<span id="cb5-57"><a href="#cb5-57" aria-hidden="true" tabindex="-1"></a>      new_row <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb5-58"><a href="#cb5-58" aria-hidden="true" tabindex="-1"></a>        <span class="at">link =</span> link,</span>
+<span id="cb5-59"><a href="#cb5-59" aria-hidden="true" tabindex="-1"></a>        <span class="at">info_text =</span> <span class="cn">NA</span>,</span>
+<span id="cb5-60"><a href="#cb5-60" aria-hidden="true" tabindex="-1"></a>        <span class="at">additional_characteristics =</span> <span class="cn">NA</span>,</span>
+<span id="cb5-61"><a href="#cb5-61" aria-hidden="true" tabindex="-1"></a>        <span class="at">index_of_living =</span> <span class="cn">NA</span>,</span>
+<span id="cb5-62"><a href="#cb5-62" aria-hidden="true" tabindex="-1"></a>        <span class="at">environment =</span> <span class="cn">NA</span>,</span>
+<span id="cb5-63"><a href="#cb5-63" aria-hidden="true" tabindex="-1"></a>        <span class="at">quality_of_living =</span> <span class="cn">NA</span>,</span>
+<span id="cb5-64"><a href="#cb5-64" aria-hidden="true" tabindex="-1"></a>        <span class="at">safety =</span> <span class="cn">NA</span>,</span>
+<span id="cb5-65"><a href="#cb5-65" aria-hidden="true" tabindex="-1"></a>        <span class="at">transport =</span> <span class="cn">NA</span>,</span>
+<span id="cb5-66"><a href="#cb5-66" aria-hidden="true" tabindex="-1"></a>        <span class="at">services =</span> <span class="cn">NA</span>,</span>
+<span id="cb5-67"><a href="#cb5-67" aria-hidden="true" tabindex="-1"></a>        <span class="at">relax =</span> <span class="cn">NA</span>,</span>
+<span id="cb5-68"><a href="#cb5-68" aria-hidden="true" tabindex="-1"></a>        <span class="at">info_details =</span> <span class="cn">NA</span></span>
+<span id="cb5-69"><a href="#cb5-69" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb5-70"><a href="#cb5-70" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-71"><a href="#cb5-71" aria-hidden="true" tabindex="-1"></a>      <span class="co"># bind new row to additional info dataframe</span></span>
+<span id="cb5-72"><a href="#cb5-72" aria-hidden="true" tabindex="-1"></a>      additional_info_df <span class="ot">&lt;-</span> <span class="fu">rbind</span>(additional_info_df, new_row)</span>
+<span id="cb5-73"><a href="#cb5-73" aria-hidden="true" tabindex="-1"></a>    } <span class="cf">else</span> {</span>
+<span id="cb5-74"><a href="#cb5-74" aria-hidden="true" tabindex="-1"></a>      page_html <span class="ot">&lt;-</span> page<span class="sc">$</span><span class="fu">getElementAttribute</span>(<span class="st">"outerHTML"</span>)</span>
+<span id="cb5-75"><a href="#cb5-75" aria-hidden="true" tabindex="-1"></a>      page_html <span class="ot">&lt;-</span> <span class="fu">read_html</span>(page_html[[<span class="dv">1</span>]])</span>
+<span id="cb5-76"><a href="#cb5-76" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-77"><a href="#cb5-77" aria-hidden="true" tabindex="-1"></a>      info_text <span class="ot">&lt;-</span> page_html <span class="sc">%&gt;%</span></span>
+<span id="cb5-78"><a href="#cb5-78" aria-hidden="true" tabindex="-1"></a>        <span class="fu">html_nodes</span>(<span class="at">xpath =</span> <span class="st">'//*[contains(concat( " ", @class, " " ), concat( " ", "text-inner", " " ))]'</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb5-79"><a href="#cb5-79" aria-hidden="true" tabindex="-1"></a>        <span class="fu">get_text_or_na</span>()</span>
+<span id="cb5-80"><a href="#cb5-80" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-81"><a href="#cb5-81" aria-hidden="true" tabindex="-1"></a>      info_details <span class="ot">&lt;-</span> page_html <span class="sc">%&gt;%</span></span>
+<span id="cb5-82"><a href="#cb5-82" aria-hidden="true" tabindex="-1"></a>        <span class="fu">html_nodes</span>(<span class="at">xpath =</span> <span class="st">'//*[@id="map-filter-container"]/div[2]/div/div[1]/div[2]/div[5]/ul'</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb5-83"><a href="#cb5-83" aria-hidden="true" tabindex="-1"></a>        <span class="fu">html_text2</span>()</span>
+<span id="cb5-84"><a href="#cb5-84" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb5-85"><a href="#cb5-85" aria-hidden="true" tabindex="-1"></a>      <span class="fu">tryCatch</span>(</span>
+<span id="cb5-86"><a href="#cb5-86" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb5-87"><a href="#cb5-87" aria-hidden="true" tabindex="-1"></a>          index_of_living <span class="ot">&lt;-</span> page_html <span class="sc">%&gt;%</span></span>
+<span id="cb5-88"><a href="#cb5-88" aria-hidden="true" tabindex="-1"></a>            <span class="fu">html_nodes</span>(<span class="at">xpath =</span> <span class="st">'//*[@id="totalCityperformerWrapper"]/div/p[1]/span'</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb5-89"><a href="#cb5-89" aria-hidden="true" tabindex="-1"></a>            <span class="fu">get_text_or_na</span>()</span>
+<span id="cb5-90"><a href="#cb5-90" aria-hidden="true" tabindex="-1"></a>        },</span>
+<span id="cb5-91"><a href="#cb5-91" aria-hidden="true" tabindex="-1"></a>        <span class="at">error =</span> <span class="cf">function</span>(e) {</span>
+<span id="cb5-92"><a href="#cb5-92" aria-hidden="true" tabindex="-1"></a>          index_of_living <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb5-93"><a href="#cb5-93" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb5-94"><a href="#cb5-94" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb5-95"><a href="#cb5-95" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-96"><a href="#cb5-96" aria-hidden="true" tabindex="-1"></a>      <span class="fu">tryCatch</span>(</span>
+<span id="cb5-97"><a href="#cb5-97" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb5-98"><a href="#cb5-98" aria-hidden="true" tabindex="-1"></a>          environment <span class="ot">&lt;-</span> page_html <span class="sc">%&gt;%</span></span>
+<span id="cb5-99"><a href="#cb5-99" aria-hidden="true" tabindex="-1"></a>            <span class="fu">html_nodes</span>(<span class="at">xpath =</span> <span class="st">'//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[1]/div[1]/div[2]/span[1]/span'</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb5-100"><a href="#cb5-100" aria-hidden="true" tabindex="-1"></a>            <span class="fu">get_text_or_na</span>()</span>
+<span id="cb5-101"><a href="#cb5-101" aria-hidden="true" tabindex="-1"></a>        },</span>
+<span id="cb5-102"><a href="#cb5-102" aria-hidden="true" tabindex="-1"></a>        <span class="at">error =</span> <span class="cf">function</span>(e) {</span>
+<span id="cb5-103"><a href="#cb5-103" aria-hidden="true" tabindex="-1"></a>          environment <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb5-104"><a href="#cb5-104" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb5-105"><a href="#cb5-105" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb5-106"><a href="#cb5-106" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb5-107"><a href="#cb5-107" aria-hidden="true" tabindex="-1"></a>      <span class="fu">tryCatch</span>(</span>
+<span id="cb5-108"><a href="#cb5-108" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb5-109"><a href="#cb5-109" aria-hidden="true" tabindex="-1"></a>          quality_of_living <span class="ot">&lt;-</span> page_html <span class="sc">%&gt;%</span></span>
+<span id="cb5-110"><a href="#cb5-110" aria-hidden="true" tabindex="-1"></a>            <span class="fu">html_nodes</span>(<span class="at">xpath =</span> <span class="st">'//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[1]/div[2]/div[2]/span[1]/span'</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb5-111"><a href="#cb5-111" aria-hidden="true" tabindex="-1"></a>            <span class="fu">get_text_or_na</span>()</span>
+<span id="cb5-112"><a href="#cb5-112" aria-hidden="true" tabindex="-1"></a>        },</span>
+<span id="cb5-113"><a href="#cb5-113" aria-hidden="true" tabindex="-1"></a>        <span class="at">error =</span> <span class="cf">function</span>(e) {</span>
+<span id="cb5-114"><a href="#cb5-114" aria-hidden="true" tabindex="-1"></a>          quality_of_living <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb5-115"><a href="#cb5-115" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb5-116"><a href="#cb5-116" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb5-117"><a href="#cb5-117" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb5-118"><a href="#cb5-118" aria-hidden="true" tabindex="-1"></a>      <span class="fu">tryCatch</span>(</span>
+<span id="cb5-119"><a href="#cb5-119" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb5-120"><a href="#cb5-120" aria-hidden="true" tabindex="-1"></a>          safety <span class="ot">&lt;-</span> page_html <span class="sc">%&gt;%</span></span>
+<span id="cb5-121"><a href="#cb5-121" aria-hidden="true" tabindex="-1"></a>            <span class="fu">html_nodes</span>(<span class="at">xpath =</span> <span class="st">'//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[1]/div[3]/div[2]/span[1]/span'</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb5-122"><a href="#cb5-122" aria-hidden="true" tabindex="-1"></a>            <span class="fu">get_text_or_na</span>()</span>
+<span id="cb5-123"><a href="#cb5-123" aria-hidden="true" tabindex="-1"></a>        },</span>
+<span id="cb5-124"><a href="#cb5-124" aria-hidden="true" tabindex="-1"></a>        <span class="at">error =</span> <span class="cf">function</span>(e) {</span>
+<span id="cb5-125"><a href="#cb5-125" aria-hidden="true" tabindex="-1"></a>          safety <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb5-126"><a href="#cb5-126" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb5-127"><a href="#cb5-127" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb5-128"><a href="#cb5-128" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb5-129"><a href="#cb5-129" aria-hidden="true" tabindex="-1"></a>      <span class="fu">tryCatch</span>(</span>
+<span id="cb5-130"><a href="#cb5-130" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb5-131"><a href="#cb5-131" aria-hidden="true" tabindex="-1"></a>          transport <span class="ot">&lt;-</span> page_html <span class="sc">%&gt;%</span></span>
+<span id="cb5-132"><a href="#cb5-132" aria-hidden="true" tabindex="-1"></a>            <span class="fu">html_nodes</span>(<span class="at">xpath =</span> <span class="st">'//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[2]/div[1]/div[2]/span[1]/span'</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb5-133"><a href="#cb5-133" aria-hidden="true" tabindex="-1"></a>            <span class="fu">get_text_or_na</span>()</span>
+<span id="cb5-134"><a href="#cb5-134" aria-hidden="true" tabindex="-1"></a>        },</span>
+<span id="cb5-135"><a href="#cb5-135" aria-hidden="true" tabindex="-1"></a>        <span class="at">error =</span> <span class="cf">function</span>(e) {</span>
+<span id="cb5-136"><a href="#cb5-136" aria-hidden="true" tabindex="-1"></a>          transport <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb5-137"><a href="#cb5-137" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb5-138"><a href="#cb5-138" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb5-139"><a href="#cb5-139" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb5-140"><a href="#cb5-140" aria-hidden="true" tabindex="-1"></a>      <span class="fu">tryCatch</span>(</span>
+<span id="cb5-141"><a href="#cb5-141" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb5-142"><a href="#cb5-142" aria-hidden="true" tabindex="-1"></a>          services <span class="ot">&lt;-</span> page_html <span class="sc">%&gt;%</span></span>
+<span id="cb5-143"><a href="#cb5-143" aria-hidden="true" tabindex="-1"></a>            <span class="fu">html_nodes</span>(<span class="at">xpath =</span> <span class="st">'//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[2]/div[2]/div[2]/span[1]/span'</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb5-144"><a href="#cb5-144" aria-hidden="true" tabindex="-1"></a>            <span class="fu">get_text_or_na</span>()</span>
+<span id="cb5-145"><a href="#cb5-145" aria-hidden="true" tabindex="-1"></a>        },</span>
+<span id="cb5-146"><a href="#cb5-146" aria-hidden="true" tabindex="-1"></a>        <span class="at">error =</span> <span class="cf">function</span>(e) {</span>
+<span id="cb5-147"><a href="#cb5-147" aria-hidden="true" tabindex="-1"></a>          services <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb5-148"><a href="#cb5-148" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb5-149"><a href="#cb5-149" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb5-150"><a href="#cb5-150" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb5-151"><a href="#cb5-151" aria-hidden="true" tabindex="-1"></a>      <span class="fu">tryCatch</span>(</span>
+<span id="cb5-152"><a href="#cb5-152" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb5-153"><a href="#cb5-153" aria-hidden="true" tabindex="-1"></a>          relax <span class="ot">&lt;-</span> page_html <span class="sc">%&gt;%</span></span>
+<span id="cb5-154"><a href="#cb5-154" aria-hidden="true" tabindex="-1"></a>            <span class="fu">html_nodes</span>(<span class="at">xpath =</span> <span class="st">'//*[@id="map-filter-container"]/div[2]/div/div[1]/div[4]/div[1]/div[1]/div/div[2]/div[2]/div[2]/div[3]/div[2]/span[1]/span'</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb5-155"><a href="#cb5-155" aria-hidden="true" tabindex="-1"></a>            <span class="fu">get_text_or_na</span>()</span>
+<span id="cb5-156"><a href="#cb5-156" aria-hidden="true" tabindex="-1"></a>        },</span>
+<span id="cb5-157"><a href="#cb5-157" aria-hidden="true" tabindex="-1"></a>        <span class="at">error =</span> <span class="cf">function</span>(e) {</span>
+<span id="cb5-158"><a href="#cb5-158" aria-hidden="true" tabindex="-1"></a>          relax <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb5-159"><a href="#cb5-159" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb5-160"><a href="#cb5-160" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb5-161"><a href="#cb5-161" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb5-162"><a href="#cb5-162" aria-hidden="true" tabindex="-1"></a>     <span class="fu">tryCatch</span>(</span>
+<span id="cb5-163"><a href="#cb5-163" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb5-164"><a href="#cb5-164" aria-hidden="true" tabindex="-1"></a>          additional_characteristics <span class="ot">&lt;-</span> page_html <span class="sc">%&gt;%</span></span>
+<span id="cb5-165"><a href="#cb5-165" aria-hidden="true" tabindex="-1"></a>            <span class="fu">html_nodes</span>(<span class="at">xpath =</span> <span class="st">'//*[@id="additional-features-modal-button"]/ul'</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb5-166"><a href="#cb5-166" aria-hidden="true" tabindex="-1"></a>            <span class="fu">html_text2</span>() <span class="co"># %&gt;%</span></span>
+<span id="cb5-167"><a href="#cb5-167" aria-hidden="true" tabindex="-1"></a>          <span class="co"># str_squish()</span></span>
+<span id="cb5-168"><a href="#cb5-168" aria-hidden="true" tabindex="-1"></a>        },</span>
+<span id="cb5-169"><a href="#cb5-169" aria-hidden="true" tabindex="-1"></a>        <span class="at">error =</span> <span class="cf">function</span>(e) {</span>
+<span id="cb5-170"><a href="#cb5-170" aria-hidden="true" tabindex="-1"></a>          additional_characteristics <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb5-171"><a href="#cb5-171" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb5-172"><a href="#cb5-172" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb5-173"><a href="#cb5-173" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-174"><a href="#cb5-174" aria-hidden="true" tabindex="-1"></a>      new_row <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb5-175"><a href="#cb5-175" aria-hidden="true" tabindex="-1"></a>        <span class="at">link =</span> link, <span class="at">info_text =</span> info_text,</span>
+<span id="cb5-176"><a href="#cb5-176" aria-hidden="true" tabindex="-1"></a>        <span class="at">additional_characteristics =</span> additional_characteristics,</span>
+<span id="cb5-177"><a href="#cb5-177" aria-hidden="true" tabindex="-1"></a>        <span class="at">index_of_living =</span> index_of_living,</span>
+<span id="cb5-178"><a href="#cb5-178" aria-hidden="true" tabindex="-1"></a>        <span class="at">environment =</span> environment,</span>
+<span id="cb5-179"><a href="#cb5-179" aria-hidden="true" tabindex="-1"></a>        <span class="at">quality_of_living =</span> quality_of_living,</span>
+<span id="cb5-180"><a href="#cb5-180" aria-hidden="true" tabindex="-1"></a>        <span class="at">safety =</span> safety,</span>
+<span id="cb5-181"><a href="#cb5-181" aria-hidden="true" tabindex="-1"></a>        <span class="at">transport =</span> transport,</span>
+<span id="cb5-182"><a href="#cb5-182" aria-hidden="true" tabindex="-1"></a>        <span class="at">services =</span> services,</span>
+<span id="cb5-183"><a href="#cb5-183" aria-hidden="true" tabindex="-1"></a>        <span class="at">relax =</span> relax,</span>
+<span id="cb5-184"><a href="#cb5-184" aria-hidden="true" tabindex="-1"></a>        <span class="at">info_details =</span> info_details</span>
+<span id="cb5-185"><a href="#cb5-185" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb5-186"><a href="#cb5-186" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-187"><a href="#cb5-187" aria-hidden="true" tabindex="-1"></a>      <span class="co"># bind new row to additional info dataframe</span></span>
+<span id="cb5-188"><a href="#cb5-188" aria-hidden="true" tabindex="-1"></a>      additional_info_df <span class="ot">&lt;-</span> <span class="fu">rbind</span>(additional_info_df, new_row)</span>
+<span id="cb5-189"><a href="#cb5-189" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb5-190"><a href="#cb5-190" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb5-191"><a href="#cb5-191" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb5-192"><a href="#cb5-192" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-193"><a href="#cb5-193" aria-hidden="true" tabindex="-1"></a><span class="co"># close remote driver</span></span>
+<span id="cb5-194"><a href="#cb5-194" aria-hidden="true" tabindex="-1"></a>rs_driver_object<span class="sc">$</span>client<span class="sc">$</span><span class="fu">close</span>()</span>
+<span id="cb5-195"><a href="#cb5-195" aria-hidden="true" tabindex="-1"></a>rs_driver_object<span class="sc">$</span>server<span class="sc">$</span><span class="fu">stop</span>()</span>
+<span id="cb5-196"><a href="#cb5-196" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span>(rs_driver_object, remDr)</span>
+<span id="cb5-197"><a href="#cb5-197" aria-hidden="true" tabindex="-1"></a><span class="fu">gc</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+<section id="data-wrangling" class="level3">
+<h3 class="anchored" data-anchor-id="data-wrangling">Data wrangling</h3>
+<p><br> Scrapovanie je hotové a pokračujem s manipuláciou s dátami, aby som ich dal do (prvotnej) použiteľnej formy. Najprv upravujem adresu, aby som všetky okresy dostal do prvého stĺpca. Táto adresa sa neskôr používa na geokódovanie, ktoré opisujem v nasledujúcom blogu. Cena je taktiež upravená na číslo, aby sa mohla použiť v ML modeli. <br></p>
+<div class="cell">
+<details class="code-fold">
+<summary>Úprava dát 1</summary>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>advertisements_cleaned <span class="ot">&lt;-</span> advertisements <span class="sc">%&gt;%</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">separate</span>(type_of_real_estate, <span class="fu">c</span>(<span class="st">"type"</span>, <span class="st">"area"</span>), <span class="at">sep =</span> <span class="st">" • "</span>, <span class="at">remove =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">separate</span>(address, <span class="fu">c</span>(<span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"c"</span>), <span class="at">sep =</span> <span class="st">", "</span>, <span class="at">remove =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">unite</span>(<span class="st">"address"</span>, <span class="fu">c</span>(<span class="dv">5</span>, <span class="dv">4</span>, <span class="dv">3</span>), <span class="at">sep =</span> <span class="st">", "</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>, <span class="at">remove =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span> <span class="co"># reordering to keep all districts in first column</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">price =</span> <span class="fu">str_replace_all</span>(<span class="fu">str_replace_all</span>(price, <span class="st">" €"</span>, <span class="st">""</span>), <span class="st">" "</span>, <span class="st">""</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>      <span class="fu">as.integer</span>(),</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">address0 =</span> address</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">separate</span>(address0, <span class="fu">c</span>(<span class="st">"district"</span>, <span class="st">"municipality"</span>, <span class="st">"street"</span>), <span class="at">sep =</span> <span class="st">", "</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>street)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p><br> Teraz potrebujem rozdeliť hodnoty stĺpcov additional_characteristics a info_details na viac zmysluplných premenných. Preto som vytvoril dva zoznamy: characteristics1 a characteristics2. Každý z nich obsahuje názov premenných, ktoré chcem extrahovať. Používam tieto zoznamy na vytvorenie prázdneho dataframe-u, aby som sa uistil, že sú všetky stĺpce prítomné. Z additional_info_df vyberiem additional_characteristics a info_details a rozdelím hodnoty pomocou <code>"\n"</code> ako oddeľovača. Ďalej definujem dve funkcie: get_characteristics1 a get_characteristics2, ktoré tieto hodnoty mapujú na príslušné stĺpce. Nakoniec spájam output_df_characteristics1, output_df_characteristics2, vybrané stĺpce z additional_info_df a pripájam ich k advertisements_cleaned podľa linku inzerátu. <br></p>
+<div class="cell">
+<details class="code-fold">
+<summary>Úprava dát 2</summary>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># get additional information from scraped data</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="co"># First list of additional info details</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>characteristics1 <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Stav"</span>, <span class="co"># condition</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Úžit. plocha"</span>, <span class="co"># land area</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Energie"</span>, <span class="co"># energy costs</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Provízia zahrnutá v cene"</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>characteristics1_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(characteristics1, <span class="at">value =</span> <span class="cn">NA</span>)</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Second list of additional info details</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>characteristics2 <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Počet izieb/miestností"</span>, <span class="co"># number of rooms</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Orientácia"</span>, <span class="co"># orientation</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Rok výstavby"</span>, <span class="co"># built year</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Rok poslednej rekonštrukcie"</span>, <span class="co"># year of last reconstruction</span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Energetický certifikát"</span>, <span class="co"># energy certificate</span></span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Počet nadzemných podlaží"</span>, <span class="co"># number of floors</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Podlažie"</span>, <span class="co"># floor</span></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Výťah"</span>, <span class="co"># lift</span></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Typ konštrukcie"</span>, <span class="co"># construction type</span></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Počet balkónov"</span>, <span class="co"># number of balconies</span></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Počet lodžií"</span>, <span class="co"># number of loggias</span></span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Pivnica"</span> <span class="co"># cellar</span></span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>characteristics2_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(characteristics2, <span class="at">value =</span> <span class="cn">NA</span>)</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>characteristics_wrangler <span class="ot">&lt;-</span> additional_info_df <span class="sc">%&gt;%</span></span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>    <span class="at">chars1_list =</span> <span class="fu">str_split</span>(info_details, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>),</span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>    <span class="at">chars2_list =</span> <span class="fu">str_split</span>(additional_characteristics, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>additional_characteristics, <span class="sc">-</span>info_details)</span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a>get_characteristics1 <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>  temp_df <span class="ot">&lt;-</span> x <span class="sc">%&gt;%</span></span>
+<span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a>    <span class="fu">unlist</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb7-39"><a href="#cb7-39" aria-hidden="true" tabindex="-1"></a>    <span class="fu">as.data.frame</span>()</span>
+<span id="cb7-40"><a href="#cb7-40" aria-hidden="true" tabindex="-1"></a>  temp_df <span class="ot">&lt;-</span> <span class="fu">rename</span>(temp_df, <span class="at">chars =</span> .)</span>
+<span id="cb7-41"><a href="#cb7-41" aria-hidden="true" tabindex="-1"></a>  temp_df <span class="ot">&lt;-</span> temp_df <span class="sc">%&gt;%</span></span>
+<span id="cb7-42"><a href="#cb7-42" aria-hidden="true" tabindex="-1"></a>    <span class="fu">separate_wider_delim</span>(chars,</span>
+<span id="cb7-43"><a href="#cb7-43" aria-hidden="true" tabindex="-1"></a>      <span class="at">delim =</span> <span class="st">": "</span>,</span>
+<span id="cb7-44"><a href="#cb7-44" aria-hidden="true" tabindex="-1"></a>      <span class="at">names =</span> <span class="fu">c</span>(</span>
+<span id="cb7-45"><a href="#cb7-45" aria-hidden="true" tabindex="-1"></a>        <span class="st">"info"</span>,</span>
+<span id="cb7-46"><a href="#cb7-46" aria-hidden="true" tabindex="-1"></a>        <span class="st">"status"</span></span>
+<span id="cb7-47"><a href="#cb7-47" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb7-48"><a href="#cb7-48" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span></span>
+<span id="cb7-49"><a href="#cb7-49" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(info <span class="sc">%in%</span> characteristics1) <span class="sc">%&gt;%</span></span>
+<span id="cb7-50"><a href="#cb7-50" aria-hidden="true" tabindex="-1"></a>    <span class="fu">full_join</span>(characteristics1_df, <span class="fu">join_by</span>(<span class="st">"info"</span> <span class="sc">==</span> <span class="st">"characteristics1"</span>), <span class="at">keep =</span> <span class="cn">FALSE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb7-51"><a href="#cb7-51" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(<span class="sc">-</span>value) <span class="sc">%&gt;%</span></span>
+<span id="cb7-52"><a href="#cb7-52" aria-hidden="true" tabindex="-1"></a>    <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> info, <span class="at">values_from =</span> status)</span>
+<span id="cb7-53"><a href="#cb7-53" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(temp_df)</span>
+<span id="cb7-54"><a href="#cb7-54" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb7-55"><a href="#cb7-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-56"><a href="#cb7-56" aria-hidden="true" tabindex="-1"></a>get_characteristics2 <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
+<span id="cb7-57"><a href="#cb7-57" aria-hidden="true" tabindex="-1"></a>  temp_df <span class="ot">&lt;-</span> x <span class="sc">%&gt;%</span></span>
+<span id="cb7-58"><a href="#cb7-58" aria-hidden="true" tabindex="-1"></a>    <span class="fu">unlist</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb7-59"><a href="#cb7-59" aria-hidden="true" tabindex="-1"></a>    <span class="fu">as.data.frame</span>()</span>
+<span id="cb7-60"><a href="#cb7-60" aria-hidden="true" tabindex="-1"></a>  temp_df <span class="ot">&lt;-</span> <span class="fu">rename</span>(temp_df, <span class="at">chars =</span> .)</span>
+<span id="cb7-61"><a href="#cb7-61" aria-hidden="true" tabindex="-1"></a>  temp_df <span class="ot">&lt;-</span> temp_df <span class="sc">%&gt;%</span></span>
+<span id="cb7-62"><a href="#cb7-62" aria-hidden="true" tabindex="-1"></a>    <span class="fu">separate_wider_delim</span>(chars,</span>
+<span id="cb7-63"><a href="#cb7-63" aria-hidden="true" tabindex="-1"></a>      <span class="at">delim =</span> <span class="st">": "</span>,</span>
+<span id="cb7-64"><a href="#cb7-64" aria-hidden="true" tabindex="-1"></a>      <span class="at">names =</span> <span class="fu">c</span>(</span>
+<span id="cb7-65"><a href="#cb7-65" aria-hidden="true" tabindex="-1"></a>        <span class="st">"info"</span>,</span>
+<span id="cb7-66"><a href="#cb7-66" aria-hidden="true" tabindex="-1"></a>        <span class="st">"status"</span></span>
+<span id="cb7-67"><a href="#cb7-67" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb7-68"><a href="#cb7-68" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span></span>
+<span id="cb7-69"><a href="#cb7-69" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(info <span class="sc">%in%</span> characteristics2) <span class="sc">%&gt;%</span></span>
+<span id="cb7-70"><a href="#cb7-70" aria-hidden="true" tabindex="-1"></a>    <span class="fu">full_join</span>(characteristics2_df, <span class="fu">join_by</span>(<span class="st">"info"</span> <span class="sc">==</span> <span class="st">"characteristics2"</span>), <span class="at">keep =</span> <span class="cn">FALSE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb7-71"><a href="#cb7-71" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(<span class="sc">-</span>value) <span class="sc">%&gt;%</span></span>
+<span id="cb7-72"><a href="#cb7-72" aria-hidden="true" tabindex="-1"></a>    <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> info, <span class="at">values_from =</span> status)</span>
+<span id="cb7-73"><a href="#cb7-73" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(temp_df)</span>
+<span id="cb7-74"><a href="#cb7-74" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb7-75"><a href="#cb7-75" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-76"><a href="#cb7-76" aria-hidden="true" tabindex="-1"></a><span class="co"># Apply get_characteristics1() and get_characteristics2() to each row in additional_info_df and combine the results</span></span>
+<span id="cb7-77"><a href="#cb7-77" aria-hidden="true" tabindex="-1"></a>output_df_characteristics1 <span class="ot">&lt;-</span> <span class="fu">map_dfr</span>(characteristics_wrangler<span class="sc">$</span>chars1_list, get_characteristics1)</span>
+<span id="cb7-78"><a href="#cb7-78" aria-hidden="true" tabindex="-1"></a>output_df_characteristics2 <span class="ot">&lt;-</span> <span class="fu">map_dfr</span>(characteristics_wrangler<span class="sc">$</span>chars2_list, get_characteristics2)</span>
+<span id="cb7-79"><a href="#cb7-79" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-80"><a href="#cb7-80" aria-hidden="true" tabindex="-1"></a><span class="co"># Add the new columns to additional_info_df</span></span>
+<span id="cb7-81"><a href="#cb7-81" aria-hidden="true" tabindex="-1"></a>additional_info_df_complete <span class="ot">&lt;-</span> <span class="fu">cbind</span>(</span>
+<span id="cb7-82"><a href="#cb7-82" aria-hidden="true" tabindex="-1"></a>  additional_info_df <span class="sc">%&gt;%</span></span>
+<span id="cb7-83"><a href="#cb7-83" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">index_of_living =</span> <span class="fu">str_replace_all</span>(index_of_living, <span class="st">" /"</span>, <span class="st">""</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb7-84"><a href="#cb7-84" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(<span class="fu">c</span>(link, </span>
+<span id="cb7-85"><a href="#cb7-85" aria-hidden="true" tabindex="-1"></a>             info_text, </span>
+<span id="cb7-86"><a href="#cb7-86" aria-hidden="true" tabindex="-1"></a>             index_of_living,</span>
+<span id="cb7-87"><a href="#cb7-87" aria-hidden="true" tabindex="-1"></a>             environment,</span>
+<span id="cb7-88"><a href="#cb7-88" aria-hidden="true" tabindex="-1"></a>             quality_of_living,</span>
+<span id="cb7-89"><a href="#cb7-89" aria-hidden="true" tabindex="-1"></a>             safety,</span>
+<span id="cb7-90"><a href="#cb7-90" aria-hidden="true" tabindex="-1"></a>             transport,</span>
+<span id="cb7-91"><a href="#cb7-91" aria-hidden="true" tabindex="-1"></a>             services,</span>
+<span id="cb7-92"><a href="#cb7-92" aria-hidden="true" tabindex="-1"></a>             relax)) <span class="sc">%&gt;%</span> </span>
+<span id="cb7-93"><a href="#cb7-93" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">flag =</span> <span class="st">"x"</span>), </span>
+<span id="cb7-94"><a href="#cb7-94" aria-hidden="true" tabindex="-1"></a>  output_df_characteristics1,</span>
+<span id="cb7-95"><a href="#cb7-95" aria-hidden="true" tabindex="-1"></a>  output_df_characteristics2</span>
+<span id="cb7-96"><a href="#cb7-96" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-97"><a href="#cb7-97" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-98"><a href="#cb7-98" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-99"><a href="#cb7-99" aria-hidden="true" tabindex="-1"></a>advertisements_complete <span class="ot">&lt;-</span> advertisements_cleaned <span class="sc">%&gt;%</span></span>
+<span id="cb7-100"><a href="#cb7-100" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(additional_info_df_complete, <span class="at">by =</span> <span class="st">"link"</span>, <span class="at">multiple =</span> <span class="st">"first"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb7-101"><a href="#cb7-101" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(flag)) <span class="sc">%&gt;%</span> </span>
+<span id="cb7-102"><a href="#cb7-102" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>flag, <span class="sc">-</span>c, <span class="sc">-</span>type)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p><br> Posledný krok je uloženie dát vo formáte RDS. <br></p>
+<div class="cell">
+<details class="code-fold">
+<summary>Uloženie súborov</summary>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(additional_info_df, <span class="st">"data/additional_info_df.RDS"</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(advertisements, <span class="st">"data/advertisements.RDS"</span>)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co"># create separate df for text analyses</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>text_long <span class="ot">&lt;-</span> advertisements_complete<span class="sc">$</span>info_text</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(text_long, <span class="at">file =</span> <span class="st">"data/text_long.rds"</span>)</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(advertisements_complete, <span class="at">file =</span> <span class="st">"data/advertisements_complete.rds"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

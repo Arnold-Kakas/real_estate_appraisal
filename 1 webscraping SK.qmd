@@ -1,14 +1,15 @@
 ---
-title: Webscraping - ako použiť voľne dostupné dáta pre vlastnú analýzu
-author: Arnold Kakas
+title: Webscraping pomocou jazyka R 
+subtitle: Ako použiť voľne dostupné dáta pre vlastnú analýzu
 format: html
-date: today
 theme: 
   - flatly
   - Style.scss
 toc: true
 toc-depth: 4
+toc-title: "Obsah"
 code-fold: true
+code-summary: "Kód"
 execute:
   warning: false  
 fig-cap-location: bottom
@@ -20,38 +21,41 @@ tbl-cap-location: bottom
 
 ## Upozornenie
 <br>
-Predtým než sa dostanem k téme tohto blogu, upozorňujem, že tento článok slúži výhradne <strong>informačným účelom</strong> a akékoľvek informácie uvedené nižšie <strong>nie sú právne rady</strong>. Preto pred akýmkoľvek zbieraním údajov z webu by ste mali získať vhodnú profesionálnu právnu radu týkajúcu sa vášho konkrétneho prípadu.
+Predtým než sa dostanem k téme tohto blogu, upozorňujem, že tento článok slúži výhradne k <strong>informačným účelom</strong> a akékoľvek informácie uvedené nižšie <strong>nie sú právne rady</strong>. Z tohto dôvodu pred akýmkoľvek zbieraním údajov z webu by ste mali získať vhodnú profesionálnu právnu radu týkajúcu sa vášho konkrétneho prípadu.
 
 ## Web scraping
 <br>
-V tomto blogovom príspevku prejdem procesom <strong>[web scraping-u](https://en.wikipedia.org/wiki/Web_scraping)</strong> s využitím <strong>programovacieho jazyka R</strong>. Predtým než sa pustím do samotného procesu, chcel by som sa trochu venovať téme z trochz širšej prespektívny.
+V tomto blogovom príspevku prejdem procesom <strong>[web scraping-u](https://en.wikipedia.org/wiki/Web_scraping)</strong> s využitím <strong>programovacieho jazyka R</strong>. Predtým než sa pustím do samotného procesu, chcel by som sa trochu venovať téme z trochu širšej prespektívny.
 <br>
 Web scraping je proces získavania obsahu alebo (väčšinou) štruktúrovaných údajov z webových stránok automatizovaným spôsobom (a obvykle vo veľkom množstve). Táto definícia prirodzene vyvoláva otázku o legalite takéhoto procesu.
-V zásade web scraping nie je ilegálny alebo zakázaný sám osebe (v EÚ, k júlu 2023). Avšak, používanie nástrojov na ťaženie údajov je z právneho hľadiska riskantné z niekoľkých dôvodov:
+V zásade web scraping nie je ilegálny alebo zakázaný sám osebe (v EÚ, k júnu 2024). Avšak, používanie nástrojov na sťahovanie údajov je z právneho hľadiska riskantné z niekoľkých dôvodov:
 
 * Porušenie duševného vlastníctva
 * Porušenie zmluvy
 * Obavy o ochranu osobných údajov
 
-Pre zminimalizovanie obáv by malo scrapovanie prebiehať diskrétne, rešpektovať podmienky používania webových stránok, skontrolovať, či stránky používajú protokol robots.txt na oznámenie, že scrapovanie je zakázané, vyhnúť sa scrapovaniu osobných údajov a, ak je to nevyhnutné, uistiť sa, že nedochádza k porušeniu GDPR, a vyhnúť sa scrapovaniu súkromných alebo utajovaných informácií ([Zdroj](https://discoverdigitallaw.com/is-web-scraping-legal-short-guide-on-scraping-under-the-eu-jurisdiction/#IV_HOW_TO_SCRAPE_AND_NOT_BE_SUED)).
+Pre zminimalizovanie obáv by malo scrapovanie prebiehať diskrétne, rešpektovať podmienky používania webových stránok, v rámci procesu by ste mali kontrolovať, či stránky používajú protokol robots.txt na oznámenie, že scrapovanie je zakázané, vyhnúť sa scrapovaniu osobných údajov a, ak je to nevyhnutné, uistiť sa, že nedochádza k porušeniu GDPR, taktiež sa vyhnúť scrapovaniu súkromných alebo utajovaných informácií ([Zdroj](https://discoverdigitallaw.com/is-web-scraping-legal-short-guide-on-scraping-under-the-eu-jurisdiction/#IV_HOW_TO_SCRAPE_AND_NOT_BE_SUED)).
 <br>
 Existujú niektoré všeobecné etické zásady, ktoré by ste mali dodržiavať, keď chcete scrapovať údaje z webu. Najčastejšie spomínané sú:
 
 * Ak existuje verejné <strong>API</strong>, ktoré poskytuje požadované údaje, použite ho namiesto scrapovania.
-* Stahujte údaje v rozumnom tempe, aby scrapovanie nebolo škodlivé pre server a nemohlo byť zamieňané za <strong>DDoS útok</strong>. 
+* Sťahujte údaje v rozumnom tempe, aby scrapovanie nebolo škodlivé pre server a nemohlo byť zamieňané za <strong>DDoS útok</strong>. 
 * Rešpektujte duševné vlastníctvo iných. Použite údaje na vytvorenie nového hodnotného obsahu, nie na duplikovanie a predávanie ich ako vlastné alebo nelegálne predávanie.
 * Nepoužívajte scrapovanie osobných alebo súkromných údajov alebo dokumentov, rešpektujte GDPR.
 * Skontrolujte súbor robots.txt, aby ste zistili, ako by mal byť web prehľadávaný.
-* Zdieľajte to, čo môžete. Ak sú údaje, ktoré ste scrapovali, verejne dostupné, alebo ste získali povolenie na ich zdieľanie, zverejnite ich pre iných (napríklad na [GitHub](github.com) alebo [Kaggle](kaggle.com). Ak ste napísali webový scraper na prístup k nim, zdieľajte jeho kód, aby z neho mohli ťažiť aj iní.
+* Zdieľajte to, čo môžete. Ak sú údaje, ktoré ste scrapovali, verejne dostupné, alebo ste získali povolenie na ich zdieľanie, zverejnite ich pre iných (napríklad na [GitHub](github.com) alebo [Kaggle](kaggle.com)). Ak ste napísali webový scraper na prístup k nim, zdieľajte jeho kód.
 * Hľadajte spôsoby, ako vrátiť hodnotu webovým stránkam, ktoré scrapujete, napríklad odkazovaním na stránku v článku alebo príspevku, aby ste na ňu priviedli návštevníkov.
+* Ak sa jedná o súkromný projekt (ako tento), počkajte kým sa štruktúra stránky zmení a kód nie je možné použiť bez ďalšej úpravy.
 
-Niekoľko článkov venujúcim sa téme môžete nájsť na [towardsdatascience.com](https://towardsdatascience.com/ethics-in-web-scraping-b96b18136f01), alebo [Data Fluency github page](https://monashdatafluency.github.io/python-web-scraping/section-5-legal-and-ethical-considerations/), alebo [scrapingrobot page](https://scrapingrobot.com/blog/ethical-web-scraping/).
+Niekoľko článkov venujúcim sa téme môžete nájsť na [towardsdatascience.com](https://towardsdatascience.com/ethics-in-web-scraping-b96b18136f01), [Data Fluency github page](https://monashdatafluency.github.io/python-web-scraping/section-5-legal-and-ethical-considerations/) alebo [scrapingrobot page](https://scrapingrobot.com/blog/ethical-web-scraping/).
+<br>
+Príklad <strong>komerčného využitia</strong> web scrapingu je napr. [Apify](https://apify.com/), ktoré ponúka množstvo produktov a riešení v oblasti web scrapingu.
 <br>
 V tomto článku budem scrapovať údaje zo stránky [Nehnutelnosti](https://www.nehnutelnosti.sk/), ktorá sa špecializuje na realitné inzeráty a služby. Pre dodržanie etických zásad scrapovania som prijal niekoľko preventívnych opatrení: 
 
-* Táto konkrétna stránka používa protokol robots.txt. Nescrapujem žiadnu časť, ktorá je zakázaná, a vo vybraných častiach kódu som pridal funkciu _Sys.sleep()_ aby som spomalil proces a žiadal údaje s primeranou frekvenciou.
+* Táto konkrétna stránka používa protokol robots.txt. Nescrapujem žiadnu časť, ktorá je zakázaná a vo vybraných častiach kódu som pridal funkciu _Sys.sleep()_, aby som spomalil proces a žiadal údaje s primeranou frekvenciou.
 * Scrapujem len verejné údaje, ktoré potrebujem na ďaľšiu analýzu a vytvorenie <strong>ML modelu</strong>.
-* Mám verejne dostupný [GitHub repo](https://github.com/Arnold-Kakas/real_estate_appraisal), kde je možné pristupovať ku všetkému kódu a údajom a výsledný dataset bude dostupný aj na [Kaggle](https://www.kaggle.com/datasets/arnoldkakas/real-estate-dataset).
+* Výsledný dataset je dostupný na [Kaggle](https://www.kaggle.com/datasets/arnoldkakas/real-estate-dataset).
 <br>
 <center>
 ![Nehnutelnosti website robots.txt protocol](data/Nehnutelnosti robots protocol.JPG)
@@ -60,11 +64,13 @@ V tomto článku budem scrapovať údaje zo stránky [Nehnutelnosti](https://www
 
 ## Proces scrapovania {.tabset .tab-pills}
 <br>
+
 ### Použité knižnice
+
 <br>
 Ako obvykle, začínam s načítaním balíkov potrebných pre tento projekt. Používam na to [packman](https://cran.r-project.org/web/packages/pacman/index.html) knižnicu a funkciu _p_load()_, ktorá ma dve výhody oproti základnej funkcii _library()_:
 
-* ak potrebnú knižnicu nemám nainstalovanú, funkcia to rovno napraví
+* ak potrebnú knižnicu nemám nainštalovanú, funkcia to rovno napraví
 * môžem načítať viacero knižníc naraz
 
 ```{r}
@@ -110,11 +116,11 @@ Ak ste našli správny element, musíte skopírovať jeho CSS selektor alebo ces
 </center>
 <br>
 
-Teraz ste pripravení získať obsah zo stránky. Výsledok, ak ste všetko správne urobili, môže mať rôzne formy. Môže to byť jedna hodnota, reťazec, zoznam atď. Na základe toho buď presnejšie špecifikujete, ktorú časť obsahu potrebujete, alebo pracujete s výsledkom v R a používate funkcie na manipuláciu s dátami, aby ste získali požadované informácie.
+Teraz ste pripravení získať obsah zo stránky. Výsledok, ak ste všetko správne urobili, môže mať rôzne formy. Môže to byť jedna hodnota, reťazec, zoznam atď. Na základe toho buď presnejšie špecifikujete, ktorú časť obsahu potrebujete, alebo pracujete s výsledkom v R a používate funkcie na manipuláciu s dátami s cieľom získania požadovaných informácií.
 
 ### Scraping časť I. - rvest
 <br>
-Jedným z najbežnejších balíkov na web scrapovanie v R je [rvest](https://rvest.tidyverse.org/). Poskytuje funkcie na prístup k verejnej webovej stránke a na vyhľadávanie špecifických prvkov pomocou selektorov CSS a XPath. Tento balík neodpaluje javascript, čo znamená, že načíta html stránky rýchlejšie, ale vynechá všetky prvky načítané javascriptom po pôvodnom načítaní stránky. Preto je tento balík dobrá voľba, ak scrapujete statické stránky.
+Jedným z najbežnejších balíkov na web scrapovanie v R je [rvest](https://rvest.tidyverse.org/). Poskytuje funkcie na prístup k verejnej webovej stránke a na vyhľadávanie špecifických prvkov pomocou selektorov CSS a XPath. Tento balík nespúšťa javascript, čo znamená, že načíta html stránky rýchlejšie, ale vynechá všetky prvky načítané javascriptom po pôvodnom načítaní stránky. Preto je tento balík dobrá voľba, ak scrapujete statické stránky.
 
 V tomto príklade začínam vytvorením premennej pre zdrojovú URL adresu: *https://www.nehnutelnosti.sk/slovensko/byty/predaj/?p[param1][from]=1000&p[param1][to]=&p[page]=*
 
@@ -174,12 +180,12 @@ plan(sequential)
 
 ### Scraping časť II. - RSelenium
 <br>
-[RSelenium](https://cran.r-project.org/web/packages/RSelenium/index.html) Poskytuje súbor R väzieb pre *Selenium 2.0 WebDriver*. Na rozdiel od rvest spúšťa skutočný webový prehliadač, takže načíta akýkoľvek javascript obsiahnutý na webovej stránke.
+[RSelenium](https://cran.r-project.org/web/packages/RSelenium/index.html) poskytuje súbor R väzieb pre *Selenium 2.0 WebDriver*. Na rozdiel od rvest spúšťa skutočný webový prehliadač, takže načíta akýkoľvek javascript obsiahnutý na webovej stránke.
 S týmto balíkom budete schopní interagovať so stránkou, napríklad posúvať, klikať na tlačidlo, vyplňovať vstupné formuláre atď.
-Na druhej strane je použitie tohto balíka náročnejšie, vyžaduje inštalovaný jazyk <strong>Java</strong> vo vašom systéme, a ja som sa stretol s viacerými problémami, kým som ho správne spustil. Viac o tomto téme bude pokryté v jednom z budúcich blogov.
+Na druhej strane je použitie tohto balíka náročnejšie, vyžaduje inštalovaný jazyk <strong>Java</strong> vo vašom systéme, a ja som sa stretol s viacerými problémami, kým som ho správne spustil. Viac sa tejto téme budem venovať v jednom z budúcich blogov.
 <br>
 Začínam definovaním niekoľkých pomocných funkcií.
-Jedna je na neúspešnú navigáciu na stránku, k čomu obvykle dochádzalo, keď som čítal príliš veľa stránok a musel som vymazať históriu prehliadania. Niekedy táto funkcia spôsobila nekonečnú slučku, ktorá bežala niekoľko hodín, než som si to všimol (napríklad počas noci), ale aspoň kód nezhavaroval. Tiež som skúsil vytvoriť funkciu na vymazanie histórie v prípade neúspešnej navigácie, ale nefungovala, a som spokojný s touto súčasnou riešením.
+Jedna je na neúspešnú navigáciu na stránku, k čomu obvykle dochádzalo, keď som čítal príliš veľa stránok a musel som vymazať históriu prehliadania. Niekedy táto funkcia spôsobila nekonečnú slučku, ktorá bežala niekoľko hodín, než som si to všimol (napríklad počas noci), ale aspoň kód nezhavaroval. Tiež som skúsil vytvoriť funkciu na vymazanie histórie v prípade neúspešnej navigácie, ale nefungovala, a som spokojný s týmto súčasným riešením.
 Druhá je na spracovanie chyby pri hľadaní elementu. V takýchto prípadoch táto funkcia vráti NA.
 Posledná je podobná predchádzajúcej, ale v tomto prípade vráti NA, ak sa element nenájde.
 <br>
@@ -281,22 +287,26 @@ Až teraz prichádzam k samotnému scrapovaniu s použitím RSelenium. Používa
 <br>Ako už bolo spomenuté, na jeho spustenie musím dodržať niekoľko krokov. Na nastavenie servera Selenium a prehliadača musíte použiť funkciu `rsDriver()` a volať $client na vytvorenie klienta. Funkcia rsDriver očakáva niekoľko argumentov:
 
 * browser - používam Chrome, takže argument je "chrome",
-* chromever - tento argument je častí zdroj chýb. Jeho riešenie popíšem v samostatnom *BLOGU*, ale v tomto prípade píšem verziu "119.0.6045.105",
-* verbose - nastavujem FALSE, lebo ma nezaujímajú správy so statusom,
+* chromever - tento argument je často zdroj chýb. Jeho riešenie popíšem v samostatnom *BLOGU*, ale v tomto prípade píšem verziu "119.0.6045.105",
+* verbose - nastavujem FALSE,
 * port - port, na ktorom sa má spúšťať. Používam funkciu z balíka _netstat_ `free_port(random = TRUE)` pre automatický výber voľného portu.
 
-Následne skriptom otvorím prehliadač, maximalizujem okno, prejdem na stránku Nehnutelnosti a prijmem súbory cookie. Potom je nutné manuálne prihlásenie aby sa zobrazili hodnoty jednotlivých komponentov "indexu bývania". Tento krok by sa dal zautomatiyovať, avšak je to jednorazová aktivita, takže ju ponechávam takto. Keď je toto hotové, skutočné scrapovanie prebieha v cykle. Nejdem do všetkých detailov, ale logika je dosť jednoduchá, skript: 
+Následne skriptom otvorím prehliadač, maximalizujem okno, prejdem na stránku Nehnuteľnosti a prijmem súbory cookie. Potom je nutné manuálne prihlásenie, aby sa zobrazili hodnoty jednotlivých komponentov "indexu bývania". Tento krok by sa dal zautomatizovať, avšak je to jednorazová aktivita, takže ju ponechávam takto. Keď je toto všetko hotové, skutočné scrapovanie prebieha v cykle. Nejdem do všetkých detailov, ale logika je dosť jednoduchá, skript: 
+
 1. Prejde na odkaz v cykle.
-2. Posunie sa na _výšku stránky/10*4,2_, aby sa spustil javascript na zobrazenie indexu bývania (táto hĺbka posuvu je založená na manuálnych testoch, napriek tomu musím nájsť inú metódu alebo spustiť viacero posunov, aby sa skript skutočne spustil na všetkých načítaných stránkach).
+2. Posunie sa na (výšku stránky/10*4,2), aby sa spustil javascript na zobrazenie indexu bývania (táto hĺbka posuvu je založená na manuálnych testoch, napriek tomu musím nájsť inú metódu alebo spustiť viacero posunov, aby sa script skutočne spustil na všetkých načítaných stránkach).
 3. Počká 3 sekundy na vykonanie javascriptu a spomalenie procesu (aby sa zbytočne nezaťažovala stránka).
 4. Načíta obsah stránky.
 5. Ak sa stránka nedá načítať, pridá prázdny záznam do dataframe-u.
 6. Ak sa stránka dá načítať, prejde html stránky, scrapuje nasledujúce informácie a pridá nové riadky k dataframe-u:
-  * info_text - celý text z inzerátu. Momentálne nie je používaný v ML modeli, ale plánujem použiť NLP na získanie kľúčových slov/tém a vytvorenie wordcloud v Shiny appke.
-  * info_details - obsahuje 4 premenné a bude vyčistený v nasledujúcich krokoch. Premenné sú oddelené symbolom "\n".
-  * index_of_living - hodnota od 0 do 10, vypočítava ju slovenský startup [City Performer](https://cityperformer.com/). Zohľadňuje šesť kategórií: prostredie, kvalita bývania, bezpečnosť, doprava, služby a oddych.
-  * additional_characteristics - obsahuje viacero premenných, v nasledujúcich krokoch vyberiem 12 z nich. Premenné sú oddelené symbolom "\n".
+
+   * info_text - celý text z inzerátu. Momentálne nie je používaný v ML modeli, ale plánujem použiť NLP na získanie kľúčových slov/tém a vytvorenie wordcloud v Shiny appke.
+   * info_details - obsahuje 4 premenné a bude vyčistený v nasledujúcich krokoch. Premenné sú oddelené symbolom "\n".
+   * index_of_living - hodnota od 0 do 10, vypočítava ju slovenský startup [City Performer](https://cityperformer.com/). Zohľadňuje šesť kategórií: prostredie, kvalita bývania, bezpečnosť, doprava, služby a oddych.
+    * additional_characteristics - obsahuje viacero premenných, v nasledujúcich krokoch vyberiem 12 z nich. Premenné sú oddelené symbolom `"\n"`.
+  
 7. Zatvorí klienta a zastaví server.
+
 <br>
 ```{r}
 #| echo: true
@@ -507,7 +517,7 @@ gc()
 ### Data wrangling
 <br>
 Scrapovanie je hotové a pokračujem s manipuláciou s dátami, aby som ich dal do (prvotnej) použiteľnej formy.
-Najprv upravujem adresu, aby som všetky okresy dostal do prvéo stĺpca. Táto adresa sa neskôr používa na geokódovanie, ktorý opisujem v *BLOGU*. Cena je taktiež upravená na číslo, aby sa mohla použiť v ML modeli.
+Najprv upravujem adresu, aby som všetky okresy dostal do prvého stĺpca. Táto adresa sa neskôr používa na geokódovanie, ktoré opisujem v nasledujúcom blogu. Cena je taktiež upravená na číslo, aby sa mohla použiť v ML modeli.
 <br>
 ```{r}
 #| echo: true
@@ -529,7 +539,7 @@ advertisements_cleaned <- advertisements %>%
 ```
 <br>
 Teraz potrebujem rozdeliť hodnoty stĺpcov additional_characteristics a info_details na viac zmysluplných premenných. Preto som vytvoril dva zoznamy: characteristics1 a characteristics2. Každý z nich obsahuje názov premenných, ktoré chcem extrahovať. Používam tieto zoznamy na vytvorenie prázdneho dataframe-u, aby som sa uistil, že sú všetky stĺpce prítomné.
-Z additional_info_df vyberiem additional_characteristics a info_details a rozdelím hodnoty pomocou "/n" ako oddeľovača.
+Z additional_info_df vyberiem additional_characteristics a info_details a rozdelím hodnoty pomocou `"\n"` ako oddeľovača.
 Ďalej definujem dve funkcie: get_characteristics1 a get_characteristics2, ktoré tieto hodnoty mapujú na príslušné stĺpce.
 Nakoniec spájam output_df_characteristics1, output_df_characteristics2, vybrané stĺpce z additional_info_df a pripájam ich k advertisements_cleaned podľa linku inzerátu.
 <br>

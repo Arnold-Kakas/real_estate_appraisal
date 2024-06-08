@@ -6,10 +6,8 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="author" content="Arnold Kakas">
-<meta name="dcterms.date" content="2024-03-04">
 
-<title>Naceňovací ML model</title>
+<title>Vytvorenie ML Modelu v jazyku R</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -78,7 +76,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
 <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
   <nav id="TOC" role="doc-toc" class="toc-active">
-    <h2 id="toc-title">Table of contents</h2>
+    <h2 id="toc-title">Obsah</h2>
    
   <ul>
   <li><a href="#úvod" id="toc-úvod" class="nav-link active" data-scroll-target="#úvod">Úvod</a></li>
@@ -95,26 +93,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Naceňovací ML model</h1>
+<h1 class="title">Vytvorenie ML Modelu v jazyku R</h1>
+<p class="subtitle lead">Modelovanie cien bytov pomocou strojového učenia</p>
 </div>
 
 
 
 <div class="quarto-title-meta">
 
-    <div>
-    <div class="quarto-title-meta-heading">Author</div>
-    <div class="quarto-title-meta-contents">
-             <p>Arnold Kakas </p>
-          </div>
-  </div>
     
-    <div>
-    <div class="quarto-title-meta-heading">Published</div>
-    <div class="quarto-title-meta-contents">
-      <p class="date">March 4, 2024</p>
-    </div>
-  </div>
   
     
   </div>
@@ -143,7 +130,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="načítanie-knižníc-a-dát" class="level2">
 <h2 class="anchored" data-anchor-id="načítanie-knižníc-a-dát">Načítanie knižníc a dát</h2>
-<p>Klasicky začíname s načítaním knižníc. Aj tento krát použijeme <a href="https://cran.r-project.org/web/packages/tidyverse/index.html">tidyverse</a> - súbor knižníc navrhnutých na prácu s dátami v R, ktorý zahŕňa napr. ggplot2 pre vizualizáciu, dplyr pre manipuláciu s dátami, tidyr pre úpravu tvaru dát, a iné. Opäť sa objavuje knižnica <a href="https://cran.r-project.org/web/packages/sf/index.html">sf</a> keďže dáta obsahuju priestorové objekty. Novikou v tomto blogu je <a href="https://cran.r-project.org/web/packages/tidymodels/index.html">tidymodels</a>. Je to framework pre modelovanie a strojové učenie, ktorý poskytuje koherentnú súpravu knižníc na predspracovanie dát, rozdelenie dát, cross-validáciu, výber modelu atď. Je navrhnutý tak, aby bol v súlade s princípmi tidyverse a umožňoval ľahkú integráciu s inými nástrojmi z tohto ekosystému. Dve nasledujúce knižnice pomáhajú s konceptom “explainable/interpretable ML”. Knižnica <a href="https://cran.r-project.org/web/packages/vip/index.html">vip</a> je určená na vizualizáciu dôležitosti premenných v rôznych modeloch strojového učenia. Umožňuje ľahko identifikovať, ktoré premenné majú najväčší vplyv na predikcie modelu, čo je kľúčové pre interpretáciu modelu a pochopenie dát. Knižnica <a href="https://cran.r-project.org/web/packages/shapviz/index.html">shapviz</a> je špecificky navrhnutá na výpočet a vizualizáciu SHAP hodnôt pre modely vytvorené pomocou XGBoost v R. SHAP hodnoty poskytujú podrobné vysvetlenie predikcií modelu na úrovni jednotlivých pozorovaní, čo pomáha v interpretácii “black box” modelov. <a href="https://cran.r-project.org/web/packages/doParallel/index.html">doParallel</a> slúži na paralelné výpočty a teda skrátenie času trénovania modelu. Posledná knižnica <a href="https://cran.r-project.org/web/packages/extrafont/index.html">extrafont</a> slúži na načítanie fontov inštalovaných na Windows-e.</p>
+<p>Klasicky začíname s načítaním knižníc. Aj tento krát použijeme <a href="https://cran.r-project.org/web/packages/tidyverse/index.html">tidyverse</a> - súbor knižníc navrhnutých na prácu s dátami v R, ktorý zahŕňa napr. ggplot2 pre vizualizáciu, dplyr pre manipuláciu s dátami, tidyr pre úpravu tvaru dát, a iné. Opäť sa objavuje knižnica <a href="https://cran.r-project.org/web/packages/sf/index.html">sf</a> keďže dáta obsahuju priestorové objekty. Novikou v tomto blogu je <a href="https://cran.r-project.org/web/packages/tidymodels/index.html">tidymodels</a>. Je to framework pre modelovanie a strojové učenie, ktorý poskytuje koherentnú súpravu knižníc na predspracovanie dát, rozdelenie dát, cross-validáciu, výber modelu atď. Je navrhnutý tak, aby bol v súlade s princípmi tidyverse a umožňoval ľahkú integráciu s inými nástrojmi z tohto ekosystému. Dve nasledujúce knižnice pomáhajú s konceptom “explainable/interpretable ML”. Knižnica <a href="https://cran.r-project.org/web/packages/vip/index.html">vip</a> je určená na vizualizáciu dôležitosti premenných v rôznych modeloch strojového učenia. Umožňuje ľahko identifikovať, ktoré premenné majú najväčší vplyv na predikcie modelu, čo je kľúčové pre interpretáciu modelu a pochopenie dát. Knižnica <a href="https://cran.r-project.org/web/packages/shapviz/index.html">shapviz</a> je špecificky navrhnutá na výpočet a vizualizáciu SHAP hodnôt pre modely vytvorené pomocou XGBoost v R. SHAP hodnoty poskytujú podrobné vysvetlenie predikcií modelu na úrovni jednotlivých pozorovaní, čo pomáha v interpretácii “black box” modelov. Umožnujú pochopiť ako dôležité sú premenné v <b>rámci modelu</b>. <a href="https://cran.r-project.org/web/packages/doParallel/index.html">doParallel</a> slúži na paralelné výpočty a teda skrátenie času trénovania modelu. Posledná knižnica <a href="https://cran.r-project.org/web/packages/extrafont/index.html">extrafont</a> slúži na načítanie fontov inštalovaných na Windows-e.</p>
 <div class="cell">
 <details>
 <summary>Knižnice</summary>
@@ -159,16 +146,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  vip,</span>
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  shapviz,</span>
 <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  doParallel,</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  extrafont</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="fu">loadfonts</span>(<span class="at">device =</span> <span class="st">"win"</span>)</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="fu">options</span>(<span class="at">scipen =</span> <span class="dv">999</span>)</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>unregister_dopar <span class="ot">&lt;-</span> <span class="cf">function</span>() {</span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  env <span class="ot">&lt;-</span> foreach<span class="sc">:::</span>.foreachGlobals</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rm</span>(<span class="at">list =</span> <span class="fu">ls</span>(<span class="at">name =</span> env), <span class="at">pos =</span> env)</span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  extrafont,</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  vetiver,</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  xgboost</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="fu">loadfonts</span>(<span class="at">device =</span> <span class="st">"win"</span>)</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="fu">options</span>(<span class="at">scipen =</span> <span class="dv">999</span>)</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>unregister_dopar <span class="ot">&lt;-</span> <span class="cf">function</span>() {</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>  env <span class="ot">&lt;-</span> foreach<span class="sc">:::</span>.foreachGlobals</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rm</span>(<span class="at">list =</span> <span class="fu">ls</span>(<span class="at">name =</span> env), <span class="at">pos =</span> env)</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <div class="cell">
@@ -244,7 +233,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>apartments_train <span class="ot">&lt;-</span> <span class="fu">training</span>(apartments_train_split)</span>
 <span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>apartments_test <span class="ot">&lt;-</span> <span class="fu">testing</span>(apartments_train_split)</span>
 <span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>folds <span class="ot">&lt;-</span> <span class="fu">vfold_cv</span>(apartments_train, <span class="at">v =</span> <span class="dv">5</span>, <span class="at">strata =</span> price)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>folds <span class="ot">&lt;-</span> <span class="fu">vfold_cv</span>(apartments_train, <span class="at">v =</span> <span class="dv">5</span>, <span class="at">strata =</span> price)</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(apartments_test, <span class="st">"data/test_set.RDS"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <div class="cell">
@@ -297,7 +287,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell">
 <details>
 <summary>Tuning parametrov</summary>
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">registerDoParallel</span>(<span class="at">cores =</span> <span class="fu">detectCores</span>() <span class="sc">-</span> <span class="dv">2</span>)</span>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">registerDoParallel</span>(<span class="at">cores =</span> <span class="fu">detectCores</span>() <span class="sc">-</span> <span class="dv">1</span>)</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>xgboost_tune <span class="ot">&lt;-</span></span>
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  apartments_workflow <span class="sc">|&gt;</span></span>
@@ -318,7 +308,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell">
 <details>
 <summary>Finalizácia modelu</summary>
-<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>apartments_best_model <span class="ot">&lt;-</span> <span class="fu">select_best</span>(xgboost_tune, <span class="st">"rmse"</span>)</span>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>apartments_best_model <span class="ot">&lt;-</span> <span class="fu">select_best</span>(xgboost_tune, <span class="at">metric =</span> <span class="st">"rmse"</span>)</span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>apartments_final_model <span class="ot">&lt;-</span> <span class="fu">finalize_model</span>(xgb_model, apartments_best_model)</span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>apartments_workflow <span class="ot">&lt;-</span> apartments_workflow <span class="sc">|&gt;</span> <span class="fu">update_model</span>(apartments_final_model)</span>
 <span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>apartments_xgb_fit <span class="ot">&lt;-</span> <span class="fu">fit</span>(apartments_workflow, <span class="at">data =</span> apartments_train)</span>
@@ -329,7 +319,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell">
 <details>
 <summary>Výsledné metriky a testovacia predikcia</summary>
-<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>apartments_final_res <span class="ot">&lt;-</span> <span class="fu">last_fit</span>(apartments_xgb_fit, apartments_train_split)</span>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>apartments_final_res <span class="ot">&lt;-</span> <span class="fu">last_fit</span>(apartments_workflow, <span class="at">split =</span> apartments_train_split)</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>apartments_pred <span class="ot">&lt;-</span></span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(apartments_xgb_fit, apartments_test) <span class="sc">|&gt;</span></span>
 <span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(apartments_test)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -406,7 +396,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
-<p>Model v priemere <span style="color:#90ee90;"> mierne nadhodnocuje</span> (do 5 percent) byty s reálnou cenou medzi 100 až 180 tisíc EUR.<span style="color:#037f51;">Najvyššie nadhodnotenie</span> (viac ako 5 percent) je pri cenách do 100 tisíc EUR. Naopak byty s cenou od 180 tisíc EUR do 260 tisíc eur <span style="color:#55B9F5;">mierne podhodnocuje</span>. V prípade bytov od 260 tisíc EUR (približne 7 percent z inzerátov) sú už odchýlky nestabilné, trend je však smerom k <span style="color:#506BA0;">výraznejšiemu podhodnocovaniu</span>.</p>
+<p>Model v priemere <span style="color:#90ee90;"> mierne nadhodnocuje</span> (do 5 percent) byty s reálnou cenou medzi 100 až 170 tisíc EUR. <span style="color:#037f51;">Najvyššie nadhodnotenie</span> (viac ako 5 percent) je pri cenách do 100 tisíc EUR. Naopak byty s cenou od 180 tisíc EUR do 260 tisíc eur <span style="color:#55B9F5;">mierne podhodnocuje</span>. V prípade bytov od 260 tisíc EUR (približne 7 percent z inzerátov) sú už odchýlky nestabilné, trend je však smerom k <span style="color:#506BA0;">výraznejšiemu podhodnocovaniu</span>.</p>
 <div class="cell">
 <details>
 <summary>Odchýlky</summary>
@@ -452,7 +442,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
-<p>Pri XGBoost je dôležitosť premenných založená na “Gain”, tento termín odkazuje na príspevok každej premennej k celkovému zlepšeniu modelu, ktoré je dosiahnuté vďaka rozdeleniam (splits) na konkrétnej premennej. Keď XGBoost vytvára stromy, každé rozdelenie v strome sa vyberá tak, aby maximalizovalo “zisk”, čo znamená, že sa snaží o čo najväčšie zlepšenie prediktívnej presnosti. “Gain” v tomto kontexte meria, o koľko sa zlepšuje predikcia, keď sa použije rozdelenie založené na danej premenné. Tento zisk je často vážený a sumarizovaný cez všetky stromy v modele. Premenné, ktoré najviac prispievajú k zlepšeniu, sú tie, ktoré model najviac využíva na dosiahnutie presnejších predikcií, a preto sú považované za dôležitejšie. Viac informácií môžete nájsť napríklad v <a href="https://towardsdatascience.com/be-careful-when-interpreting-your-features-importance-in-xgboost-6e16132588e7">tomto článku na medium</a></p>
+<p>Pri XGBoost je dôležitosť premenných založená na <strong>Gain</strong>, tento termín odkazuje na príspevok každej premennej k celkovému zlepšeniu modelu, ktoré je dosiahnuté vďaka rozdeleniam (splits) na konkrétnej premennej. Keď XGBoost vytvára stromy, každé rozdelenie v strome sa vyberá tak, aby maximalizovalo “zisk”, čo znamená, že sa snaží o čo najväčšie zlepšenie prediktívnej presnosti. Gain v tomto kontexte meria, o koľko sa zlepšuje predikcia, keď sa použije rozdelenie založené na danej premenné. Tento zisk je často vážený a sumarizovaný cez všetky stromy v modeli. Premenné, ktoré najviac prispievajú k zlepšeniu sú tie, ktoré model najviac využíva na dosiahnutie presnejších predikcií, a preto sú považované za dôležitejšie. Viac informácií môžete nájsť napríklad v <a href="https://towardsdatascience.com/be-careful-when-interpreting-your-features-importance-in-xgboost-6e16132588e7">tomto článku na medium</a></p>
 <p>Neprekvapivo, najdôležitejšou premennou je rozloha bytu. Nasledujú geografická dĺžka, počet miestností a geografická šírka. Až 4 z top 10 premenných sú súčasťou <a href="https://www.nehnutelnosti.sk/magazin-o-byvani/1626-aka-je-kvalita-byvania-vo-vybranej-lokalite-po-novom-to-zistite-na-nehnutelnosti-sk-s-pomockou-od-city-performer/">indexu bývania</a></p>
 <div class="cell">
 <details>
@@ -485,7 +475,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p><br>SHAP (Shapley Additive exPlanations) hodnoty sú metóda používaná na vysvetlenie príspevku jednotlivých premenných k predikcii konkrétneho modelu strojového učenia. SHAP hodnoty poskytujú detailné vysvetlenie predikcie pre každý záznam (riadok dát) tým, že ukážu, ako každá premenná prispieva k výslednej predikcii, či už zvyšovaním alebo znížením predikovanej hodnoty. Tiež zaručujú konzistentnosť, čo znamená, že ak máme dve premenné a jedna konzistentne prispieva k predikcii viac než druhá, bude mať aj vyššiu SHAP hodnotu. Okrem poskytovania vysvetlení na úrovni jednotlivých predikcií (lokálne vysvetlenie) môžu byť SHAP hodnoty agregované na poskytnutie prehľadu o dôležitosti premenných v celom modeli (globálne vysvetlenie).</p>
-<p>SHAP hodnoty nám poskytujú ďaľšie informácie k dôležitosti premenných. Napr. sa potvrdzuje západo-východný gradient, ktorý sme spomínali v <a href="">tretej časti</a> tejto série. Ak sa byt nachádza v okrese Bratislava I, môže mu to pridať na hodnote 25 až 75 tisíc EUR. Ak sa jedná o novostavbu cena môže stúpnuť až o 50 tisíc EUR, kompletná rekonštrukcia pridáva na hodnote do 25 tisíc EUR, neopak pôvodný stav má negatívnz efekt do približne - 17 tisíc EUR.</p>
+<p>SHAP hodnoty nám poskytujú ďaľšie informácie k dôležitosti premenných. Napr. sa potvrdzuje západo-východný gradient, ktorý sme spomínali v <a href="">tretej časti</a> tejto série. Ak sa byt nachádza v okrese Bratislava I, môže mu to pridať na hodnote 25 až 75 tisíc EUR. Ak sa jedná o novostavbu cena môže stúpnuť až o 50 tisíc EUR, kompletná rekonštrukcia pridáva na hodnote do 25 tisíc EUR, neopak pôvodný stav má negatívny efekt do približne - 17 tisíc EUR.</p>
 <div class="cell">
 <details>
 <summary>SHAP</summary>
@@ -525,7 +515,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
-<p>Okrem celkového príspevku jednotlivých premenných v rámci modelu ako celku (globálne vysvetlenie) sa vieme pozrieť aj na jednotlivé predikcie. Napr. keď sa pozrieme na inzerát na riadku 1804, môžeme vidieť, že lokalita v okrese Bratislava I mu pridala na hodnote 48,5 tisíc EUR, geografická dĺžka ďalších 36,3 tisíc EUR, geografická šírka 19,5 tisíc EUR a rozloha 84 m^2 19,2 tisíc EUR. Naopak to, že sa nejedná o novostavbu znižuje cenu o 12,6 tisíc EUR a pôvodný stav uberá ďalších, približne, 8 tisíc EUR.</p>
+<p>Okrem celkového príspevku jednotlivých premenných v rámci modelu ako celku (globálne vysvetlenie) sa vieme pozrieť aj na jednotlivé predikcie. Napr. keď sa pozrieme na inzerát na riadku 1804, môžeme vidieť, že lokalita v okrese Bratislava I mu pridala na hodnote 50 tisíc EUR, geografická dĺžka ďalších 41,5 tisíc EUR a rozloha 84 m<sup>2</sup> 19 tisíc EUR. Naopak to, že sa nejedná o novostavbu znižuje cenu o necelých 12 tisíc EUR a pôvodný stav uberá ďalších 10 tisíc EUR.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
@@ -537,15 +527,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </section>
-<section id="uloženie-modelu-a-dát-pre-aplikáciu" class="level1">
-<h1>Uloženie modelu a dát pre aplikáciu</h1>
-<p>Finalizovaný model ukladáme v RDS formáte a bude použitý v Shiny web aplikácii.</p>
+<section id="uloženie-modelu-a-dát-pre-aplikáciu" class="level2">
+<h2 class="anchored" data-anchor-id="uloženie-modelu-a-dát-pre-aplikáciu">Uloženie modelu a dát pre aplikáciu</h2>
+<p>Aby sa model dal použiť v Shiny aplikácii, je nutné ho uložiť vo vhodnom formáte. Natrénovaný model transformujeme na vetiver model. Tento objekt obsahuje všetko čo treba aby sa dal použiť v novom prostredí. Ďalej ukladáme engine pomocou knižnice <code>xgboost</code>. Budeme ho potrebovať pri SHAP grafe.</p>
 <div class="cell">
-<details>
-<summary>Ukladanie súborov</summary>
-<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># save model</span></span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(apartments_xgb_fit, <span class="st">"data/model.RDS"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] TRUE</code></pre>
+</div>
 </div>
 </section>
 

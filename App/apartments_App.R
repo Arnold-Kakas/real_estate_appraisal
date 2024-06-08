@@ -122,7 +122,7 @@ server <- function(input, output) {
       pluck(1)
   })
   
-  output$predicted_value <- if (length(df) = 0) {NULL}
+  output$predicted_value <- if (length(df) == 0) {NULL}
   else {renderValueBox({
     valueBox(
       value = paste0(value, "€", sep = " "),

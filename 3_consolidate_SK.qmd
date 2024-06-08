@@ -1,14 +1,15 @@
 ---
-title: Exploratory data analysis
-author: Arnold Kakas
+title: Exploratory data analysis v jazyku R
+subtitle: Čistenie a príprava dát pre analýzu
 format: html
-date: today
 theme: 
   - flatly
   - Style.scss
 toc: true
 toc-depth: 4
 code-fold: true
+toc-title: "Obsah"
+code-summary: "Kód"
 execute:
   warning: false  
 fig-cap-location: bottom
@@ -61,7 +62,7 @@ Sú to napríklad:
 
 ## Úvodné čistenie dát
 
-<br>Pre načítanie knižníc rád používam funkciu `p_load` z knižnice [pacman](https://cran.r-project.org/web/packages/pacman/index.html). 
+<br>Začíname klasicky, načítaním knižníc pomocou funkcie `p_load` z knižnice [pacman](https://cran.r-project.org/web/packages/pacman/index.html). 
 
 ```{r}
 #| echo: true
@@ -664,7 +665,7 @@ joined_data_cleaned <- joined_data_cleaned[joined_data_cleaned$area > min_area &
 
 Nasleduje posledné dočistenie dát pred tým, než budeme pokračovať v detailnejšej EDA.
 V tomto kroku odstraňujeme záznamy z obcí, ktoré majú menej ako 5 inzerátov.
-Namiesto 5 by sme mohli vzbrať aj iné číslo, ale existuje "rule of thumb", ktoré tvrdí, že je 93,75% šanca, že medián populácie is medzi najnižšou a najvyššou hodnotou náhodne vybranej vzorky.
+Namiesto 5 by sme mohli vzbrať aj iné číslo, ale existuje "rule of thumb", ktoré tvrdí, že je [93,75% šanca](https://www.r-bloggers.com/2014/11/simulating-the-rule-of-five/), že medián populácie is medzi najnižšou a najvyššou hodnotou náhodne vybranej vzorky.
 
 ```{r}
 #| include: false
@@ -998,7 +999,7 @@ Rozloha bude zrejme jednou z najpodstatnejších premenných pri predikovaní ce
 joined_data_cleaned %>%
   drop_na() %>%
   ggplot(aes(x = area)) +
-  geom_histogram(aes(fill = type), binwidth = 5) +
+  geom_histogram(aes(fill = type, alpha = 0.3), binwidth = 5) +
   geom_boxplot(width = 50 , color = "steelblue", outlier.alpha = 0.1,
                position = position_nudge(y = -40)) +
   theme_minimal() +
@@ -1110,7 +1111,7 @@ KW_temp %>%
 
 ### Certifikát 
 <br> Energetický certifikát budovy (ECB) je právny dokument, ktorý hodnotí budovy z hľadiska energetickej efektívnosti a emisií oxidu uhličitého, čo vedie k ich klasifikácii v energetických stupniciach z najúčinnejšej triedy A po nehospodárnu triedu G.
-<br> Energetický certifikát hodnotí budovy z hľadiska 4 bodov spotreby energie:
+<br> Energetický certifikát hodnotí budovy z hľadiska štyroch bodov spotreby energie:
 
 - Tepelná ochrana budov
 - Energetické požiadavky na zahrievanie a prípravu horúcej vody
@@ -1151,7 +1152,7 @@ joined_data_cleaned %>%
   text = element_text(family = "Courier New", size = 12))
 ```
 
-<br> `r round((joined_data_cleaned %>% filter(is.na(certificate)) %>% nrow()) / (joined_data_cleaned %>% nrow()), 1)`% inzerovaných bytov nemá uvedený energetický certifikát. Skoro `r round((joined_data_cleaned %>% filter(certificate == 'none') %>% nrow()) / (joined_data_cleaned %>% nrow()), 1)`% má explicitne uvedené, že takýto certifikát nemá. Najhoršie certifikáty D až F sú zastúpené veľmi málo. 
+<br> `r round(((joined_data_cleaned %>% filter(is.na(certificate)) %>% nrow()) / (joined_data_cleaned %>% nrow()))*100, 0)`% inzerovaných bytov nemá uvedený energetický certifikát. Skoro `r round(((joined_data_cleaned %>% filter(certificate == 'none') %>% nrow()) / (joined_data_cleaned %>% nrow()))*100, 0)`% má explicitne uvedené, že takýto certifikát nemá. Najhoršie certifikáty D až F sú zastúpené veľmi málo. 
 <br>
 
 ```{r}

@@ -1,8 +1,6 @@
 ---
 title: Webscraping - ako použiť voľne dostupné dáta pre vlastnú analýzu
-author: Arnold Kakas
 format: html
-date: today
 theme: 
   - flatly
   - Style.scss

@@ -1,14 +1,14 @@
 ---
-title: Geocoding
-author: Arnold Kakas
+title: Geocoding pomocou jazyka R
+subtitle: Geokódovanie adries z inzerátov
 format: html
-date: today
 theme: 
   - flatly
   - Style.scss
 toc: true
 toc-depth: 4
 code-fold: true
+toc-title: "Obsah"
 code-summary: "Kód"
 execute:
   warning: false  
@@ -58,7 +58,7 @@ communes <- readRDS("data/geospatial_data/communes.RDS") |>
 advertisements_complete <- readRDS("data/advertisements_complete.RDS") 
 ```
 
-<br>Každý z inzerátov v našom datasete obsahuje adresu. Naším cieľom je extrahovať unikátne adresy z týchto reklám a premeniť ich na geopriestorové údaje. Geokódovanie vykonáme pomocou funkcie _geocode()_ metódou OpenStreetMap. Tento proces môže trvať dlho keďže každú sekundu sa odošle jedna požiadavka a umožní nám analyzovať, ako sa reklamy rozkladajú geograficky.
+<br>Každý z inzerátov v našom datasete obsahuje adresu. Naším cieľom je extrahovať unikátne adresy z týchto reklám a premeniť ich na geopriestorové údaje. Geokódovanie vykonáme pomocou funkcie _geocode()_ metódou OpenStreetMap. Tento proces môže trvať dlho, keďže každú sekundu sa odošle jedna požiadavka a umožní nám analyzovať, ako sa reklamy rozkladajú geograficky.
 
 
 ```{r}
@@ -101,7 +101,7 @@ advertisements_complete_geocoded <- advertisements_complete |>
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
 ```
 
-<br>Posledným krokom je priestorové spojenie geokódovaných reklám s dátami o obciach. Tento proces nám umožní zistiť, v ktorých obciach sa nachádzajú naše reklamy. Využívame k tomu knižnicu [sf](https://cran.r-project.org/web/packages/sf/index.html), ktorá je štandardom pre prácu s priestorovými dátami v R. Keďže už pracujeme s priestorovými údajmi, musíme použit špecifický typ spojenia *st_join* metódou *st_contains*, ktorý spája dve priestorové jednotky (body, polygóny) podľa toho či jedna obsahuje druhú. Výsledný dataset integruje originálne informácie o inyerciách s ich geopriestorovými vlastnosťami a príslušnosťou k obciam.
+<br>Posledným krokom je priestorové spojenie geokódovaných reklám s dátami o obciach. Tento proces nám umožní zistiť, v ktorých obciach sa nachádzajú naše reklamy. Využívame k tomu knižnicu [sf](https://cran.r-project.org/web/packages/sf/index.html), ktorá je štandardom pre prácu s priestorovými dátami v R. Keďže už pracujeme s priestorovými údajmi, musíme použit špecifický typ spojenia *st_join* metódou *st_contains*, ktorý spája dve priestorové jednotky (body, polygóny) podľa toho, či jedna obsahuje druhú. Výsledný dataset integruje originálne informácie o inzerciách s ich geopriestorovými vlastnosťami a príslušnosťou k obciam.
 
 ```{r}
 #| echo: true
